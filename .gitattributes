@@ -1,1 +1,3 @@
 * text=auto eol=lf
+data/samples/html/** -text
+data/samples/category_html/** -text
