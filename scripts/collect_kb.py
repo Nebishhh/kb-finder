@@ -10,7 +10,8 @@ Layout (all under data/raw/):
   categories/<id>.html        raw category pages (gitignored)
   manifest.jsonl              one JSON record per article fetch attempt;
                               the last record per article_id wins
-  category_manifest.jsonl     same idea for category pages
+  category_manifest.jsonl     same idea for category pages, plus valid,
+                              article_count, subcategory_count, sha256
 
 Run:  .venv/Scripts/python scripts/collect_kb.py [--limit N] [--refresh-categories]
 """
@@ -76,6 +77,18 @@ def check_body(raw: bytes) -> tuple[bool, int, str | None]:
     if not text:
         return False, 0, "body selector matched but body text is empty"
     return True, len(text), None
+
+
+def check_category(raw: bytes) -> tuple[bool, int, int, str | None]:
+    """Category page validity: the main listing container must match exactly once.
+    Zero articles and zero subcategories is still valid (real empty categories exist).
+    Returns (valid, article_count, subcategory_count, error)."""
+    markup = raw.decode("utf-8", errors="replace")
+    matches = BeautifulSoup(markup, "html.parser").select(CATEGORY_LISTING)
+    if len(matches) != 1:
+        return False, 0, 0, f"listing container {CATEGORY_LISTING} matched {len(matches)} elements (expected 1)"
+    arts, subs = parse_category(raw, START_URL)
+    return True, len(arts), len(subs), None
 
 
 def in_scope(url: str) -> bool:
@@ -198,6 +211,7 @@ class Collector:
         self.articles = load_manifest(self.article_manifest, "article_id")
         self.stats = dict(discovered=0, fetched_ok=0, skipped=0, failed=0, invalid=0,
                           categories_walked=0, categories_cached=0, categories_failed=0,
+                          categories_invalid=0, categories_recovered=0,
                           subcategory_links=0, live_requests=0)
         self.seen_articles: set[str] = set()
         self.seen_categories: set[str] = set()
@@ -231,29 +245,44 @@ class Collector:
     # -- categories
     def get_category(self, cat_id: str, url: str) -> bytes | None:
         path = self.raw / "categories" / f"{cat_id}.html"
+        bad_cache = False
         if path.is_file() and not self.refresh:
-            self.stats["categories_cached"] += 1
-            return path.read_bytes()
+            cached = path.read_bytes()
+            if check_category(cached)[0]:
+                self.stats["categories_cached"] += 1
+                return cached
+            bad_cache = True  # not a cache hit: fall through to a live refetch
+            self.log(f"  category {cat_id}: cached page is invalid, refetching")
         if not self.allowed(url):
             self.log(f"  category {cat_id}: disallowed by robots.txt, skipped")
-            self._cat_record(cat_id, url, None, None, "disallowed by robots.txt")
+            self._cat_record(cat_id, url, None, None, None, "disallowed by robots.txt")
             self.stats["categories_failed"] += 1
             return None
         status, body, err = self.live_get(url)
         if status == 200:
-            save_bytes(path, body)
-            self._cat_record(cat_id, url, status, path, None)
-            return body
-        self._cat_record(cat_id, url, status, None, err)
+            valid, na, ns, verr = check_category(body)
+            save_bytes(path, body)  # kept even if invalid, for diagnosis
+            self._cat_record(cat_id, url, status, path, body, verr, valid, na, ns)
+            if valid:
+                if bad_cache:
+                    self.stats["categories_recovered"] += 1
+                return body
+            self.stats["categories_invalid"] += 1
+            self.log(f"  category {cat_id}: INVALID ({verr})")
+            return None
+        self._cat_record(cat_id, url, status, None, None, err)
         self.stats["categories_failed"] += 1
         self.log(f"  category {cat_id}: FAILED ({err})")
         return None
 
-    def _cat_record(self, cat_id, url, status, path, error):
+    def _cat_record(self, cat_id, url, status, path, body, error,
+                    valid=False, article_count=0, subcategory_count=0):
         append_record(self.category_manifest, {
             "category_id": cat_id, "url": url, "http_status": status,
             "saved_path": path.relative_to(self.root).as_posix() if path else None,
-            "fetched_at": now_iso(), "error": error})
+            "fetched_at": now_iso(), "error": error, "valid": valid,
+            "article_count": article_count, "subcategory_count": subcategory_count,
+            "sha256": hashlib.sha256(body).hexdigest() if body is not None else None})
 
     # -- articles
     def process_article(self, art: dict, category_id: str) -> None:
@@ -320,6 +349,13 @@ class Collector:
                 return
             self.walk(sub["id"], sub["url"])
 
+    def exit_code(self) -> int:
+        """Nonzero if the completed run has any unresolved failure or invalidity.
+        A bad cached category that a live refetch repaired is not counted."""
+        s = self.stats
+        return 1 if (s["failed"] or s["invalid"] or s["categories_failed"]
+                     or s["categories_invalid"]) else 0
+
     def run(self) -> None:
         self.load_robots()
         m = CATEGORY_ID_RE.search(START_URL)
@@ -347,6 +383,8 @@ def main(argv=None) -> int:
     except KeyboardInterrupt:
         print("Interrupted; manifest is up to date for everything processed.", file=sys.stderr)
         code = 130
+    if code == 0:
+        code = c.exit_code()
     s = c.stats
     print("\n== Summary ==")
     print(f"discovered unique articles : {s['discovered']}")
@@ -356,6 +394,7 @@ def main(argv=None) -> int:
     print(f"invalid parses             : {s['invalid']}")
     print(f"categories walked/cached/failed: {s['categories_walked']}/"
           f"{s['categories_cached']}/{s['categories_failed']}")
+    print(f"categories invalid/recovered: {s['categories_invalid']}/{s['categories_recovered']}")
     print(f"subcategory links seen     : {s['subcategory_links']}")
     print(f"live requests              : {s['live_requests']}")
     print(f"elapsed                    : {time.monotonic() - start:.1f}s")

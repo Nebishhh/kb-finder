@@ -1,4 +1,8 @@
 """Offline tests for scripts/collect_kb.py. No sockets: fake fetcher only."""
+import collections
+import contextlib
+import hashlib
+import io
 import sys
 import tempfile
 import unittest
@@ -186,6 +190,135 @@ class WalkTests(unittest.TestCase):
                 continue
             valid, n, err = collect_kb.check_body(p.read_bytes())
             self.assertTrue(valid and n > 0, (p.name, err))
+
+
+BAD_CAT = b"<html><body><h1>UnhandledError</h1><p>Something went wrong</p></body></html>"
+
+
+def cat_manifest(t):
+    return collect_kb.load_manifest(Path(t) / "data/raw/category_manifest.jsonl", "category_id")
+
+
+class CategoryValidityTests(unittest.TestCase):
+    def test_check_category(self):
+        self.assertEqual(collect_kb.check_category(cat_page([1, 2], [3])), (True, 2, 1, None))
+        self.assertEqual(collect_kb.check_category(cat_page([], []))[:3], (True, 0, 0))  # real empty category
+        valid, na, ns, err = collect_kb.check_category(BAD_CAT)
+        self.assertFalse(valid)
+        self.assertIn("matched 0", err)
+        two = b'<div id="divCats"></div><div id="divCats"></div>'
+        self.assertFalse(collect_kb.check_category(two)[0])
+        for p in sorted(CAT.glob("*.html")):
+            self.assertTrue(collect_kb.check_category(p.read_bytes())[0], p.name)
+
+    def test_http_200_malformed_category_is_invalid(self):
+        pages = {**TREE, "Category/20/C20": (200, BAD_CAT)}
+        with tempfile.TemporaryDirectory() as t:
+            c, _ = run(t, pages)
+            self.assertEqual((c.stats["categories_invalid"], c.stats["categories_failed"]), (1, 0))
+            rec = cat_manifest(t)["20"]
+            self.assertFalse(rec["valid"])
+            self.assertEqual(rec["http_status"], 200)
+            self.assertIn("matched 0", rec["error"])
+            self.assertEqual(rec["sha256"], hashlib.sha256(BAD_CAT).hexdigest())
+            self.assertEqual(c.exit_code(), 1)
+
+    def test_valid_category_manifest_fields(self):
+        with tempfile.TemporaryDirectory() as t:
+            c, _ = run(t, TREE)
+            rec = cat_manifest(t)["10"]
+            self.assertEqual((rec["valid"], rec["article_count"], rec["subcategory_count"], rec["error"]),
+                             (True, 2, 1, None))
+            self.assertEqual(rec["sha256"], hashlib.sha256(TREE["Category/10/C10"][1]).hexdigest())
+
+    def test_invalid_category_cannot_silently_truncate(self):
+        pages = {**TREE, "Category/10/C10": (200, BAD_CAT)}
+        with tempfile.TemporaryDirectory() as t:
+            c, f = run(t, pages)
+            # C10's articles/subcategory (2, 3 via C11) are not fetched, and that is reported...
+            self.assertFalse([u for u in f.calls if "/Article/2/" in u or "/Article/3/" in u])
+            self.assertEqual(c.stats["categories_invalid"], 1)
+            self.assertEqual(c.exit_code(), 1)
+            # ...while siblings are still walked.
+            self.assertEqual(c.stats["fetched_ok"], 2)  # articles 1 and 4
+
+    def test_invalid_page_not_a_cache_hit(self):
+        pages = {**TREE, "Category/20/C20": (200, BAD_CAT)}
+        with tempfile.TemporaryDirectory() as t:
+            run(t, pages)
+            c2, f2 = run(t, pages)  # still broken on the server
+            self.assertTrue([u for u in f2.calls if "Category/20" in u])  # refetched, not cached
+            self.assertEqual((c2.stats["categories_invalid"], c2.stats["categories_recovered"]), (1, 0))
+            self.assertEqual(c2.exit_code(), 1)
+
+    def test_bad_cache_repaired_by_live_refetch_exits_zero(self):
+        with tempfile.TemporaryDirectory() as t:
+            run(t, TREE)
+            cached = Path(t) / "data/raw/categories/20.html"
+            cached.write_bytes(BAD_CAT)  # corrupt a cache entry
+            c, f = run(t, TREE)
+            self.assertEqual(sum("Category/20" in u for u in f.calls), 1)
+            self.assertEqual(c.stats["categories_recovered"], 1)
+            self.assertEqual(c.stats["categories_invalid"], 0)
+            self.assertEqual(cached.read_bytes(), TREE["Category/20/C20"][1])  # repaired
+            self.assertTrue(cat_manifest(t)["20"]["valid"])
+            self.assertEqual(c.stats["skipped"], 4)  # traversal succeeded, articles resumable
+            self.assertEqual(c.exit_code(), 0)
+
+    def test_bad_cache_and_bad_refetch_is_unresolved(self):
+        pages = {**TREE, "Category/20/C20": (200, BAD_CAT)}
+        with tempfile.TemporaryDirectory() as t:
+            run(t, TREE)
+            (Path(t) / "data/raw/categories/20.html").write_bytes(BAD_CAT)
+            c, _ = run(t, pages)
+            self.assertEqual((c.stats["categories_invalid"], c.stats["categories_recovered"]), (1, 0))
+            self.assertEqual(c.exit_code(), 1)
+
+    def test_bad_cache_refetch_http_failure_is_unresolved(self):
+        pages = {**TREE, "Category/20/C20": (500, b"")}
+        with tempfile.TemporaryDirectory() as t:
+            run(t, TREE)
+            (Path(t) / "data/raw/categories/20.html").write_bytes(BAD_CAT)
+            c, _ = run(t, pages)
+            self.assertEqual(c.stats["categories_failed"], 1)
+            self.assertEqual(c.exit_code(), 1)
+
+
+class ExitStatusTests(unittest.TestCase):
+    def test_success_is_zero(self):
+        with tempfile.TemporaryDirectory() as t:
+            c, _ = run(t, TREE)
+            self.assertEqual(c.exit_code(), 0)
+
+    def test_category_http_failure_is_nonzero(self):
+        with tempfile.TemporaryDirectory() as t:
+            c, _ = run(t, {**TREE, "Category/20/C20": (500, b"")})
+            self.assertEqual(c.stats["categories_failed"], 1)
+            self.assertEqual(c.exit_code(), 1)
+
+    def test_article_http_failure_is_nonzero(self):
+        with tempfile.TemporaryDirectory() as t:
+            c, _ = run(t, {**TREE, "Article/2/T2": (500, b"")})
+            self.assertEqual(c.exit_code(), 1)
+
+    def test_invalid_article_parse_is_nonzero(self):
+        with tempfile.TemporaryDirectory() as t:
+            c, _ = run(t, {**TREE, "Article/3/T3": (200, article_page(3, valid=False))})
+            self.assertEqual(c.exit_code(), 1)
+
+    def test_main_returns_collector_exit_code(self):
+        class C:
+            stats = collections.defaultdict(int)
+            def __init__(self, *a, **k): pass
+            def run(self): pass
+            def exit_code(self): return 1
+        orig = collect_kb.Collector
+        collect_kb.Collector = C
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(collect_kb.main([]), 1)
+        finally:
+            collect_kb.Collector = orig
 
 
 if __name__ == "__main__":

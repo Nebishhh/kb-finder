@@ -1,6 +1,10 @@
 """Offline regression tests for scripts/parse_kb.py. Reads Phase 1 fixtures only."""
+import contextlib
+import io
+import json
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -459,6 +463,155 @@ class RealWorldStaffFamilyTests(unittest.TestCase):
         self.assertTrue(a["staffOnly"])
         self.assertNotIn("ITS STAFF ONLY", a["fullText"])
         self.assertEqual(parse_kb.dumps(a), parse_kb.dumps(parse_kb.parse_article(raw)))
+
+
+STD_LINE = "Please contact the Service Desk if you need further assistance"
+
+
+class GlobalStandardLineTests(unittest.TestCase):
+    def check_clean(self, a):
+        for text in [a["fullText"]] + [x["text"] for x in a["sections"]] + [
+                a[k] or "" for k in ("question", "answer", "issue", "environment", "cause", "resolution")]:
+            for ln in text.split("\n"):
+                self.assertFalse(parse_kb.is_standard_line(ln), ln)
+
+    def test_in_footer(self):
+        a = parse_kb.parse_article(wrap("<h2>Resolution</h2><p>Do it.</p><footer><p>%s</p></footer>" % STD_LINE))
+        self.assertEqual(a["fullText"], "Resolution\nDo it.")
+        self.check_clean(a)
+
+    def test_in_direct_body_paragraph(self):
+        a = parse_kb.parse_article(wrap("<h2>Resolution</h2><p>Do it.</p><p>%s.</p><p>After.</p>" % STD_LINE))
+        self.assertEqual(a["fullText"], "Resolution\nDo it.\nAfter.")
+        self.assertEqual(a["resolution"], "Do it.\nAfter.")
+        self.check_clean(a)
+
+    def test_in_panel(self):
+        a = parse_kb.parse_article(wrap(
+            panel("Need More Help?", "<p>Try the guide.</p><p>%s</p>" % STD_LINE)))
+        self.assertEqual(a["sections"], [{"heading": "Need More Help?", "text": "Try the guide."}])
+        self.assertEqual(a["fullText"], "Need More Help?\nTry the guide.")
+        self.check_clean(a)
+
+    def test_in_ordinary_section_keeps_surroundings(self):
+        a = parse_kb.parse_article(wrap(
+            "<h2>Issue/Question</h2><p>Broken.</p><h2>Cause</h2><p>Old.</p><p>%s</p>"
+            "<h2>Resolution</h2><p>Step 1.</p><div><p>%s</p></div><p>Step 2.</p>" % (STD_LINE, STD_LINE)))
+        self.assertEqual((a["issue"], a["cause"], a["resolution"]), ("Broken.", "Old.", "Step 1.\nStep 2."))
+        self.check_clean(a)
+
+    def test_near_miss_wording_preserved(self):
+        near = ["Please contact the Service Desk at 555-0100", "Contact the Help Desk if you need help",
+                "Please contact the Service Desk if you need further assistance with printers"]
+        a = parse_kb.parse_article(wrap("<h2>Resolution</h2>" + "".join("<p>%s</p>" % n for n in near)
+                                        + "<p>%s</p>" % STD_LINE))
+        for n in near:
+            self.assertIn(n, a["fullText"])
+            self.assertIn(n, a["resolution"])
+
+    def test_footer_field_keeps_original(self):
+        a = parse_kb.parse_article(wrap("<h2>Resolution</h2><p>Do it.</p><footer><p>%s</p></footer>" % STD_LINE))
+        self.assertEqual(a["footer"], STD_LINE)
+
+
+@unittest.skipUnless(RAW.exists(), "saved corpus data/raw/articles not present")
+class RealCorpusInvariantTests(unittest.TestCase):
+    def test_no_standard_line_anywhere(self):
+        bad = []
+        for f in sorted(RAW.glob("*.html")):
+            a = parse_kb.parse_article(f.read_bytes())
+            texts = [a["fullText"]] + [x["text"] for x in a["sections"]] + [
+                a[k] or "" for k in ("question", "answer", "issue", "environment", "cause", "resolution")]
+            if any(parse_kb.is_standard_line(ln) for t in texts for ln in t.split("\n")):
+                bad.append(f.stem)
+        self.assertEqual(bad, [])
+
+
+FIXDIR = ROOT / "tests" / "fixtures"
+
+
+class FreshCloneRegressionTests(unittest.TestCase):
+    """Tracked minimal fixtures, so key layouts are covered without the raw corpus."""
+
+    def test_289_style_guide_layout(self):
+        a = parse_kb.parse_article((FIXDIR / "regression_289_style_guide.html").read_bytes())
+        self.assertEqual(a["sourceArticleId"], "289")
+        self.assertEqual((a["issue"], a["environment"]), ("How do you structure an article", "TeamDynamix"))
+        self.assertIsNotNone(a["resolution"])
+        self.assertEqual(a["staffOnly"]["text"], "Follow article XYZ")
+        self.assertNotIn("Follow article XYZ", a["fullText"])
+        self.assertIn("Use an Internal ITS Staff Only panel", a["fullText"])
+        self.assertEqual(a["warnings"], ["staff_only_unmatched"])
+
+    def test_9050_whole_article_footer_layout(self):
+        a = parse_kb.parse_article((FIXDIR / "regression_9050_footer_layout.html").read_bytes())
+        self.assertEqual(a["sourceArticleId"], "9050")
+        self.assertEqual((a["environment"], a["cause"], a["resolution"]), (None, None, None))
+        self.assertIn("Provide an online option.", a["fullText"])
+        self.assertIn("Contact the owner", a["fullText"])
+        self.assertIsNotNone(a["footer"])
+        self.assertEqual(a["warnings"], ["footer_nonstandard"])
+
+
+class AtomicOutputTests(unittest.TestCase):
+    def setUp(self):
+        self._t = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._t.name)
+        self.inp = self.tmp / "in"
+        self.inp.mkdir()
+        self.out = self.tmp / "out" / "articles.jsonl"
+        self.rep = self.tmp / "out" / "parse_report.json"
+        self.addCleanup(self._t.cleanup)
+
+    def write_input(self, i, good=True):
+        page = wrap("<h2>Resolution</h2><p>Body %s</p>" % i).replace(b"Article/1/", b"Article/%s/" % i.encode())
+        (self.inp / f"{i}.html").write_bytes(page if good else b"<html><body>broken</body></html>")
+
+    def run_main(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            return parse_kb.main(["--input-dir", str(self.inp), "--out", str(self.out), "--report", str(self.rep)])
+
+    def leftovers(self):
+        return sorted(p.name for p in self.out.parent.iterdir() if p.name.endswith(".tmp"))
+
+    def test_existing_output_survives_failed_parse(self):
+        self.write_input("1")
+        self.write_input("2")
+        self.assertEqual(self.run_main(), 0)
+        before = self.out.read_bytes()
+        self.write_input("3", good=False)
+        self.assertEqual(self.run_main(), 1)
+        self.assertEqual(self.out.read_bytes(), before)
+        rep = json.loads(self.rep.read_text(encoding="utf-8"))
+        self.assertEqual((rep["files"], rep["parsed"], rep["failed"]), (3, 2, 1))
+        self.assertEqual(rep["failures"][0]["file"], "3.html")
+        self.assertEqual(self.leftovers(), [])
+
+    def test_failed_first_run_creates_no_articles_file(self):
+        self.write_input("1", good=False)
+        self.assertEqual(self.run_main(), 1)
+        self.assertFalse(self.out.exists())
+        self.assertTrue(self.rep.exists())
+        self.assertEqual(self.leftovers(), [])
+
+    def test_success_replaces_previous_output_atomically(self):
+        self.out.parent.mkdir(parents=True)
+        self.out.write_text("OLD\n", encoding="utf-8")
+        self.write_input("1")
+        self.assertEqual(self.run_main(), 0)
+        lines = self.out.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(json.loads(lines[0])["sourceArticleId"], "1")
+        self.assertEqual(self.leftovers(), [])
+        json.loads(self.rep.read_text(encoding="utf-8"))
+
+    def test_output_is_deterministic(self):
+        self.write_input("2")
+        self.write_input("1")
+        self.run_main()
+        first = (self.out.read_bytes(), self.rep.read_bytes())
+        self.run_main()
+        self.assertEqual((self.out.read_bytes(), self.rep.read_bytes()), first)
 
 
 if __name__ == "__main__":

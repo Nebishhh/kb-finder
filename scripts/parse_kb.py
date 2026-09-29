@@ -61,10 +61,13 @@ Audience labels
 
 Footer       1. After the staff-only block is removed, the full text of every
                 outermost <footer> is preserved in `footer` (never discarded).
-             2. From each footer, only lines that are exactly the standard line
-                ("Please contact the Service Desk [if you need further
-                assistance]", casefold, whitespace/trailing ":?" normalized) are
-                removed, wherever they appear in the footer.
+             2. Lines that are exactly the standard line ("Please contact the
+                Service Desk [if you need further assistance]", casefold,
+                whitespace/trailing ":?" normalized) are removed from all
+                body-derived text (fullText, sections, canonical fields), wherever
+                they appear: footer, direct paragraph, panel, or other section.
+                Nothing fuzzy: near-miss Service Desk wording is kept. The `footer`
+                field itself keeps the original text.
              3. Whatever footer lines remain are appended to fullText in document
                 order (at the footer's position) and are NOT part of `sections` or
                 the issue/resolution/... fields.
@@ -83,6 +86,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 import unicodedata
@@ -167,6 +171,15 @@ def text_of(node) -> str:
 def norm_key(s: str) -> str:
     s = _collapse(s).casefold()
     return re.sub(r"\s*/\s*", "/", s).rstrip(":?").strip()
+
+
+def is_standard_line(line: str) -> bool:
+    return bool(STANDARD_FOOTER_RE.match(norm_key(line)))
+
+
+def drop_standard(lines: list[str]) -> list[str]:
+    """Remove lines that are exactly the standard service-desk line (nothing fuzzy)."""
+    return [ln for ln in lines if not is_standard_line(ln)]
 
 
 # ------------------------------------------------------------------ metadata
@@ -303,7 +316,7 @@ def process_footers(body: Tag, warnings: list[str]) -> str | None:
         if not lines:
             continue
         originals.append("\n".join(lines))
-        keep = [ln for ln in lines if not STANDARD_FOOTER_RE.match(norm_key(ln))]
+        keep = drop_standard(lines)
         if f.parent is not body:
             unclassified = True  # position in the article is ambiguous
         if any(DESK_RE.search(ln) for ln in keep) or any("staff only" in ln.casefold() for ln in keep):
@@ -352,6 +365,8 @@ def split_sections(body: Tag) -> list[dict]:
                     units[-1]["lines"].extend(lines_of(part))
                 continue
         units[-1]["lines"].extend(lines_of(child))
+    for u in units:
+        u["lines"] = drop_standard(u["lines"])
     return [u for u in units if u["lines"] or u["heading"]]
 
 
@@ -442,6 +457,29 @@ def dumps(article: dict) -> str:
     return json.dumps(article, ensure_ascii=False, sort_keys=True)
 
 
+def _write_temp(path: Path, text: str) -> Path:
+    """Write text to a sibling temp file (flushed to disk) and return its path."""
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+    return tmp
+
+
+def atomic_write_text(path: Path, text: str) -> None:
+    tmp = _write_temp(path, text)
+    try:
+        os.replace(tmp, path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--input-dir", type=Path, default=ROOT / "data" / "raw" / "articles")
@@ -466,8 +504,17 @@ def main(argv=None) -> int:
             warn_by_id[art["sourceArticleId"]] = art["warnings"]
         records.append(art)
 
+    # Candidate goes to a sibling temp file; it replaces the real output only if
+    # every input parsed, so a complete corpus is never overwritten by a partial one.
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text("".join(dumps(a) + "\n" for a in records), encoding="utf-8", newline="\n")
+    candidate = _write_temp(args.out, "".join(dumps(a) + "\n" for a in records))
+    try:
+        if not failures:
+            os.replace(candidate, args.out)
+            candidate = None
+    finally:
+        if candidate is not None:
+            candidate.unlink(missing_ok=True)
     counts: dict[str, int] = {}
     for ws in warn_by_id.values():
         for w in ws:
@@ -484,8 +531,10 @@ def main(argv=None) -> int:
         "failures": failures,
     }
     args.report.parent.mkdir(parents=True, exist_ok=True)
-    args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-                           encoding="utf-8", newline="\n")
+    atomic_write_text(args.report,
+                      json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+    if failures:
+        print(f"parse failed: kept existing {args.out.name} (not replaced)")
     print(f"files {len(files)}  parsed {len(records)}  failed {len(failures)}  "
           f"staffOnly {report['withStaffOnly']}  footer {report['withFooter']}")
     for f in failures:

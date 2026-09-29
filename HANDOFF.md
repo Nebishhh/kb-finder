@@ -13,40 +13,58 @@ Anything that must survive across sessions goes in NOTES.md.
 - scripts/parse_kb.py: deterministic parser -> data/parsed/articles.jsonl and
   parse_report.json. Own text walker (inline adds nothing, blocks break lines,
   zero-width chars dropped). Rules are in the module docstring.
-- Staff-only revision (parserVersion 2): top-level "Internal Staff Only" panels
-  (also "Internal ITS Staff Only", "... - Internal Staff Only") go to staffOnly; an empty
-  ITS box that is a direct body <div> is dropped; audience labels `^[A-Z]{2,10} STAFF ONLY$`
-  (not ITS) go to new field `audienceLabels` (ordered, deduped, []), only the label line is
-  removed, content stays in fullText/sections, never staffOnly. Footer rules unchanged.
-- Footer rule (updated after the 8721 finding): full footer kept in `footer`
-  (staff block removed first); only exact standard service-desk lines are
-  removed from it; leftover lines go into fullText at the footer's position
-  (not into sections/fields). Warnings: footer_nonstandard (informational),
-  footer_unclassified (review; content still kept): leftover line mentions
-  service/help desk or staff only, or footer is nested (not a direct body child).
-- tests/test_parse_kb.py, tests/test_collect_kb.py: 46 offline unittest tests.
-- .gitignore: data/raw/articles/, data/raw/categories/. AGENTS.md: 3 commands added.
+- Staff-only handling (parserVersion 2): top-level "Internal Staff Only" panels go to
+  staffOnly; "ITS STAFF ONLY" boxes go to staffOnly; department labels
+  (`^[A-Z]{2,10} STAFF ONLY$`, not ITS) go to `audienceLabels` and content stays searchable.
 - Layout: data/raw/{articles,categories}/ (ignored), data/raw/manifest.jsonl and
   category_manifest.jsonl (tracked), data/parsed/* (tracked).
 
+## Codex checkpoint fixes (this session)
+1. Standard service-desk line, now global. Before, only <footer> elements were cleaned, so
+   213 articles kept "Please contact the Service Desk [if you need further assistance]" in
+   fullText and sections. Now `drop_standard()` (exact `STANDARD_FOOTER_RE` match on a whole
+   line, no fuzzy matching) runs on every body-derived line in `split_sections`, so fullText,
+   sections and the canonical fields are clean wherever the line appears (footer, direct
+   paragraph, panel, other section). Near-miss wording is kept. The `footer` field still holds
+   the original footer text. Warnings did not move.
+2. Category validation. `check_category()` requires `#divCats` to match exactly once (an
+   empty category with the container is still valid; 184, 210, 216 are real examples).
+   Applied to fresh and cached pages. Invalid fresh page: bytes saved for diagnosis, manifest
+   `valid=false` + error, `categories_invalid` counted, not walked. Invalid cached page: not
+   a cache hit, live refetch; if the refetch is valid the cache is repaired and it counts as
+   `categories_recovered` (not fatal). Category manifest records gained `valid`,
+   `article_count`, `subcategory_count`, `sha256`. Exit status: `Collector.exit_code()` is 1
+   if any unresolved category failure/invalid category, article fetch failure, or invalid
+   article parse remains; diagnostics are still written. Robots stop is 2, Ctrl-C is 130.
+3. Atomic parse output. parse_kb.py writes articles.jsonl to a sibling `.tmp`, and replaces
+   the real file only if every input parsed. On any failure the old file is kept, the temp is
+   removed, exit 1. parse_report.json is always written (also on failure), via temp + replace.
+- Fresh-clone coverage: tests/fixtures/regression_289_style_guide.html and
+  regression_9050_footer_layout.html (minimal, labeled, placeholder text only).
+
 ## Results
-- Tests: 63/63 pass (incl. 15 new; real-world ones read data/raw/articles and skip if absent).
-- Full corpus: files 3109, parsed 3108, failed 1 (4902). staffOnly 1255 (was 1249),
-  audienceLabels 13 articles (USD 9, HR 2, FINANCE 1, EPC 1).
-- Warnings: staff_only_unmatched only 288, 289, 300, 2506; staff_only_unbounded none.
-  footer_nonstandard 248 (unchanged); footer_unclassified 92 (was 93: 9050's only trigger
-  was its FINANCE STAFF ONLY label line, now an audience label). Two parses byte-identical.
-- 289 measured: its example "Internal ITS Staff Only" panel is a direct body child, so the
-  structural rule now puts it in staffOnly (warning stays for prose mentions). 300's is
-  nested and untouched.
-- 9050: whole article sits in a <footer>, so environment/cause/resolution are null (known).
-- 4902: TeamDynamix UnhandledError page served as HTTP 200 (no article). Refetch later;
-  not a parser issue.
+- Tests: 89/89 pass (26 new). Parser tests that read data/raw/articles skip if it is absent.
+- Full corpus ultimately collected and parses 3109/3109 (files 3109, parsed 3109, failed 0).
+  Article 4902 was a TeamDynamix error page served as HTTP 200; it succeeded on retry.
+- Exact standard line occurrences after the fix: 0 in fullText, sections, question, answer,
+  issue, environment, cause, resolution (was 213 articles).
+- Warnings unchanged: footer_nonstandard 248, footer_unclassified 92, staff_only_unmatched 4
+  (288, 289, 300, 2506). Two parser runs byte-identical.
+- data/parsed/articles.jsonl changed only for the 213 affected articles.
+
+## Known limitations
+- 9050 has the whole article inside a <footer>: environment/cause/resolution are null (text
+  is in fullText).
+- 288, 289, 300, 2506 keep staff_only_unmatched (documentation/prose mentions). 289's example
+  panel goes to staffOnly ("Follow article XYZ"); harmless.
+- ~92 footer_unclassified articles keep leftover footer lines in fullText (not suppressed).
+- Old category manifest records (before this change) have no `valid` field; only the saved
+  file itself is re-validated.
+- Collector fixes are covered offline only; the live collector was not run this session.
 
 ## What remains
-- Human: SPEC.md audienceLabels addition (chat proposal), DECISIONS.md entries, commit.
-- Refetch 4902 in a future collector run (resume rule retries it).
-- Codex checkpoint review of collector + parser (WORKFLOW section 1).
+- Short Codex re-review of these three fixes, then Phase 3.
+- Human: SPEC.md audienceLabels addition, DECISIONS.md entries, commit.
 
 ## Unresolved human decisions
 - Whether staffOnly text/links are included in retrieval (measure later).
