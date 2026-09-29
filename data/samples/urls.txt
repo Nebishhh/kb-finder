@@ -1,0 +1,13 @@
+https://td.usd.edu/TDClient/33/Portal/KB/Article/4535/Connecting-to-Eduroam-WiFi | Note:  Anonymous - Delete this line if it auto populates so the line is blank
+https://td.usd.edu/TDClient/33/Portal/KB/Article/5913/Connecting-a-Smart-Device-to-the-Wireless-Network | Any other device not listed on the Support Devices list has not been tested and is considered unsupported
+https://td.usd.edu/TDClient/33/Portal/KB/Article/1027/Email-Delivery-Failure | Error: We are unable to deliver your message to its intended recipient(s). Unrecognized sender email address:
+https://td.usd.edu/TDClient/33/Portal/KB/Article/508/Problems-accessing-departmental-email-account | The shared account is asking for a password
+https://td.usd.edu/TDClient/33/Portal/KB/Article/233/Printer-is-Not-Printing | Clear the print queue via command prompt
+https://td.usd.edu/TDClient/33/Portal/KB/Article/8721/Coyote-Card-Resources | Using eAccounts, students, faculty, staff, family and friends can add funds to the Coyote Card using our online deposit system. It is available 24/7 and accepts credit card payment methods.
+https://td.usd.edu/TDClient/33/Portal/KB/Article/6260/Coyote-Card-Mobile-Not-Working | If you have received a new phone follow Removing Coyote Card Mobile ID to remove the card from your old device
+https://td.usd.edu/TDClient/33/Portal/KB/Article/1866/Cannot-Play-Panopto-Video-in-D2L | Note:  If you are still having issues please contact your instructor and have them unhide the Panopto content item, then click the link to Panopto - USD under content
+https://td.usd.edu/TDClient/33/Portal/KB/Article/352/Receiving-Page-Not-Found-Error-when-Playing-Video-in-D2L | You will need to copy the correct link and update the one beginning with https://d2l.sdbor.edu
+https://td.usd.edu/TDClient/33/Portal/KB/Article/430/Updating-Accounts-for-Wellness-Center-Access | If you are not registered, please contact your advisor to get registered for classes
+https://td.usd.edu/TDClient/33/Portal/KB/Article/9079/Password-Reset-USD-Account | As you set your password each requirement you have met will change from red to green
+https://td.usd.edu/TDClient/33/Portal/KB/Article/4613/Locked-Out-of-Duo | Your account will automatically unlock after 30 minutes from last activity
+https://td.usd.edu/TDClient/33/Portal/KB/Article/8318/Duo-Not-Allowing-Me-To-Select-My-Authentication-Method | Duo Universal Prompt chooses your login option automatically, selecting your most secure method
