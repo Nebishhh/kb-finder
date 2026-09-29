@@ -13,6 +13,11 @@ Anything that must survive across sessions goes in NOTES.md.
 - scripts/parse_kb.py: deterministic parser -> data/parsed/articles.jsonl and
   parse_report.json. Own text walker (inline adds nothing, blocks break lines,
   zero-width chars dropped). Rules are in the module docstring.
+- Staff-only revision (parserVersion 2): top-level "Internal Staff Only" panels
+  (also "Internal ITS Staff Only", "... - Internal Staff Only") go to staffOnly; an empty
+  ITS box that is a direct body <div> is dropped; audience labels `^[A-Z]{2,10} STAFF ONLY$`
+  (not ITS) go to new field `audienceLabels` (ordered, deduped, []), only the label line is
+  removed, content stays in fullText/sections, never staffOnly. Footer rules unchanged.
 - Footer rule (updated after the 8721 finding): full footer kept in `footer`
   (staff block removed first); only exact standard service-desk lines are
   removed from it; leftover lines go into fullText at the footer's position
@@ -25,38 +30,24 @@ Anything that must survive across sessions goes in NOTES.md.
   category_manifest.jsonl (tracked), data/parsed/* (tracked).
 
 ## Results
-- Tests: 46/46 pass. Live: `collect_kb.py --limit 5` fetched 5/5 valid
-  (7 requests, 36s). Rerun: 5 skipped, 0 article fetches, category reused.
-  Parser on those 5: 5/5 parsed, deterministic across runs.
-- Fixtures: 13/13 parse; ITS STAFF ONLY found in exactly the 7 Phase 1 IDs,
-  none elsewhere; fullText never contains staff text.
-
-## Surprising
-- Category 61 (root) lists articles directly AND has 12 subcategories, so the
-  limited live run never descended into a subcategory (recursion is covered by
-  offline tests only).
-- Real Question/Answer articles exist (4571, 8120) plus a "Description / FAQs"
-  template (4789) and "Online Resources for Students" (4822).
-- `<footer>` in the body is NOT reliably boilerplate: 8721 has real content
-  (Coyote Cash/eAccounts text and links) in it, 508 has a contact-with-info list,
-  7215 says "Please contact the ITS PMO if you need further assistance." (not the
-  standard line, so kept in fullText, footer_nonstandard only).
-- On the saved data at last parse (23 files, from a collection run in progress):
-  22 parsed; 4902.html is a 200 page with no body container (no title/og:url
-  either; manifest parse_valid=false, so the collector will retry it). Worth a look.
-- 4911 has a standard footer; 233's staff box is mid-body, not last.
+- Tests: 63/63 pass (incl. 15 new; real-world ones read data/raw/articles and skip if absent).
+- Full corpus: files 3109, parsed 3108, failed 1 (4902). staffOnly 1255 (was 1249),
+  audienceLabels 13 articles (USD 9, HR 2, FINANCE 1, EPC 1).
+- Warnings: staff_only_unmatched only 288, 289, 300, 2506; staff_only_unbounded none.
+  footer_nonstandard 248 (unchanged); footer_unclassified 92 (was 93: 9050's only trigger
+  was its FINANCE STAFF ONLY label line, now an audience label). Two parses byte-identical.
+- 289 measured: its example "Internal ITS Staff Only" panel is a direct body child, so the
+  structural rule now puts it in staffOnly (warning stays for prose mentions). 300's is
+  nested and untouched.
+- 9050: whole article sits in a <footer>, so environment/cause/resolution are null (known).
+- 4902: TeamDynamix UnhandledError page served as HTTP 200 (no article). Refetch later;
+  not a parser issue.
 
 ## What remains
-- Human runs the full collection, then parse_kb.py, then reviews
-  parse_report.json warnings (staff_only_*, footer_nonstandard, failures).
-- Review footer_unclassified IDs in parse_report.json after the full run.
-- Human: SPEC.md updates (see chat proposals), DECISIONS.md entries, commit.
+- Human: SPEC.md audienceLabels addition (chat proposal), DECISIONS.md entries, commit.
+- Refetch 4902 in a future collector run (resume rule retries it).
 - Codex checkpoint review of collector + parser (WORKFLOW section 1).
 
 ## Unresolved human decisions
 - Whether staffOnly text/links are included in retrieval (measure later).
-
-## Next intended step
-Run full collection (~2h, resumable):
-`.venv/Scripts/python scripts/collect_kb.py`
-then `.venv/Scripts/python scripts/parse_kb.py`, review warnings, commit.
+- Whether 289's example panel in staffOnly is acceptable, and whether 288/289/300/2506 warrant a note.

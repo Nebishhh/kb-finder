@@ -9,12 +9,19 @@ Personal project. Not an official university tool.
 
 ## Scope
 - Source: the public Coyote OneStop Knowledge Base, Technology
-  categories only (about 1,200 articles).
+  category (ID 61) and all its subcategories: 3,109 articles as of
+  the first full collection.
 - Collection: plain HTTP, robots.txt respected, descriptive
-  User-Agent, 6-second delay between requests.
-- Print route (known): /TDClient/33/Portal/KB/PrintArticle?ID=<id>
-- Body selector and discovery method: to be set from the Phase 1
-  inspection report, not assumed.
+  User-Agent, delay = max(6 seconds, robots.txt Crawl-delay)
+  (Crawl-delay is currently 5).
+- Discovery: recursive walk of category pages starting at
+  /TDClient/33/Portal/KB/Category/61/Technology. Only the main
+  article listing and subcategory links are used; sidebars and
+  links inside article bodies are never followed.
+- Parse source: the normal article page. Body selector:
+  #ctl00_ctl00_cpContent_cpContent_divBody
+- Print route (/TDClient/33/Portal/KB/PrintArticle?ID=<id>) exists
+  but is not used for parsing (it has no meta tags).
 
 ## Stack
 - Python 3.12 (.venv): KB inspection, collection, parsing,
@@ -27,33 +34,53 @@ Personal project. Not an official university tool.
 
 ## Article model
 
+Exact field shapes are defined in scripts/parse_kb.py.
+
 ```ts
 type Article = {
-  id: string;              // internal ID
-  sourceArticleId: string; // KB article ID
+  id: string;                // internal ID (assigned at ingestion)
+  sourceArticleId: string;   // KB article ID
   title: string;
   url: string;
-  category?: string;       // from meta article:section
+  category?: string;         // meta article:section
   tags: string[];
-  fullText: string;        // main body only
+  description?: string;      // og:description
+  publishedTime?: string;
+  modifiedTime?: string;
+  fullText: string;          // see fullText rules below
   question?: string;
   answer?: string;
   issue?: string;
   environment?: string;
   cause?: string;
   resolution?: string;
+  sections: { heading: string; text: string }[]; // all sections, in order
+  staffOnly?: object | null; // internal technician content, kept separate
+  audienceLabels: string[];  // e.g. "USD STAFF ONLY"; content stays searchable
+  footer?: string | null;    // original footer, kept for inspection
 };
 ```
 
-Article structures:
-- Question / Answer
-- Issue / Environment / Cause / Resolution
-- Other or no headings: fullText only, section fields empty.
+Article structures seen:
+- Issue/Question / Environment / Cause / Resolution
+  (Cause sometimes missing). "Issue/Question" maps to issue.
+- Question / Products or Services Involved / Instructions /
+  Need More Help?
+- Question / Answer (a few articles)
+- Other headings (e.g. Description / FAQs): kept in sections only.
 
-Body text excludes navigation, the Related Articles section, and
-feedback widgets. Metadata comes from meta tags (article:section,
-published_time, modified_time, og:description). Parsing is
-deterministic: same HTML in, same output out.
+fullText rules:
+- Main article body only: no navigation, Related Articles, or
+  feedback widgets. Headings are included.
+- Internal technician content ("ITS STAFF ONLY" boxes, top-level
+  "Internal Staff Only" panels) is excluded and stored in staffOnly.
+- Department audience labels ("USD/HR/FINANCE/EPC STAFF ONLY"): only
+  the label line is removed; the content stays in fullText.
+- The standard service-desk contact line is removed; all other
+  footer content stays in fullText.
+- Inline tags add no spaces; block elements separate text.
+- Zero-width characters (U+200B-U+200D, U+2060, U+FEFF) are removed.
+- Deterministic: same HTML in, same output out.
 
 ## Search API
 

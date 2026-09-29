@@ -301,5 +301,165 @@ class SyntheticTests(unittest.TestCase):
             parse_kb.parse_article(b"<html><body>nothing</body></html>")
 
 
+RAW = ROOT / "data" / "raw" / "articles"  # git-ignored corpus; real-world tests skip if absent
+
+
+def raw_parsed(i):
+    return parse_kb.parse_article((RAW / f"{i}.html").read_bytes())
+
+
+def panel(title, body="<p>Follow <a href='/k'>Tech doc</a></p>"):
+    return (f'<div class="panel panel-default"><div class="panel-heading"><h2 class="h3 panel-title">'
+            f'<strong>{title}</strong></h2></div><div class="panel-body">{body}</div></div>')
+
+
+class StaffFamilySyntheticTests(unittest.TestCase):
+    """SYNTHETIC snippets isolating the Internal-Staff-Only panel, empty-box and audience rules."""
+
+    def test_internal_panels_top_level_go_to_staff_only(self):
+        for title in ("Internal Staff Only", "Internal ITS Staff Only", "Instructions - Internal Staff Only"):
+            a = parse_kb.parse_article(wrap(panel("Question", "<p>How?</p>") + panel(title)))
+            self.assertEqual(a["staffOnly"]["links"], [{"text": "Tech doc", "href": "/k"}], title)
+            self.assertNotIn("Tech doc", a["fullText"], title)
+            self.assertNotIn("Staff Only", a["fullText"], title)
+            self.assertEqual([x["heading"] for x in a["sections"]], ["Question"], title)
+            self.assertNotIn("staff_only_unmatched", a["warnings"], title)
+
+    def test_nested_internal_panel_not_extracted(self):
+        a = parse_kb.parse_article(wrap(panel("Description", panel("Internal Staff Only", "<p>Follow article XYZ</p>"))))
+        self.assertIsNone(a["staffOnly"])
+        self.assertIn("Follow article XYZ", a["fullText"])
+        self.assertIn("staff_only_unmatched", a["warnings"])  # unchanged behavior for docs
+
+    def test_empty_its_boxes(self):
+        for extra in ("<p> </p>", ""):
+            a = parse_kb.parse_article(wrap(
+                '<h2>Resolution</h2><p>Do it.</p><div style="background-color: #F6F6F6">'
+                '<p style="text-align:center">ITS STAFF ONLY</p>' + extra + "</div>"))
+            self.assertEqual(a["fullText"], "Resolution\nDo it.")
+            self.assertEqual(a["warnings"], [])
+            self.assertEqual(a["audienceLabels"], [])
+
+    def test_bare_its_label_still_unbounded(self):
+        a = parse_kb.parse_article(wrap("<p>ITS STAFF ONLY</p><p>secret list</p>"))
+        self.assertIn("staff_only_unbounded", a["warnings"])
+        self.assertIn("secret list", a["fullText"])
+
+    def test_audience_label_box(self):
+        a = parse_kb.parse_article(wrap(
+            '<h2>Resolution</h2><div style="background-color: #F6F6F6"><p>USD STAFF ONLY</p>'
+            '<ol><li>Follow <a href="/k">Tech doc</a></li></ol></div>'))
+        self.assertEqual(a["audienceLabels"], ["USD STAFF ONLY"])
+        self.assertEqual(a["fullText"], "Resolution\nFollow Tech doc")
+        self.assertEqual(a["resolution"], "Follow Tech doc")
+        self.assertIsNone(a["staffOnly"])
+        self.assertEqual(a["warnings"], [])
+
+    def test_audience_label_bare_keeps_following_content(self):
+        a = parse_kb.parse_article(wrap(
+            "<h2>Resolution</h2><p>HR STAFF ONLY</p><ol><li>step</li></ol><h2>Cause</h2><p>why</p>"))
+        self.assertEqual(a["audienceLabels"], ["HR STAFF ONLY"])
+        self.assertEqual(a["fullText"], "Resolution\nstep\nCause\nwhy")
+        self.assertEqual(a["resolution"], "step")
+        self.assertEqual(a["cause"], "why")
+        self.assertIsNone(a["staffOnly"])
+
+    def test_audience_labels_order_dedupe_default(self):
+        a = parse_kb.parse_article(wrap(
+            "<p>USD STAFF ONLY</p><p>a</p><p>EPC STAFF ONLY</p><p>b</p><p>USD STAFF ONLY</p><p>c</p>"))
+        self.assertEqual(a["audienceLabels"], ["USD STAFF ONLY", "EPC STAFF ONLY"])
+        self.assertEqual(a["fullText"], "a\nb\nc")
+        self.assertEqual(parse_kb.parse_article(wrap("<p>plain</p>"))["audienceLabels"], [])
+
+    def test_prose_is_not_an_audience_label(self):
+        for txt in ("Available for Faculty/Staff only", "usd staff only", "This is USD STAFF ONLY content",
+                    "ABCDEFGHIJK STAFF ONLY", "A STAFF ONLY"):
+            a = parse_kb.parse_article(wrap(f"<p>{txt}</p>"))
+            self.assertEqual(a["audienceLabels"], [], txt)
+            self.assertIn(txt, a["fullText"], txt)
+            self.assertIn("staff_only_unmatched", a["warnings"], txt)
+
+    def test_its_staff_box_unchanged_with_audience_field(self):
+        a = parse_kb.parse_article(wrap(
+            '<h2>Resolution</h2><p>Do it.</p><div style="x"><p>ITS STAFF ONLY</p>'
+            '<ol><li><a href="/k">Tech doc</a></li></ol></div>'))
+        self.assertEqual(a["staffOnly"]["text"], "Tech doc")
+        self.assertEqual(a["audienceLabels"], [])
+
+
+@unittest.skipUnless(RAW.exists(), "saved corpus data/raw/articles not present")
+class RealWorldStaffFamilyTests(unittest.TestCase):
+    def need(self, i):
+        if not (RAW / f"{i}.html").exists():
+            self.skipTest(f"{i}.html not saved")
+
+    def test_family_a_panels(self):
+        for i in ("107", "1208", "2369", "3402", "349"):
+            self.need(i)
+            a = raw_parsed(i)
+            self.assertTrue(a["staffOnly"] and a["staffOnly"]["links"], i)
+            self.assertNotIn("Internal Staff Only", a["fullText"], i)
+            self.assertNotIn("staff_only_unmatched", a["warnings"], i)
+            self.assertNotIn("staff_only_unbounded", a["warnings"], i)
+
+    def test_family_a_nested_example_untouched(self):
+        self.need("300")
+        a = raw_parsed("300")  # example panel is nested inside a panel body
+        self.assertIsNone(a["staffOnly"])
+        self.assertIn("staff_only_unmatched", a["warnings"])
+
+    def test_289_top_level_example_panel_matches_structural_rule(self):
+        # Measured: 289 (KCS style guide) has an example "Internal ITS Staff Only" panel as a
+        # direct body child, so the structural rule extracts it. Warning stays (prose mentions).
+        self.need("289")
+        a = raw_parsed("289")
+        self.assertEqual(a["staffOnly"]["text"], "Follow article XYZ")
+        self.assertIn("staff_only_unmatched", a["warnings"])
+
+    def test_family_b_and_c_audience_labels(self):
+        for i, label in (("8331", "HR STAFF ONLY"), ("8525", "USD STAFF ONLY"), ("9050", "FINANCE STAFF ONLY"),
+                         ("9758", "EPC STAFF ONLY"), ("9341", "USD STAFF ONLY")):
+            self.need(i)
+            a = raw_parsed(i)
+            self.assertEqual(a["audienceLabels"], [label], i)
+            self.assertNotIn("STAFF ONLY", a["fullText"], i)
+            self.assertIsNone(a["staffOnly"], i)
+            self.assertNotIn("staff_only_unmatched", a["warnings"], i)
+        a = raw_parsed("8331")
+        self.assertIn("Resolving Printing to PDF", a["fullText"])
+        self.assertIn("Resolving Printing to PDF", a["resolution"])
+
+    def test_10177_resolution_stays_searchable(self):
+        self.need("10177")
+        a = raw_parsed("10177")
+        self.assertEqual(a["audienceLabels"], ["USD STAFF ONLY"])
+        self.assertIsNone(a["staffOnly"])
+        self.assertIn("USD Data Governance Program", a["fullText"])
+        self.assertIn("USD Data Governance Program", a["resolution"])
+        self.assertNotIn("staff_only_unmatched", a["warnings"])
+
+    def test_family_d_empty_its_boxes(self):
+        for i in ("4201", "9866"):
+            self.need(i)
+            a = raw_parsed(i)
+            self.assertNotIn("STAFF ONLY", a["fullText"], i)
+            self.assertNotIn("staff_only_unbounded", a["warnings"], i)
+            self.assertNotIn("staff_only_unmatched", a["warnings"], i)
+
+    def test_family_e_unchanged(self):
+        for i in ("288", "289", "300", "2506"):
+            self.need(i)
+            self.assertIn("staff_only_unmatched", raw_parsed(i)["warnings"], i)
+
+    def test_real_its_box_unchanged_and_deterministic(self):
+        self.need("1001")
+        raw = (RAW / "1001.html").read_bytes()
+        a = parse_kb.parse_article(raw)
+        self.assertEqual(a["audienceLabels"], [])
+        self.assertTrue(a["staffOnly"])
+        self.assertNotIn("ITS STAFF ONLY", a["fullText"])
+        self.assertEqual(parse_kb.dumps(a), parse_kb.dumps(parse_kb.parse_article(raw)))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -30,4 +30,19 @@ Persistent notes for later phases and new ideas go here.
 - Category 12 lists 603 direct articles (WORKFLOW says 617); the rest
   are likely in subcategories, which the collector walks recursively.
 
+- Corpus: 3,109 Technology articles (not ~1,200). First full run
+  took ~5.3 hours at 6s. Parsed 3,109/3,109 after one retry (4902
+  was a temporary server error page).
+- Parser known limitations: 288, 289, 300, 2506 keep a
+  staff_only_unmatched warning (documentation/prose mentions, not
+  real staff blocks). 289's example panel is extracted to staffOnly
+  ("Follow article XYZ"); harmless. 9050 has the whole article
+  inside a <footer>, so its section fields are incomplete.
+- ~92 footer_unclassified articles keep their leftover footer lines
+  in fullText (substantive or article-specific). Not suppressed.
+- 1,255 articles (40%) have staffOnly content. Whether staffOnly is
+  searchable is a later decision, made with eval numbers.
+- Some parser tests read data/raw/articles/ (gitignored) and skip
+  when it is absent, e.g. on a fresh clone.
+
 ## Ideas

@@ -23,3 +23,34 @@ passed 13/13.
 **6-second delay between requests.**
 robots.txt sets Crawl-delay: 5. I use 6 for margin. Phase 1 used
 2 seconds for 28 requests before this was known.
+
+## 2026-09-29: Phase 2 collection and parsing
+
+**Collect all of Technology, not a subset.**
+The recursive walk found 3,109 unique articles, about 2.5x the
+estimate. All are indexed so search is tested against the real
+candidate pool.
+
+**Raw HTML stays local; parsed output and manifests are committed.**
+Raw HTML is ~55 MB and can be regenerated. The parsed articles
+(9.4 MB) and manifests are what later phases build on.
+
+**Staff-only content is kept separate from searchable text.**
+40% of articles have an "ITS STAFF ONLY" box or "Internal Staff
+Only" panel. It goes into its own field so I can measure later
+whether including it helps or hurts search.
+
+**Department labels are not staff-only.**
+"USD/HR/FINANCE/EPC STAFF ONLY" boxes describe who the content is
+for, and some hold the whole answer (e.g. 10177's Resolution). I
+record the label and keep the content searchable.
+
+**Footers: remove only the standard contact line.**
+I first assumed footers were boilerplate. Article 8721 showed real
+content in its footer, so now only the standard service-desk line
+is removed and everything else stays searchable.
+
+**Flag instead of guess.**
+When the parser can't identify a layout with a clear rule, it keeps
+the text and raises a warning. The remaining warnings were reviewed
+and accepted as known limitations.

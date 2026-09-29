@@ -43,6 +43,21 @@ ITS STAFF ONLY
              `staffOnly` {text (marker excluded), links}. A marker with no bounded
              container, or "staff only" text left in the body, leaves the body
              untouched and adds a warning (staff_only_unbounded / staff_only_unmatched).
+             Also a marker: the .panel-title of a .panel that is a direct child of the
+             body when its normalized text is "internal staff only", "internal its
+             staff only" or ends with " - internal staff only"; container = that panel.
+             Nested (example/documentation) panels are not matched.
+             Empty box: an ITS STAFF ONLY marker that is a direct-child <div> of the body
+             wrapping the label (no other text) is itself the container; it is dropped
+             and staffOnly stays null. A bare <p> label in the body is still unbounded.
+
+Audience labels
+             An element whose whole text (whitespace collapsed, case-sensitive) matches
+             ^[A-Z]{2,10} STAFF ONLY$ other than "ITS STAFF ONLY" (USD, HR, EPC,
+             FINANCE ...) is an audience label: recorded in `audienceLabels` (document
+             order, de-duplicated, [] if none) and only that label element is removed.
+             The content around it stays in sections/fullText and is NOT staffOnly.
+             No boundary is inferred.
 
 Footer       1. After the staff-only block is removed, the full text of every
                 outermost <footer> is preserved in `footer` (never discarded).
@@ -76,7 +91,7 @@ from pathlib import Path
 from bs4 import BeautifulSoup, Comment, NavigableString, Tag
 
 ROOT = Path(__file__).resolve().parent.parent
-PARSER_VERSION = "1"
+PARSER_VERSION = "2"
 BODY_SELECTOR = "#ctl00_ctl00_cpContent_cpContent_divBody"
 
 WS_RE = re.compile(r"[ \t\r\n\f\v ]+")
@@ -95,6 +110,8 @@ CANONICAL = {
     "answer": "answer", "environment": "environment", "cause": "cause",
     "resolution": "resolution",
 }
+AUDIENCE_LABEL_RE = re.compile(r"^[A-Z]{2,10} STAFF ONLY$")  # case-sensitive
+INTERNAL_PANEL_TITLE_RE = re.compile(r"^internal (?:its )?staff only$|.* - internal staff only$")
 STANDARD_FOOTER_RE = re.compile(
     r"^please contact the service desk( if you need further assistance)?\.?$")
 
@@ -199,14 +216,41 @@ def _closest_with_class(node: Tag, cls: str, stop: Tag) -> Tag | None:
     return None
 
 
+def _is_internal_panel_title(el: Tag, body: Tag) -> bool:
+    if "panel-title" not in (el.get("class") or []):
+        return False
+    panel = _closest_with_class(el, "panel", body)
+    if panel is None or panel.parent is not body:
+        return False  # nested example/documentation panels are not staff-only content
+    return bool(INTERNAL_PANEL_TITLE_RE.match(norm_key(text_of(el))))
+
+
 def _find_staff_markers(body: Tag) -> list[Tag]:
     markers: list[Tag] = []
     for el in body.find_all(True):
         if any(m in el.parents for m in markers):
             continue  # inside an already-chosen (outermost) marker
-        if norm_key(text_of(el)) == "its staff only":
+        if norm_key(text_of(el)) == "its staff only" or _is_internal_panel_title(el, body):
             markers.append(el)
     return markers
+
+
+def extract_audience_labels(body: Tag) -> list[str]:
+    """Remove audience-label elements ("USD STAFF ONLY" ...) and return their texts."""
+    found: list[Tag] = []
+    for el in body.find_all(True):
+        if any(m in el.parents for m in found):
+            continue
+        t = _collapse(" ".join(lines_of(el)))
+        if AUDIENCE_LABEL_RE.match(t) and t != "ITS STAFF ONLY":
+            found.append(el)
+    labels: list[str] = []
+    for el in found:
+        t = _collapse(" ".join(lines_of(el)))
+        if t not in labels:
+            labels.append(t)
+        el.decompose()
+    return labels
 
 
 def extract_staff_only(body: Tag, warnings: list[str]) -> dict | None:
@@ -224,6 +268,10 @@ def extract_staff_only(body: Tag, warnings: list[str]) -> dict | None:
                     and _first_content_child(parent) is marker):
                 container = parent
         if container is None:
+            if (marker.parent is body and marker.name == "div"
+                    and any(norm_key(text_of(d)) == "its staff only" for d in marker.find_all(True))):
+                marker.decompose()  # empty ITS box: the label wrapper is the container
+                continue
             unbounded = True
             continue
         marker.decompose()
@@ -340,6 +388,7 @@ def parse_article(raw: bytes, url: str | None = None) -> dict:
         if t and t not in tags:
             tags.append(t)
 
+    audience_labels = extract_audience_labels(body)
     staff_only = extract_staff_only(body, warnings)
     footer = process_footers(body, warnings)
     units = split_sections(body)
@@ -378,6 +427,7 @@ def parse_article(raw: bytes, url: str | None = None) -> dict:
         "cause": fields.get("cause") or None,
         "resolution": fields.get("resolution") or None,
         "sections": sections,
+        "audienceLabels": audience_labels,
         "staffOnly": staff_only,
         "footer": footer,
         "publishedTime": _meta(soup, "article:published_time"),
