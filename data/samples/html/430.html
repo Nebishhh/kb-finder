@@ -1,0 +1,750 @@
+
+<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head><meta name="viewport" content="width=device-width, initial-scale=1.0" /><!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-WR9V5K73');</script>
+<!-- End Google Tag Manager --><script>
+  window.TdxGtmContext = {"User":{"Id":0,"UID":"00000000-0000-0000-0000-000000000000","UserName":"","FullName":"Public User","AlertEmail":"publicuser@noreply.com","Role":"Experience User","HasTDNext":false,"StandardApplicationNames":null,"TicketApplicationNames":[],"AssetApplicationNames":[],"ClientPortalApplicationNames":[],"Type":"Technician","Analytics":{"Title":null,"Organization":null}},"Partition":{"Id":51,"Name":"University of South Dakota Production"},"BillableEntity":{"Id":1,"Name":"University Of South Dakota","SalesForceIdentifier":"0013600000EM5GZAA1","GWMIID":"d81014b4-7024-4cc2-924c-44d8a44fbbd3"},"Environment":{"ShortName":"PRD"}};
+</script><script src="/TDPortal/Content/Scripts/jquery/2.2.4/jquery.min.js?v=20260925225324"></script><script src="/TDPortal/Content/Scripts/jquery-migrate/1.4.1/jquery-migrate.min.js?v=20260925225324"></script><script src="/TDPortal/Content/Scripts/jquery-ui/1.13.2/jquery-ui-1.13.2.custom.timepicker.min.js?v=20260925225646"></script><link href="/TDPortal/Content/Styles/jquery-ui/1.13.2/jquery-ui.compiled.min.css?v=20260925225648" rel="stylesheet" type="text/css"  /><link href="/TDPortal/Content/bootstrap/3.4.1/dist/css/bootstrap.min.css?v=20260925225326" rel="stylesheet" type="text/css" id="lnkBootstrapCSS" /><script src="/TDPortal/Content/bootstrap/3.4.1/dist/js/bootstrap.min.js?v=20260925225326"></script><link href="/TDPortal/Content/FontAwesome/css/fontawesome.min.css?v=20260925225322" rel="stylesheet" type="text/css" id="lnkFontAwesome" /><link href="/TDPortal/Content/FontAwesome/css/solid.css?v=20260925225322" rel="stylesheet" type="text/css"  /><link href="/TDPortal/Content/FontAwesome/css/regular.css?v=20260925225322" rel="stylesheet" type="text/css"  /><link href="/TDPortal/Content/FontAwesome/css/brands.css?v=20260925225322" rel="stylesheet" type="text/css"  /><link href="/TDPortal/Content/FontAwesome/css/v4-shims.css?v=20260925225322" rel="stylesheet" type="text/css"  /><link href="/TDClient/Styles/bootstrap_custom.min.css?v=20260925225648" rel="stylesheet" type="text/css"  /><link href="/TDClient/Styles/TDStyles.min.css?v=20260925225648" rel="stylesheet" type="text/css"  /><link href="https://td.usd.edu/TDPortal/BE/Style/1/TDClient/33?v=20260512201229" rel="stylesheet" type="text/css" /><link href="/TDClient/Styles/TDStyles-TDX12.min.css?v=20260925225648" rel="stylesheet" type="text/css"  /><script type='text/javascript'>window.isTDClient = true;</script><script src="/TDClient/Scripts/TDClientModals.min.js?v=20260925225640"></script><script src="/TDPortal/Content/Scripts/tdx/dist/TDJSFramework.compiled.min.js?v=20260925225646"></script><script src="/TDPortal/Content/Scripts/tdx/dist/modalFocusTrap.min.js?v=20260925225644"></script><script src="/TDPortal/Content/Scripts/underscore/1.12.1/underscore-min.js?v=20260925225326"></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Coyote One Stop",
+  "url": "https://td.usd.edu/TDClient/33/Portal",
+  "description": "The Client Portal is an application that allows clients to access self-service offerings and track requests.",
+  "sourceOrganization": {
+    "@type": "Organization",
+    "name": "University Of South Dakota",
+    "url": "www.usd.edu",
+    "logo": "USD_logo-W-TD.png"
+  }
+}
+</script><script src="/TDClient/Scripts/clientOS.min.js?v=20260925225640"></script>
+<script src="/TDClient/Scripts/collapseMe.min.js?v=20260925225640"></script>
+<script src="/TDPortal/Content/Scripts/tdx/dist/tdsearchfilter.min.js?v=20260925225644"></script>
+<script src="/TDClient/Scripts/SiteSearch.min.js?v=20260925225640"></script>
+<script src="/TDPortal/Content/Scripts/tdx/dist/elasticsearchAutocomplete.min.js?v=20260925225644"></script>
+<link id="ctl00_ctl00_lnkFavicon" rel="icon" href="https://td.usd.edu/TDPortal/BE/Icon/1/33?v=20240315162537" />
+
+    
+    <script async src="//www.googletagmanager.com/gtag/js?id=UA-144670760-2"></script>
+    <script>
+
+      $(function () {
+
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        // Be sure to set the proper cookie domain to the customer's full subdomain when sending the pageview hit.
+        gtag('config', 'UA-144670760-2', { 'cookie_domain': 'td.usd.edu' });
+
+        });
+
+    </script>
+
+  
+
+  <script>
+
+      $(function () {
+        var masterUi = MasterUI({
+          isPostback: false,
+          baseUrl: '/TDClient/',
+          isTdGoogleAnalyticsEnabled: true,
+          isAuthenticated: false
+          });
+
+        $('#collapseMe').collapseMe({
+          toggleVisibilitySelector: '.navbar-toggle'
+        });
+
+        TeamDynamix.addRequiredFieldHelp();
+      });
+
+      // The sub-nav menu uses padding-top to position itself below the header bar and main navigation sections. When the
+      // window is resized, there is a chance that the content of these header or nav sections wraps, causing the height
+      // to change, potentially covering the sub-nav menu, which is obviously a big usability problem. This function
+      // listens for when the window size or orientation is changing (and also when the window first loads), and adjusts
+      // the padding so that the sub-nav menu appears in the correct location.
+      $(window).bind('load ready resize orientationchange', function () {
+        var headerHeight = $('#divMstrHeader').height();
+        $('#navShim').css({
+          "padding-top": headerHeight
+        });
+
+        $('#content').css({
+          "padding-top": headerHeight,
+          "margin-top": headerHeight * -1
+        });
+      });
+  </script>
+
+  
+  
+  
+  <script src="/TDPortal/Content/select2/v3/select2.min.js?v=20260925231212"></script><link href="/TDPortal/Content/select2/v3/select2.compiled.min.css?v=20260925231212" rel="stylesheet" type="text/css" id="lnkSelect2" />
+  <script src="/TDPortal/Content/Scripts/tdx/dist/attachmentHandler.min.js?v=20260925225644"></script>
+
+  <style type="text/css">
+    .honey-pot-div {
+      display: none;
+    }
+  </style>
+
+  <script>
+    
+
+    function shareArticle() {
+      if ($('#ctl00_ctl00_cpContent_cpContent_shareRecipients').val().trim() === "") {
+        alert('You must first enter a valid email.');
+        $('#btnShare').progressButton('reset');
+      }
+      else {
+        __doPostBack('ctl00$ctl00$cpContent$cpContent$btnSendShare', '');
+      }
+    }
+
+    function closeShareModal() {
+      $('#divShareModal').modal('hide');
+      $('#btnShare').progressButton('reset');
+    }
+
+    function toggleFeedback(isHelpful) {
+      // Firefox restores form field values across page reloads, so clear any prior value before showing the textarea.
+      $('#ctl00_ctl00_cpContent_cpContent_txtComments').val('');
+      $('#divHelpfulComments').show();
+      $('#divHelpfulYesNo').hide();
+      $('#ctl00_ctl00_cpContent_cpContent_hdnIsHelpful').val(isHelpful);
+      $('#ctl00_ctl00_cpContent_cpContent_txtComments').focus();
+    }
+
+    function toggleFeedbackResult() {
+      $('#divWasHelpful, #divFeedbackRecorded, #divHelpfulComments, #divHelpfulYesNo').toggle();
+    }
+
+    // The following two functions were added as a result of ticket ID: 1392522. We are generating these buttons dynamically to
+    // prevent bots from clicking them and posting feedback on an article. Additionally, we have an input that is hidden from
+    // the user. If a bot enters text in that input, which it likely will (bots love filling out forms), then we don't accept the
+    // form submission
+    function generateFeedbackButtons() {
+      var $btnHelpfulYes = $('<button id="btnHelpfulYes" type="button" class="btn btn-primary gutter-left" onclick="toggleFeedback(1);">Yes</button>');
+      var $btnHelpfulNo = $('<button id="btnHelpfulNo" type="button" class="btn btn-primary gutter-left-sm" onclick="toggleFeedback(0);">No</button>');
+
+      $('#divWasHelpful').append($btnHelpfulYes);
+      $('#divWasHelpful').append($btnHelpfulNo);
+    }
+    function attemptAddFeedback(e) {
+      if ($('#honeyPot').val() !== '') {
+        e.preventDefault();
+        window.location.reload();
+      }
+    }
+
+    function cancelFeedback() {
+      $('#ctl00_ctl00_cpContent_cpContent_txtComments').val('');
+      $('#divHelpfulComments, #divHelpfulYesNo').toggle();
+    }
+
+    function confirmDeleteFeedback(id) {
+      if (confirm('Are you sure you want to delete this feedback? This cannot be undone.')) {
+        $('#ctl00_ctl00_cpContent_cpContent_hdnFeedbackID').val(id);
+        __doPostBack('ctl00$ctl00$cpContent$cpContent$btnDeleteFeedback', '');
+      }
+    }
+
+    function toggleAddressed(id, isAddressed) {
+      $('#ctl00_ctl00_cpContent_cpContent_hdnFeedbackID').val(id);
+      $('#ctl00_ctl00_cpContent_cpContent_hdnIsAddressed').val(isAddressed);
+      __doPostBack('ctl00$ctl00$cpContent$cpContent$btnToggleAddressed', '');
+    }
+
+    $(function () {
+      
+
+      generateFeedbackButtons();
+      $('[data-toggle="popover"]').popover();
+
+      var attachmentHandler = new TeamDynamix.AttachmentHandler({
+        containerSelector: '.js-article-attachments',
+        resultLabelSelector: '#ctl00_ctl00_cpContent_cpContent_lblResults_lblResults-label',
+        baseControllerUrl: '/TDClient/33/Portal/Shared/Attachments',
+        antiForgeryToken: 'uk4YrPKMkrR1zW1RfLCWTNwX_W86--n0ucDsypPiCRtKFdnuN50WG5Kh-Gt39p0jcJ2Tq_6gMjlBKVou-whDZlV6Gu41:jt6OAZ8dE-32602rSdZo78hTv8fG2bjI2gLX3Ag53qYS5hJF9oEhQWzkTWOZuqshcPWe-iiJJ0Btp86o63koxFryMng1',
+        itemId: 430,
+        componentId: 26,
+        feedId: 'articleFeed',
+        readOnly: false
+      });
+
+      $('#btnShare').on('click', function () {
+        shareArticle();
+      });
+
+      // Don't try and update the table styles if the user wanted to opt out.
+      $('#ctl00_ctl00_cpContent_cpContent_divBody table:not(.SkipTableFixup)').each(function () {
+        var padding = $(this).attr('cellpadding');
+        var spacing = $(this).attr('cellspacing');
+
+        $(this).css("border-collapse", "separate");
+
+        if (spacing) {
+          $(this).css("border-spacing", spacing + "px");
+        }
+
+        $(this).find('td').each(function () { $(this).css('padding', padding + 'px') });
+      });
+
+      
+    });
+
+    
+  </script>
+
+
+
+<meta property="og:title" content="Updating Accounts for Wellness Center Access" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://td.usd.edu/TDClient/33/Portal/KB/Article/430/Updating-Accounts-for-Wellness-Center-Access" />
+<meta property="og:image" content="https://td.usd.edu/TDPortal/BE/Logo/1/33" />
+<meta property="og:description" content="Information on updating accounts in Fusion, Wellness Center access" />
+  <meta property="og:site_name" content="University Of South Dakota - Knowledge Base" />
+  <meta property="article:section" content="Accounts and User Access" />
+  <meta property="article:published_time" content="2018-08-03T13:47Z" />
+  <meta property="article:modified_time" content="2025-10-01T19:12Z" /><title>
+	Article - Updating Accounts for Welln...
+</title></head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WR9V5K73"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+<form method="post" action="/TDClient/33/Portal/KB/Article/430/Updating-Accounts-for-Wellness-Center-Access" id="aspnetForm">
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="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" />
+
+
+<script src="/TDClient/ScriptResource.axd?d=NJmAwtEo3Ipnlaxl6CMhvmVxW3-Ljsg_2Hna32smxrg-6ogyYAN3UTPsJQ8m1uwzn_kuf2Wpne6NSFmYui3h0wCQhJN3ZUiLTNkvhiIgZpq74-lKmofUPQGJ8own8RI2_mwAcmvlSj2WBnqwm5Wj4cyNvv81&amp;t=ffffffffbec1863d" type="text/javascript"></script>
+<script src="/TDClient/WebResource.axd?d=xtfVMqdF1exC2MBVkOJwMveStDR5kg3dbZWgIXMXZmB1xXom6CcIrWFgHa7jsp4qJuFW2L5XShudyzlBsIO3JhCfiU5HmL2BDz__mCv9dznmBlEMS7LvcYg6wTdPTrAXIXI2CvtjwlnpZd-j4Zpsx2wG_uA1&amp;t=639259596020000000" type="text/javascript"></script>
+<script src="/TDClient/WebResource.axd?d=sp7vCoAo-SSYfpsQ1sYBBeEDnwCGxDYEwZCM0ler88yoVZIPDXMk1C3XF2L2L0xrbB8Rvhli51TswRlmPIOCZgaY58lKhPr-Pv1jTFJ1oUAu7x6RDtNFZUxbtxs3KYQGLK6FpPD5bKuB0e0NmS9HkAqRVks1&amp;t=639259596020000000" type="text/javascript"></script>
+<script src="/TDClient/WebResource.axd?d=icMURy63hv40LPPfq4rTvmm-RfB_YkC6rEEF_2QOO68q3TseXYNBetRKKgBXJ8mn2e8UIgCPiV23HaQUZbjySMHqSgmYZgLcYltBqwD2_EK8aQ08zBuqc3ZBVZITQrbtn6w46dRxFLibMIQg0Aho73rn8Rpxrzg5YMG_JR0UOrUR0wlZ0&amp;t=639259596020000000" type="text/javascript"></script>
+<script src="/TDClient/WebResource.axd?d=1HpFfNpwNihNfEP1lyJHvdPVqbv8KRoFH4-_ZORUgPOP-bqmmtIJRvFQc7828Vf59O_-fdBXcnwdv-hYp5RptPuHmMR0kGQM0_3rS4Z7sKfC7jy9Cc_8fyfcUWa8psszacEQlAXHPXmNwyRymbGSywEmhrE1&amp;t=639259596020000000" type="text/javascript"></script>
+<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="784CA02E" />
+
+<div id="ctl00_ctl00_upMain" style="display:none;">
+	
+    <div id="ctl00_ctl00_pbMain" class="progress-box-container"><div class="progress-box-body"><div class="well shadow"><h2 class="h4 gutter-top-none">Updating...</h2><div class="progress" style="margin-bottom: 0;"><div class="progress-bar progress-bar-striped active" role="progressbar" aria-label="Updating..." aria-valuemin="0" aria-valuemax="100" style="width: 100%"></div></div></div></div></div>
+  
+</div>
+
+<header id="ctl00_ctl00_navHeader" role="banner">
+
+  <div id="divMstrHeader" class="master-header NoPrint" style="background-color: #fff;">
+
+  
+
+  <div class="logo-header-full hidden-xs">
+
+    
+    <div class="pull-left">
+      <a href="#mainContent" class="sr-only sr-only-focusable skip-nav-link">Skip to main content</a>
+    </div>
+
+
+    <div id="ctl00_ctl00_divPageHeader" class="container logo-header clearfix" style="padding: 5px;">
+
+      <div id="divLogo" class="pull-left logo-container">
+
+        <a href="http://www.usd.edu"
+           target="_blank">
+          <img src="/TDPortal/BE/Logo/1/0" alt="University of South Dakota Logo" class="js-logo img-responsive" />
+          <span class="sr-only">(opens in a new tab)</span>
+        </a>
+
+      </div>
+
+      <div class="master-header-right pull-right padding-top padding-bottom">
+
+        
+
+          <div class="pull-left topLevelSearch input-group">
+            <div id="SiteSearch-7271038c6b4e4d9b8780cc4650045a15" class="input-group site-search" style="max-width: 400px;">
+  <div id="SiteSearch-dropdown-7271038c6b4e4d9b8780cc4650045a15" class="input-group-btn">
+    <button type="button" id="SiteSearch-filter-7271038c6b4e4d9b8780cc4650045a15" class="btn btn-default dropdown-toggle" data-toggle="dropdown"
+            aria-haspopup="true" aria-expanded="false" title="Filter your search by category" data-component="all">
+      <span class="fa-solid fa-solid fa-earth-americas"></span><span class="fa-solid fa-fw fa-nopad fa-caret-down" aria-hidden="true"></span>
+      <span class="sr-only">
+        Filter your search by category. Current category:
+        <span class="js-current-component">All</span>
+      </span>
+    </button>
+    <ul tabindex="-1" aria-label="Filter your search by category" role="menu" class="dropdown-menu" >
+      <li>
+        <a role="menuitem" href="javascript:void(0);" data-component-text="All" data-component="all" data-component-icon="fa-solid fa-earth-americas" title="Search all areas">
+          <span class="fa-solid fa-fw fa-nopad fa-earth-americas" aria-hidden="true"></span>
+          All
+        </a>
+      </li>
+
+      <li aria-hidden="true" class="divider"></li>
+
+        <li role="presentation">
+          <a role="menuitem" href="javascript:void(0);" data-component-text="Knowledge Base" data-component="kb" data-component-icon="fa-lightbulb" title="Search Knowledge Base">
+            <span class="fa-regular fa-fw fa-nopad fa-lightbulb" aria-hidden="true"></span>
+            Knowledge Base
+          </a>
+        </li>
+
+        <li role="presentation">
+          <a role="menuitem" href="javascript:void(0);" data-component-text="Service Catalog" data-component="sc" data-component-icon="fa-compass" title="Search Service Catalog">
+            <span class="fa-solid fa-fw fa-nopad fa-compass" aria-hidden="true"></span>
+            Service Catalog
+          </a>
+        </li>
+
+    </ul>
+  </div>
+
+  <label class="sr-only" for="SiteSearch-text-7271038c6b4e4d9b8780cc4650045a15">Search the client portal</label>
+
+  <input id="SiteSearch-text-7271038c6b4e4d9b8780cc4650045a15" type="text" class="form-control" autocomplete="off" placeholder="Search the client portal" title="To search for items with a specific tag, enter the # symbol followed by the name of the tag.
+To search for items using exact match, place double quotes around your text." />
+
+  <span class="input-group-btn">
+    <button id="SiteSearch-button-7271038c6b4e4d9b8780cc4650045a15" class="btn btn-default" type="button" title="Search">
+      <span class="fa-solid fa-fw fa-nopad fa-search blue" aria-hidden="true"></span>
+      <span class="sr-only">Search</span>
+    </button>
+  </span>
+</div>
+
+<script>
+  $(function() {
+    var siteSearch = new TeamDynamix.SiteSearch({
+      searchUrl: "/TDClient/33/Portal/Shared/Search",
+      autocompleteSearchUrl: '/TDClient/33/Portal/Shared/AutocompleteSearch',
+      autocompleteResultsPosition: 'fixed',
+      autocompleteResultsZIndex: 1000,
+      searchTextBoxSelector: '#SiteSearch-text-7271038c6b4e4d9b8780cc4650045a15',
+      searchComponentFilterButtonSelector: '#SiteSearch-filter-7271038c6b4e4d9b8780cc4650045a15',
+      searchButtonSelector: '#SiteSearch-button-7271038c6b4e4d9b8780cc4650045a15',
+      searchFilterDropdownSelector: '#SiteSearch-dropdown-7271038c6b4e4d9b8780cc4650045a15',
+      showKnowledgeBaseOption: true,
+      showServicesOption: true,
+      showForumsOption: false,
+      autoFocusSearch: false
+    });
+  });
+</script>
+          </div>
+
+        
+          <div title="Sign In" class="pull-right gutter-top-sm">
+            <a href="/TDClient/33/Portal/Login.aspx?ReturnUrl=%2fTDClient%2f33%2fPortal%2fKB%2fArticle%2f430%2fUpdating-Accounts-for-Wellness-Center-Access">
+              Sign In
+            </a>
+          </div>
+        
+      </div>
+
+    </div>
+
+  </div>
+
+  <nav id="ctl00_ctl00_mainNav" class="navbar navbar-default themed tdbar" aria-label="Primary">
+    <div id="navContainer" class="container">
+
+      <div class="navbar-header">
+        <button type="button" class="pull-left navbar-toggle collapsed themed tdbar-button-anchored tdbar-toggle gutter-left" data-toggle="collapse" data-target=".navbar-collapse">
+          <span class="tdbar-button-anchored icon-bar"></span>
+          <span class="tdbar-button-anchored icon-bar"></span>
+          <span class="tdbar-button-anchored icon-bar"></span>
+          <span class="sr-only">Show Applications Menu</span>
+        </button>
+        <a class="navbar-brand hidden-sm hidden-md hidden-lg themed tdbar-button-anchored truncate-be" href="#">
+
+          Coyote One Stop
+        </a>
+      </div>
+
+      <div id="td-navbar-collapse" class="collapse navbar-collapse">
+
+        <ul class="nav navbar-nav nav-collapsing" id="collapseMe">
+
+          
+            <li class="themed tdbar-button-anchored hidden-sm hidden-md hidden-lg">
+              <a href="/TDClient/33/Portal/Login.aspx?ReturnUrl=%2fTDClient%2f33%2fPortal%2fKB%2fArticle%2f430%2fUpdating-Accounts-for-Wellness-Center-Access">Sign In</a>
+            </li>
+          
+            <li id="divSearch" class="themed tdbar-button-anchored hidden-sm hidden-md hidden-lg">
+              <a href="/TDClient/33/Portal/Shared/Search" title="search">Search</a>
+            </li>
+          
+              <li id="divDesktop476c0923-b6d7-454e-9426-c28b871a334d" class="themed tdbar-button-anchored">
+                <a href="/TDClient/33/Portal/1826/Home-1">Home</a>
+              </li>
+            
+              <li id="divDesktop0ce4adaa-aa1d-4fa3-b550-066839b74b93" class="themed tdbar-button-anchored">
+                <a href="/TDClient/33/Portal/1824/Help-Links">Help / Links</a>
+              </li>
+            
+              <li id="divDesktopccc13c6d-5bd6-4d4b-9d36-9df1132728dd" class="themed tdbar-button-anchored">
+                <a href="/TDClient/33/Portal/1825/Dashboards">Dashboards</a>
+              </li>
+            
+
+          
+            <li id="divTDRequests" class="themed tdbar-button-anchored sr-focusable">
+              <a href="/TDClient/33/Portal/Requests/ServiceCatalog">Services</a>
+            </li>
+          
+            <li id="divTDKnowledgeBase" class="themed tdbar-button-anchored sr-focusable">
+              <a href="/TDClient/33/Portal/KB/">Knowledge Base</a>
+            </li>
+          
+
+          <li class="themed tdbar-button-anchored hidden-xs more-items-button" id="moreMenu">
+            <a data-toggle="dropdown" title="More Applications" href="javascript:;">
+              <span class="sr-only">More Applications</span>
+              <span class="fa-solid fa-ellipsis-h" aria-hidden="true"></span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-right themed tdbar" id="collapsed"></ul>
+          </li>
+
+        </ul>
+      </div>
+
+    </div>
+
+  </nav>
+
+  </div>
+
+  </header>
+
+
+
+<script>
+(function() {
+  var header = document.getElementById('divMstrHeader');
+  if (header) {
+    var h = header.offsetHeight;
+    var style = document.createElement('style');
+    style.textContent = '#navShim{padding-top:' + h + 'px}#content{padding-top:' + h + 'px;margin-top:-' + h + 'px}';
+    document.head.appendChild(style);
+  }
+})();
+</script>
+<div id="navShim" class="hidden-xs hidden-sm"></div>
+<main role="main">
+  <div id="content">
+    <div id="mainContent" tabindex="-1"></div>
+    
+
+  <nav id="ctl00_ctl00_cpContent_divTabHeader" class="tdbar-sub NoPrint hidden-xs navbar-subnav" aria-label="Knowledge Base">
+      <a href="#kbContent" class="sr-only sr-only-focusable">Skip to Knowledge Base content</a>
+      <div class="container clearfix">
+        <ul class="nav navbar-nav js-submenu" id="kbSubMenu" style="margin-left: -15px;">
+          
+          <li>
+            <a href="/TDClient/33/Portal/KB/Search">Search <span class="sr-only">Articles</span></a>
+          </li>
+
+          
+          
+        </ul>
+      </div>
+    </nav>
+  
+
+  <div id="kbContent" class="container gutter-top gutter-bottom" tabindex="-1" style="outline:none;">
+    
+
+<input type="hidden" name="ctl00$ctl00$cpContent$cpContent$hdnFeedbackID" id="ctl00_ctl00_cpContent_cpContent_hdnFeedbackID" />
+<input type="hidden" name="ctl00$ctl00$cpContent$cpContent$hdnIsAddressed" id="ctl00_ctl00_cpContent_cpContent_hdnIsAddressed" />
+
+<span id="ctl00_ctl00_cpContent_cpContent_lblResults_ctl00" aria-live="polite" aria-atomic="true"><span id="ctl00_ctl00_cpContent_cpContent_lblResults_lblResults-label" class="red tdx-error-text"></span></span>
+
+<a id="ctl00_ctl00_cpContent_cpContent_btnSendShare" tabindex="-1" class="hidden" aria-hidden="true" href="javascript:WebForm_DoPostBackWithOptions(new WebForm_PostBackOptions(&quot;ctl00$ctl00$cpContent$cpContent$btnSendShare&quot;, &quot;&quot;, true, &quot;&quot;, &quot;&quot;, false, true))">Blank</a>
+
+<div class="clearfix">
+  <nav aria-label="Breadcrumb">
+    <ol class="breadcrumb pull-left">
+      <li><a href="/TDClient/33/Portal/KB/">Knowledge Base</a></li><li><a href="/TDClient/33/Portal/KB/Category/61/Technology">Technology</a></li><li class="active"><a href="/TDClient/33/Portal/KB/Category/7/Accounts-and-User-Access">Accounts and User Access</a></li><li class="active">Updating Accounts for Wellness Center Access</li>
+    </ol>
+  </nav>
+  <span class="js-open-monitor" style="display: none;"></span>
+</div>
+
+
+
+<div class="row gutter-top">
+
+<div id="divMainContent" class="col-md-8">
+
+<h1 class="gutter-top" style="-ms-word-wrap: break-word; word-wrap: break-word;">
+  Updating Accounts for Wellness Center Access
+</h1>
+
+
+
+
+
+<div id="ctl00_ctl00_cpContent_cpContent_divBody" class="gutter-top break-word ckeShim clearfix"><h2>Issue/Question</h2>
+
+<p>I can't get into the Wellness Center when I swipe</p>
+
+<p>Requesting that new accounts be imported</p>
+
+<p>Load Fusion</p>
+
+<p>&nbsp;Please run an update for student access to Fusion?</p>
+
+<p>Can you please make sure all Faculty/Staff accounts are updated in Fusion for this month?</p>
+
+<p><em>Error:&nbsp;Unable to find user matching the ID:</em></p>
+
+<h2>Environment</h2>
+
+<ul>
+	<li>Fusion</li>
+	<li>Wellness Center Software</li>
+	<li>wellness.usd.edu</li>
+</ul>
+
+<h2>Cause</h2>
+
+<p>Account information is missing in Fusion</p>
+
+<p>Student has not registered for classes</p>
+
+<h2>Resolution</h2>
+
+<ol>
+	<li>Access to the Wellness Center for students is based off of registration for classes
+	<ul>
+		<li>If you are not registered, please contact your advisor to get registered for classes&nbsp;</li>
+	</ul>
+	</li>
+	<li>Please <u><a href="https://www.usd.edu/technology/contact-the-help-desk" target="_blank">contact the Service Desk</a></u>&nbsp;with the following information:&nbsp;
+	<ol start="1" style="list-style-type: lower-alpha">
+		<li>Issue you are experiencing</li>
+		<li>When you registered for classes (if student)&nbsp;</li>
+		<li>Timeline for update</li>
+	</ol>
+	</li>
+</ol>
+
+<div style="background-color: #F6F6F6; padding: 1em; border: 1px solid #DDDDDD">
+<p style="text-align: center; font-weight: bold; color: #AB0203; font-size: 16px">ITS STAFF ONLY</p>
+
+<ol>
+	<li><a href="https://td.usd.edu/TDClient/33/Portal/KB/ArticleDet?ID=3073" target="_blank">Faculty/Staff Membership Update Instructions</a>&nbsp;</li>
+	<li><a href="https://td.usd.edu/TDClient/33/Portal/KB/ArticleDet?ID=3071" target="_blank">Fusion Student Membership Update Instructions</a></li>
+	<li><a href="https://td.usd.edu/TDClient/33/Portal/KB/ArticleDet?ID=9938" target="_blank">Adding Single Student Membership in InnoSoft Fusion</a></li>
+</ol>
+</div></div>
+
+<div id="ctl00_ctl00_cpContent_cpContent_divFeedback2" class="well gutter-top-lg">
+
+  <div class="row" id="divHelpfulYesNo">
+    <div class="col-sm-7">
+      
+        <div>
+          <a href="/TDClient/33/Portal/Login.aspx?ReturnUrl=%2fTDClient%2f33%2fPortal%2fKB%2fArticle%2f430%2fUpdating-Accounts-for-Wellness-Center-Access">Sign in to leave feedback</a>
+        </div>
+      
+    </div>
+    <div class="col-sm-5 text-right">
+      <div id="ctl00_ctl00_cpContent_cpContent_UpdatePanel1" aria-live="polite" aria-atomic="true">
+	
+          0 reviews
+        
+</div>
+    </div>
+  </div>
+
+  </div>
+
+
+
+<div class="tab-content gutter-top gutter-bottom">
+  
+  <div id="ctl00_ctl00_cpContent_cpContent_upFeedbackGrid">
+	
+        <a id="ctl00_ctl00_cpContent_cpContent_btnToggleAddressed" tabindex="-1" class="hidden" aria-hidden="true" href="javascript:WebForm_DoPostBackWithOptions(new WebForm_PostBackOptions(&quot;ctl00$ctl00$cpContent$cpContent$btnToggleAddressed&quot;, &quot;&quot;, true, &quot;&quot;, &quot;&quot;, false, true))">Blank</a>
+        <a id="ctl00_ctl00_cpContent_cpContent_btnDeleteFeedback" tabindex="-1" class="hidden" aria-hidden="true" href="javascript:WebForm_DoPostBackWithOptions(new WebForm_PostBackOptions(&quot;ctl00$ctl00$cpContent$cpContent$btnDeleteFeedback&quot;, &quot;&quot;, true, &quot;&quot;, &quot;&quot;, false, true))">Blank</a>
+        
+      
+</div>
+    
+    
+
+    
+</div>
+</div>
+
+<div class="col-md-4">
+
+
+
+    <a id="ctl00_ctl00_cpContent_cpContent_btnToggleSubscribe" tabindex="-1" class="hidden" aria-hidden="true" href="javascript:WebForm_DoPostBackWithOptions(new WebForm_PostBackOptions(&quot;ctl00$ctl00$cpContent$cpContent$btnToggleSubscribe&quot;, &quot;&quot;, true, &quot;&quot;, &quot;&quot;, false, true))">Blank</a>
+
+<a id="ctl00_ctl00_cpContent_cpContent_btnToggleFavorite" tabindex="-1" class="hidden" aria-hidden="true" href="javascript:WebForm_DoPostBackWithOptions(new WebForm_PostBackOptions(&quot;ctl00$ctl00$cpContent$cpContent$btnToggleFavorite&quot;, &quot;&quot;, true, &quot;&quot;, &quot;&quot;, false, true))">Blank</a>
+
+<a class="DetailAction print-article" href="/TDClient/33/Portal/KB/PrintArticle?ID=430" rel="nofollow" target="_blank">  <span class="fa-solid fa-print fa-fw" aria-hidden="true"></span>
+Print Article</a>
+
+
+
+
+
+<div id="divAttachments" class="js-article-attachments"></div>
+
+</div>
+
+</div>
+
+<div id="ctl00_ctl00_cpContent_cpContent_divProgress" style="display: none; z-index: 60;">
+  <div id="ctl00_ctl00_cpContent_cpContent_pbMain" class="progress-box-container"><div class="progress-box-body"><div class="well shadow"><h2 class="h4 gutter-top-none">Deleting...</h2><div class="progress" style="margin-bottom: 0;"><div class="progress-bar progress-bar-striped active" role="progressbar" aria-label="Deleting..." aria-valuemin="0" aria-valuemax="100" style="width: 100%"></div></div></div></div></div>
+</div>
+
+
+
+  </div>
+
+
+  </div>
+</main>
+
+
+
+<script type="text/javascript">
+//<![CDATA[
+setNavPosition('TDKnowledgeBase');window.CKEDITOR_BASEPATH = 'https://td.usd.edu/TDPortal/Content/ckeditor/';
+//]]>
+</script>
+<script src="https://td.usd.edu/TDPortal/Content/ckeditor/ckeditor.js?t=C6HH5UF" type="text/javascript"></script>
+<script type="text/javascript">
+//<![CDATA[
+var CKEditor_Controls=[],CKEditor_Init=[];function CKEditor_TextBoxEncode(d,e){var f;if(typeof CKEDITOR=='undefined'||typeof CKEDITOR.instances[d]=='undefined'){f=document.getElementById(d);if(f)f.value=f.value.replace(/</g,'&lt;').replace(/>/g,'&gt;');}else{var g=CKEDITOR.instances[d];if(e&&(typeof Page_BlockSubmit=='undefined'||!Page_BlockSubmit)){g.destroy();f=document.getElementById(d);if(f)f.style.visibility='hidden';}else g.updateElement();}};(function(){if(typeof CKEDITOR!='undefined'){var d=document.getElementById('ctl00_ctl00_cpContent_cpContent_shareBody_txtBody');if(d)d.style.visibility='hidden';}var e=function(){var f=CKEditor_Controls,g=CKEditor_Init,h=window.pageLoad,i=function(){for(var j=f.length;j--;){var k=document.getElementById(f[j]);if(k&&k.value&&(k.value.indexOf('<')==-1||k.value.indexOf('>')==-1))k.value=k.value.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');}if(typeof CKEDITOR!='undefined')for(var j=0;j<g.length;j++)g[j].call(this);};window.pageLoad=function(j,k){if(k.get_isPartialLoad())setTimeout(i,0);if(h&&typeof h=='function')h.call(this,j,k);};if(typeof Page_ClientValidate=='function'&&typeof CKEDITOR!='undefined')Page_ClientValidate=CKEDITOR.tools.override(Page_ClientValidate,function(j){return function(){for(var k in CKEDITOR.instances){if(document.getElementById(k))CKEDITOR.instances[k].updateElement();}return j.apply(this,arguments);};});setTimeout(i,0);};if(typeof Sys!='undefined'&&typeof Sys.Application!='undefined')Sys.Application.add_load(e);if(window.addEventListener)window.addEventListener('load',e,false);else if(window.attachEvent)window.attachEvent('onload',e);})();CKEditor_Controls.push('ctl00_ctl00_cpContent_cpContent_shareBody_txtBody');
+CKEditor_Init.push(function(){if(typeof CKEDITOR.instances['ctl00_ctl00_cpContent_cpContent_shareBody_txtBody']!='undefined' || !document.getElementById('ctl00_ctl00_cpContent_cpContent_shareBody_txtBody')) return;CKEDITOR.replace('ctl00_ctl00_cpContent_cpContent_shareBody_txtBody',{"autoGrow_maxHeight" : 175, "autoGrow_minHeight" : 175, "contentsCss" : ['https://td.usd.edu/TDPortal/Content/ckeditor/contents.css', '/TDPortal/Content/FontAwesome/css/fontawesome.min.css', '/TDPortal/Content/FontAwesome/css/brands.min.css', '/TDPortal/Content/FontAwesome/css/regular.min.css', '/TDPortal/Content/FontAwesome/css/solid.min.css', '/TDPortal/Content/FontAwesome/css/v4-shims.min.css'], "height" : "175", "htmlEncodeOutput" : true, "image_previewText" : " ", "removePlugins" : "magicline,devtools,templates,elementspath,fontawesome,youtube,uploadimage,simpleimage,remoteimageblocker", "title" : "Message", "toolbar" : "TDSimple"}); });
+//]]>
+</script>
+</form>
+
+
+
+
+
+  <footer role="contentinfo">
+
+    <div class="master-footer">
+      <div style="display: grid; background-color: #D21533; border-top: 3px solid #58595B">
+  <p style="color: #FFFFFF; margin: 1em">University of South Dakota</p>
+</div>
+      
+    </div>
+
+  </footer>
+
+
+
+<script>
+
+    
+    
+
+      // Inject the Google Analytics isogram. This must happen here because it
+      // cannot be injected through an external javascript library.
+      (function (i, s, o, g, r, a, m) {
+        i['GoogleAnalyticsObject'] = r; i[r] = i[r] || function () {
+          (i[r].q = i[r].q || []).push(arguments)
+        }, i[r].l = 1 * new Date(); a = s.createElement(o),
+          m = s.getElementsByTagName(o)[0]; a.async = 1; a.src = g; m.parentNode.insertBefore(a, m)
+      })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+    
+
+      // Per Incident #6707155. Need to focus on img. pseudo-class :focus-within is not supported in IE
+      (function ($) {
+        var $anchor = $('#divLogo a');
+        var $beLogo = $('#divLogo a img');
+
+        $anchor.focus(function () {
+          $beLogo.addClass('accessibility-focus-on-logo');
+        }).blur(function () {
+          $beLogo.removeClass('accessibility-focus-on-logo');
+        });
+
+        
+        
+          const queryParams = new URLSearchParams(window.location.search);
+          let showChatbot = true;
+          if (queryParams.has('nobot')) {
+            const nobotFlag = queryParams.get('nobot');
+            if (nobotFlag === '1' || nobotFlag === 'true') {
+              showChatbot = false;
+            }
+          }
+
+          if(showChatbot) {
+            $.ajax({
+              url: "/TDClient/33/Portal/Chatbots/GetScript",
+              type: "GET",
+              dataType: 'text',
+              success: function (data) {
+                
+                var jQueryAjaxSettingsCache = jQuery.ajaxSettings.cache;
+                jQuery.ajaxSettings.cache = true;
+                $(document.body).append(data);
+                jQuery.ajaxSettings.cache = jQueryAjaxSettingsCache;
+              }
+            });
+          }
+        
+
+        window.addEventListener("message", (event) => {
+
+          // Only accept events that come from the same origin
+          if (event.origin != window.location.origin) {
+            return;
+          }
+
+          switch (event.data.type) {
+
+            case "authenticate-using-popup":
+              handleAuthenticateUsingPopup(event.data.payload);
+              break;
+
+            case "authenticated-successfully":
+              handleAuthenticatedSuccessfully(event.data.payload);
+              break;
+
+            default:
+              break;
+          }
+
+        });
+
+        function handleAuthenticateUsingPopup(payload) {
+          let loginUrl = '/TDClient/33/Portal/Login.aspx';
+
+          if (payload.successCallbackUrl) {
+            loginUrl += '?SuccessCallbackUrl=' + payload.successCallbackUrl;
+          }
+
+          window.open(loginUrl, "_blank", "popup=1");
+        }
+
+        function handleAuthenticatedSuccessfully() {
+          event.source.close();
+          window.location.href = window.location.href;
+        }
+    })(jQuery);
+
+</script>
+
+</body>
+</html>

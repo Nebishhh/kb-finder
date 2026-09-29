@@ -1,0 +1,4232 @@
+{
+  "analysis_mode": "offline",
+  "fetch": {
+    "mode": "network",
+    "user_agent": "KBFinder-Inspection/0.1 (personal academic project; robots-respecting; 2s delay)",
+    "delay_seconds": 2.0,
+    "started_at": "2026-09-29T02:22:43Z",
+    "robots": {
+      "url": "https://td.usd.edu/robots.txt",
+      "fetched_at": "2026-09-29T02:22:43Z",
+      "status": 200,
+      "error": null,
+      "text": "User-Agent: *\r\nAllow: /TDClient/\r\nAllow: /TDClient/*\r\nAllow: /tdclient/\r\nAllow: /tdclient/*\r\nAllow: /TDWebApi/\r\nAllow: /TDWebApi/*\r\nAllow: /tdwebapi/\r\nAllow: /tdwebapi/*\r\nAllow: /TDPortal/Content/\r\nAllow: /TDPortal/Content/*\r\nAllow: /tdportal/content/\r\nAllow: /tdportal/content/*\r\nAllow: /TDPortal/BE/Logo/\r\nAllow: /TDPortal/BE/Logo/*\r\nAllow: /tdportal/be/logo/\r\nAllow: /tdportal/be/logo/*\r\nAllow: /TDPortal/BE/Style/\r\nAllow: /TDPortal/BE/Style/*\r\nAllow: /tdportal/be/style/\r\nAllow: /tdportal/be/style/*\r\nAllow: /TDPortal/BE/Icon/\r\nAllow: /TDPortal/BE/Icon/*\r\nAllow: /tdportal/be/icon/\r\nAllow: /tdportal/be/icon/*\r\nDisallow: /\r\nCrawl-delay: 5",
+      "interpretation": "parsed",
+      "kb_root_allowed": true
+    },
+    "stopped": null,
+    "requests": [
+      {
+        "kind": "article",
+        "id": "4535",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/4535/Connecting-to-Eduroam-WiFi",
+        "saved_path": "data/samples/html/4535.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 62580,
+        "location": null,
+        "fetched_at": "2026-09-29T02:22:46Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "print",
+        "id": "4535",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/PrintArticle?ID=4535",
+        "saved_path": "data/samples/html/4535_print.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 20932,
+        "location": null,
+        "fetched_at": "2026-09-29T02:22:48Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "article",
+        "id": "5913",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/5913/Connecting-a-Smart-Device-to-the-Wireless-Network",
+        "saved_path": "data/samples/html/5913.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 58751,
+        "location": null,
+        "fetched_at": "2026-09-29T02:22:51Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "print",
+        "id": "5913",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/PrintArticle?ID=5913",
+        "saved_path": "data/samples/html/5913_print.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 17548,
+        "location": null,
+        "fetched_at": "2026-09-29T02:22:53Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "article",
+        "id": "1027",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/1027/Email-Delivery-Failure",
+        "saved_path": "data/samples/html/1027.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 41618,
+        "location": null,
+        "fetched_at": "2026-09-29T02:22:55Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "print",
+        "id": "1027",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/PrintArticle?ID=1027",
+        "saved_path": "data/samples/html/1027_print.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 9319,
+        "location": null,
+        "fetched_at": "2026-09-29T02:22:57Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "article",
+        "id": "508",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/508/Problems-accessing-departmental-email-account",
+        "saved_path": "data/samples/html/508.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 39587,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:00Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "print",
+        "id": "508",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/PrintArticle?ID=508",
+        "saved_path": "data/samples/html/508_print.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 7754,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:02Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "article",
+        "id": "233",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/233/Printer-is-Not-Printing",
+        "saved_path": "data/samples/html/233.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 46855,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:04Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "print",
+        "id": "233",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/PrintArticle?ID=233",
+        "saved_path": "data/samples/html/233_print.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 12033,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:06Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "article",
+        "id": "8721",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/8721/Coyote-Card-Resources",
+        "saved_path": "data/samples/html/8721.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 48269,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:09Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "print",
+        "id": "8721",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/PrintArticle?ID=8721",
+        "saved_path": "data/samples/html/8721_print.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 14142,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:11Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "article",
+        "id": "6260",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/6260/Coyote-Card-Mobile-Not-Working",
+        "saved_path": "data/samples/html/6260.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 44797,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:13Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "print",
+        "id": "6260",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/PrintArticle?ID=6260",
+        "saved_path": "data/samples/html/6260_print.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 11473,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:15Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "article",
+        "id": "1866",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/1866/Cannot-Play-Panopto-Video-in-D2L",
+        "saved_path": "data/samples/html/1866.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 39875,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:18Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "print",
+        "id": "1866",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/PrintArticle?ID=1866",
+        "saved_path": "data/samples/html/1866_print.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 8382,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:20Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "article",
+        "id": "352",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/352/Receiving-Page-Not-Found-Error-when-Playing-Video-in-D2L",
+        "saved_path": "data/samples/html/352.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 39496,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:22Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "print",
+        "id": "352",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/PrintArticle?ID=352",
+        "saved_path": "data/samples/html/352_print.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 8202,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:24Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "article",
+        "id": "430",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/430/Updating-Accounts-for-Wellness-Center-Access",
+        "saved_path": "data/samples/html/430.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 40508,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:27Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "print",
+        "id": "430",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/PrintArticle?ID=430",
+        "saved_path": "data/samples/html/430_print.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 8704,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:29Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "article",
+        "id": "9079",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/9079/Password-Reset-USD-Account",
+        "saved_path": "data/samples/html/9079.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 54263,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:31Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "print",
+        "id": "9079",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/PrintArticle?ID=9079",
+        "saved_path": "data/samples/html/9079_print.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 17185,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:33Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "article",
+        "id": "4613",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/4613/Locked-Out-of-Duo",
+        "saved_path": "data/samples/html/4613.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 37797,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:36Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "print",
+        "id": "4613",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/PrintArticle?ID=4613",
+        "saved_path": "data/samples/html/4613_print.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 7200,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:38Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "article",
+        "id": "8318",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/8318/Duo-Not-Allowing-Me-To-Select-My-Authentication-Method",
+        "saved_path": "data/samples/html/8318.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 38535,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:40Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "print",
+        "id": "8318",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/PrintArticle?ID=8318",
+        "saved_path": "data/samples/html/8318_print.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 7810,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:42Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "category",
+        "id": "12",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/Category/12/Software-and-Applications",
+        "saved_path": "data/samples/category_html/12.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 281146,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:45Z",
+        "robots_allowed": true,
+        "error": null
+      },
+      {
+        "kind": "category",
+        "id": "23",
+        "url": "https://td.usd.edu/TDClient/33/Portal/KB/Category/23/Classroom-and-Computer-Lab-Support",
+        "saved_path": "data/samples/category_html/23.html",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 78350,
+        "location": null,
+        "fetched_at": "2026-09-29T02:23:47Z",
+        "robots_allowed": true,
+        "error": null
+      }
+    ]
+  },
+  "robots": {
+    "crawl_delay": 5
+  },
+  "flags": [
+    "robots.txt sets Crawl-delay: 5. This Phase 1 run used 2.0s (28 page requests) before this was known. Future collection will honor the 5-second Crawl-delay (human decision; project docs updated by the human)."
+  ],
+  "article_summary": {
+    "articles_supplied": 13,
+    "normal_pages_available": 13,
+    "print_pages_available": 13,
+    "all_server_rendered": true,
+    "server_rendered_failures": [],
+    "phrase_only_in_script": [],
+    "print_server_rendered_failures": [],
+    "normal_body_selector_single_match_all": true,
+    "normal_body_contains_phrase_all": false,
+    "normal_body_excludes_related_all": true,
+    "normal_body_excludes_feedback_all": true,
+    "print_body_selector_single_match_all": true,
+    "print_body_contains_phrase_all": false,
+    "print_body_excludes_related_all": true,
+    "body_identical_normal_vs_print": [
+      "4535",
+      "5913",
+      "1027",
+      "508",
+      "233",
+      "8721",
+      "6260",
+      "1866",
+      "352",
+      "430",
+      "9079",
+      "4613",
+      "8318"
+    ],
+    "body_differs_normal_vs_print": [],
+    "related_articles_present_normal": [
+      "4535",
+      "5913",
+      "1027",
+      "233",
+      "8721",
+      "6260",
+      "9079"
+    ],
+    "related_articles_absent_normal": [
+      "508",
+      "1866",
+      "352",
+      "430",
+      "4613",
+      "8318"
+    ],
+    "article_id_matches_url_normal": true,
+    "article_id_matches_url_print": true,
+    "meta_presence_normal": {
+      "article:section": "13/13",
+      "article:published_time": "13/13",
+      "article:modified_time": "13/13",
+      "og:description": "13/13",
+      "og:title": "13/13",
+      "og:url": "13/13",
+      "article:tag": "8/13"
+    },
+    "meta_presence_print": {
+      "article:section": "0/13",
+      "article:published_time": "0/13",
+      "article:modified_time": "0/13",
+      "og:description": "0/13",
+      "og:title": "0/13",
+      "og:url": "0/13",
+      "article:tag": "0/13"
+    },
+    "visible_tags_match_meta_tags": true,
+    "articles_without_tags": [
+      "8721",
+      "1866",
+      "352",
+      "430",
+      "8318"
+    ],
+    "heading_patterns": {
+      "other": [
+        "4535",
+        "5913",
+        "9079"
+      ],
+      "Issue/Environment/Cause/Resolution (partial: issue/environment/resolution)": [
+        "1027",
+        "508",
+        "8721",
+        "6260"
+      ],
+      "Issue/Environment/Cause/Resolution": [
+        "233",
+        "1866",
+        "352",
+        "430",
+        "4613",
+        "8318"
+      ]
+    },
+    "heading_templates": [
+      {
+        "section_headings": "Issue/Question / Environment / Cause / Resolution",
+        "article_ids": [
+          "1866",
+          "352",
+          "430",
+          "4613",
+          "8318"
+        ]
+      },
+      {
+        "section_headings": "Issue/Question / Environment / Resolution",
+        "article_ids": [
+          "1027",
+          "508",
+          "8721",
+          "6260"
+        ]
+      },
+      {
+        "section_headings": "Question / Products or Services Involved / Instructions / Need More Help?",
+        "article_ids": [
+          "4535",
+          "5913"
+        ]
+      },
+      {
+        "section_headings": "Issue/Question / Environment / Cause / Resolution / Clear the print queue via control panel / Clear the print queue via command prompt",
+        "article_ids": [
+          "233"
+        ]
+      },
+      {
+        "section_headings": "Question / Products or Services Involved / Instructions / Need More Help? / ITS Staff Only",
+        "article_ids": [
+          "9079"
+        ]
+      }
+    ],
+    "section_title_counts": {
+      "Environment": 10,
+      "Issue/Question": 10,
+      "Resolution": 10,
+      "Cause": 6,
+      "Instructions": 3,
+      "Need More Help?": 3,
+      "Products or Services Involved": 3,
+      "Question": 3,
+      "Clear the print queue via command prompt": 1,
+      "Clear the print queue via control panel": 1,
+      "ITS Staff Only": 1
+    },
+    "staff_only_marker_in_body": [
+      "4535",
+      "508",
+      "233",
+      "6260",
+      "1866",
+      "430",
+      "9079"
+    ],
+    "script_tags_in_normal_body": [],
+    "categories_seen": [
+      "Accounts and User Access",
+      "Coyote Card",
+      "Desire2Learn",
+      "Duo",
+      "Email, Calendars and Collaboration Tools",
+      "Network & WiFi",
+      "Outlook",
+      "Printers"
+    ],
+    "body_length_chars_range": [
+      278,
+      4320
+    ],
+    "decode_errors": []
+  },
+  "parsing_risks": [
+    "PHASE 2 PARSING DECISION (not decided in Phase 1): an \"ITS STAFF ONLY\" section sits inside the body container in ['4535', '508', '233', '6260', '1866', '430', '9079']. It is publicly visible (human-checked logged out on 233) and is a list of links to technician articles. The body selector currently includes it. Likely handling: store it as a separate field rather than merging it into body text, so including or excluding it can be measured later.",
+    "3 article(s) use section headings other than Question/Answer or Issue/Environment/Cause/Resolution: ['4535', '5913', '9079']. Section-field mapping needs a rule for them.",
+    "No sample uses a Question/Answer pair: 'Question' appears only with 'Products or Services Involved / Instructions / Need More Help?', with no 'Answer' heading.",
+    "The Issue section is labelled 'Issue/Question' (a combined label), and 'Cause' is absent from some articles; the parser must treat both as normal.",
+    "Body text extracted with a space per element boundary (BeautifulSoup get_text(' ')) puts a space before punctuation that follows an inline tag, so the supplied phrase does not match in ['8721']. Phase 2 body extraction should not insert spaces at inline element boundaries (a, strong, em, span).",
+    "Some articles have no tags: ['8721', '1866', '352', '430', '8318'].",
+    "Body selector is an ASP.NET WebForms control ID (ctl00_ctl00_cpContent_cpContent_divBody). Stable across these samples, but a TeamDynamix upgrade could rename it; the collector's validity check should fail loudly when it matches zero or multiple elements.",
+    "Section headings are free-text panel titles written by KB authors, not a fixed schema; match them by normalized text, not by position.",
+    "Print pages carry no meta tags (no article:section, dates, or tags). Category and tags must come from the normal page."
+  ],
+  "category_summary": {
+    "categories_supplied": 2,
+    "pages_available": 2,
+    "discovery_works_with_plain_http": true,
+    "listing_matches_header_count_all": true,
+    "any_pager_elements": false,
+    "any_page_query_links": false,
+    "postback_targets_seen": [
+      "ctl00$ctl00$cpContent$cpContent$btnCategorySearch",
+      "ctl00$ctl00$cpContent$cpContent$btnToggleSubscribe"
+    ],
+    "subcategory_links_total": 18
+  },
+  "category_conclusion": [
+    "Each category page lists all of its direct articles in raw HTTP as plain <a> links with titles and summaries; the listing count equals the page's 'Articles (N)' header on every sample.",
+    "No pager elements and no page-query links. Pagination is not used: the full list is on one page.",
+    "Postbacks present only for: ['ctl00$ctl00$cpContent$cpContent$btnCategorySearch', 'ctl00$ctl00$cpContent$cpContent$btnToggleSubscribe'] (subscribe/search), not for listing or navigation.",
+    "Subcategories are plain <a href='/KB/Category/<id>/...'> links; their articles are NOT inlined, so full collection must walk subcategories recursively and dedupe article IDs.",
+    "Discovery looks stable enough for full collection with plain HTTP."
+  ],
+  "articles": [
+    {
+      "article_id": "4535",
+      "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/4535/Connecting-to-Eduroam-WiFi",
+      "phrase": "Note:  Anonymous - Delete this line if it auto populates so the line is blank",
+      "phrase_normalized": "Note: Anonymous - Delete this line if it auto populates so the line is blank",
+      "errors": [],
+      "normal": {
+        "saved_path": "data/samples/html/4535.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 62580,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Article - Connecting to Eduroam WiFi",
+        "h1": [
+          "Connecting to Eduroam WiFi"
+        ],
+        "headings_document": [
+          [
+            "h2",
+            "Updating..."
+          ],
+          [
+            "h1",
+            "Connecting to Eduroam WiFi"
+          ],
+          [
+            "h2",
+            "Question"
+          ],
+          [
+            "h2",
+            "Products or Services Involved"
+          ],
+          [
+            "h2",
+            "Instructions"
+          ],
+          [
+            "h3",
+            "Windows OS"
+          ],
+          [
+            "h3",
+            "macOS"
+          ],
+          [
+            "h3",
+            "Android/Chromebook"
+          ],
+          [
+            "h3",
+            "Google Pixel and Other Newer Android phones on Android 11 (Specific)"
+          ],
+          [
+            "h3",
+            "iOS"
+          ],
+          [
+            "h2",
+            "Need More Help?"
+          ],
+          [
+            "h2",
+            "Related Articles (6)"
+          ],
+          [
+            "h3",
+            "Related Services / Offerings (1)"
+          ],
+          [
+            "h2",
+            "Deleting..."
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Question"
+          ],
+          [
+            "h2",
+            "Products or Services Involved"
+          ],
+          [
+            "h2",
+            "Instructions"
+          ],
+          [
+            "h3",
+            "Windows OS"
+          ],
+          [
+            "h3",
+            "macOS"
+          ],
+          [
+            "h3",
+            "Android/Chromebook"
+          ],
+          [
+            "h3",
+            "Google Pixel and Other Newer Android phones on Android 11 (Specific)"
+          ],
+          [
+            "h3",
+            "iOS"
+          ],
+          [
+            "h2",
+            "Need More Help?"
+          ]
+        ],
+        "meta": {
+          "article:section": "Network & WiFi",
+          "article:published_time": "2020-01-22T20:28Z",
+          "article:modified_time": "2026-08-25T19:25Z",
+          "og:description": "Connecting to eduroam (wifi) on various devices. USD's Wi-Fi for Students, Faculty & Staff",
+          "og:title": "Connecting to Eduroam WiFi",
+          "og:url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/4535/Connecting-to-Eduroam-WiFi",
+          "article:tag": [
+            "wifi",
+            "eduroam"
+          ]
+        },
+        "body": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divBody",
+          "matches": 1,
+          "dom_path": "html > body > form#aspnetForm > main > div#content > div#kbContent > div.row.gutter-top > div#divMainContent > div#ctl00_ctl00_cpContent_cpContent_divBody",
+          "text_length_chars": 4320,
+          "text_length_words": 694,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Question",
+            "Products or Services Involved",
+            "Instructions",
+            "Need More Help?"
+          ],
+          "heading_pattern": "other",
+          "contains_staff_only_marker": true,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divKB",
+          "present": true,
+          "heading": "Related Articles (6)",
+          "article_link_count": 6,
+          "inside_body": false,
+          "dom_path": "html > body > form#aspnetForm > main > div#content > div#kbContent > div.row.gutter-top > div.col-md-4 > div#ctl00_ctl00_cpContent_cpContent_divKB"
+        },
+        "tags_visible": [
+          "wifi",
+          "eduroam"
+        ],
+        "tags_selector": "#ctl00_ctl00_cpContent_cpContent_divTags",
+        "feedback_widget": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divFeedback2",
+          "present": true,
+          "inside_body": false
+        },
+        "article_id_from_page": "4535",
+        "article_id_source": "meta og:url",
+        "article_id_matches_url": true
+      },
+      "print": {
+        "saved_path": "data/samples/html/4535_print.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 20932,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Connecting to Eduroam WiFi",
+        "h1": [
+          "Connecting to Eduroam WiFi"
+        ],
+        "headings_document": [
+          [
+            "h1",
+            "Connecting to Eduroam WiFi"
+          ],
+          [
+            "h2",
+            "Summary"
+          ],
+          [
+            "h2",
+            "Body"
+          ],
+          [
+            "h2",
+            "Question"
+          ],
+          [
+            "h2",
+            "Products or Services Involved"
+          ],
+          [
+            "h2",
+            "Instructions"
+          ],
+          [
+            "h3",
+            "Windows OS"
+          ],
+          [
+            "h3",
+            "macOS"
+          ],
+          [
+            "h3",
+            "Android/Chromebook"
+          ],
+          [
+            "h3",
+            "Google Pixel and Other Newer Android phones on Android 11 (Specific)"
+          ],
+          [
+            "h3",
+            "iOS"
+          ],
+          [
+            "h2",
+            "Need More Help?"
+          ],
+          [
+            "h2",
+            "Details"
+          ],
+          [
+            "h2",
+            "Details"
+          ],
+          [
+            "h2",
+            "Related Articles"
+          ],
+          [
+            "h2",
+            "Related Articles (6)"
+          ],
+          [
+            "h2",
+            "Related Services / Offerings"
+          ],
+          [
+            "h3",
+            "Related Services / Offerings (1)"
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Question"
+          ],
+          [
+            "h2",
+            "Products or Services Involved"
+          ],
+          [
+            "h2",
+            "Instructions"
+          ],
+          [
+            "h3",
+            "Windows OS"
+          ],
+          [
+            "h3",
+            "macOS"
+          ],
+          [
+            "h3",
+            "Android/Chromebook"
+          ],
+          [
+            "h3",
+            "Google Pixel and Other Newer Android phones on Android 11 (Specific)"
+          ],
+          [
+            "h3",
+            "iOS"
+          ],
+          [
+            "h2",
+            "Need More Help?"
+          ]
+        ],
+        "meta": {
+          "article:section": null,
+          "article:published_time": null,
+          "article:modified_time": null,
+          "og:description": null,
+          "og:title": null,
+          "og:url": null,
+          "article:tag": []
+        },
+        "body": {
+          "selector": "#divBody minus its first child div.gutter-bottom ('Body' label)",
+          "matches": 1,
+          "dom_path": "html > body > form#printKBArticleForm > div#content > div.container-fluid.gutter-top > div#divBody",
+          "text_length_chars": 4320,
+          "text_length_words": 694,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Question",
+            "Products or Services Involved",
+            "Instructions",
+            "Need More Help?"
+          ],
+          "heading_pattern": "other",
+          "contains_staff_only_marker": true,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#divRelatedArticles",
+          "present": true,
+          "heading": "Related Articles (6)",
+          "article_link_count": 6,
+          "inside_body": false,
+          "dom_path": "html > body > form#printKBArticleForm > div#content > div.container-fluid.gutter-top > div#divRelatedArticles"
+        },
+        "article_id_from_page": "4535",
+        "article_id_source": "#ArticleID",
+        "summary_text": "Connecting to eduroam (wifi) on various devices. USD's Wi-Fi for Students, Faculty & Staff",
+        "custom_attributes": {
+          "KCS Article Status": "Validated"
+        },
+        "details_fields": [
+          "Article ID:",
+          "Created",
+          "Modified",
+          "KCS Article Status"
+        ],
+        "article_id_matches_url": true
+      },
+      "server_rendered": true,
+      "body_text_identical_normal_vs_print": true,
+      "body_length_diff_chars": 0
+    },
+    {
+      "article_id": "5913",
+      "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/5913/Connecting-a-Smart-Device-to-the-Wireless-Network",
+      "phrase": "Any other device not listed on the Support Devices list has not been tested and is considered unsupported",
+      "phrase_normalized": "Any other device not listed on the Support Devices list has not been tested and is considered unsupported",
+      "errors": [],
+      "normal": {
+        "saved_path": "data/samples/html/5913.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 58751,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Article - Connecting a Smart Device t...",
+        "h1": [
+          "Connecting a Smart Device to the Wireless Network"
+        ],
+        "headings_document": [
+          [
+            "h2",
+            "Updating..."
+          ],
+          [
+            "h1",
+            "Connecting a Smart Device to the Wireless Network"
+          ],
+          [
+            "h2",
+            "Question"
+          ],
+          [
+            "h2",
+            "Products or Services Involved"
+          ],
+          [
+            "h2",
+            "Instructions"
+          ],
+          [
+            "h2",
+            "Need More Help?"
+          ],
+          [
+            "h2",
+            "Related Articles (6)"
+          ],
+          [
+            "h2",
+            "Deleting..."
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Question"
+          ],
+          [
+            "h2",
+            "Products or Services Involved"
+          ],
+          [
+            "h2",
+            "Instructions"
+          ],
+          [
+            "h2",
+            "Need More Help?"
+          ]
+        ],
+        "meta": {
+          "article:section": "Network & WiFi",
+          "article:published_time": "2020-12-22T21:47Z",
+          "article:modified_time": "2026-08-26T17:33Z",
+          "og:description": "How to connect a smart device to USD's wireless network",
+          "og:title": "Connecting a Smart Device to the Wireless Network",
+          "og:url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/5913/Connecting-a-Smart-Device-to-the-Wireless-Network",
+          "article:tag": [
+            "wireless",
+            "Network",
+            "wifi",
+            "connect",
+            "Internet",
+            "setup",
+            "smart",
+            "device"
+          ]
+        },
+        "body": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divBody",
+          "matches": 1,
+          "dom_path": "html > body > form#aspnetForm > main > div#content > div#kbContent > div.row.gutter-top > div#divMainContent > div#ctl00_ctl00_cpContent_cpContent_divBody",
+          "text_length_chars": 3333,
+          "text_length_words": 560,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Question",
+            "Products or Services Involved",
+            "Instructions",
+            "Need More Help?"
+          ],
+          "heading_pattern": "other",
+          "contains_staff_only_marker": false,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divKB",
+          "present": true,
+          "heading": "Related Articles (6)",
+          "article_link_count": 6,
+          "inside_body": false,
+          "dom_path": "html > body > form#aspnetForm > main > div#content > div#kbContent > div.row.gutter-top > div.col-md-4 > div#ctl00_ctl00_cpContent_cpContent_divKB"
+        },
+        "tags_visible": [
+          "wireless",
+          "Network",
+          "wifi",
+          "connect",
+          "Internet",
+          "setup",
+          "smart",
+          "device"
+        ],
+        "tags_selector": "#ctl00_ctl00_cpContent_cpContent_divTags",
+        "feedback_widget": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divFeedback2",
+          "present": true,
+          "inside_body": false
+        },
+        "article_id_from_page": "5913",
+        "article_id_source": "meta og:url",
+        "article_id_matches_url": true
+      },
+      "print": {
+        "saved_path": "data/samples/html/5913_print.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 17548,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Connecting a Smart Device to the Wireless Network",
+        "h1": [
+          "Connecting a Smart Device to the Wireless Network"
+        ],
+        "headings_document": [
+          [
+            "h1",
+            "Connecting a Smart Device to the Wireless Network"
+          ],
+          [
+            "h2",
+            "Summary"
+          ],
+          [
+            "h2",
+            "Body"
+          ],
+          [
+            "h2",
+            "Question"
+          ],
+          [
+            "h2",
+            "Products or Services Involved"
+          ],
+          [
+            "h2",
+            "Instructions"
+          ],
+          [
+            "h2",
+            "Need More Help?"
+          ],
+          [
+            "h2",
+            "Details"
+          ],
+          [
+            "h2",
+            "Details"
+          ],
+          [
+            "h2",
+            "Related Articles"
+          ],
+          [
+            "h2",
+            "Related Articles (6)"
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Question"
+          ],
+          [
+            "h2",
+            "Products or Services Involved"
+          ],
+          [
+            "h2",
+            "Instructions"
+          ],
+          [
+            "h2",
+            "Need More Help?"
+          ]
+        ],
+        "meta": {
+          "article:section": null,
+          "article:published_time": null,
+          "article:modified_time": null,
+          "og:description": null,
+          "og:title": null,
+          "og:url": null,
+          "article:tag": []
+        },
+        "body": {
+          "selector": "#divBody minus its first child div.gutter-bottom ('Body' label)",
+          "matches": 1,
+          "dom_path": "html > body > form#printKBArticleForm > div#content > div.container-fluid.gutter-top > div#divBody",
+          "text_length_chars": 3333,
+          "text_length_words": 560,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Question",
+            "Products or Services Involved",
+            "Instructions",
+            "Need More Help?"
+          ],
+          "heading_pattern": "other",
+          "contains_staff_only_marker": false,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#divRelatedArticles",
+          "present": true,
+          "heading": "Related Articles (6)",
+          "article_link_count": 6,
+          "inside_body": false,
+          "dom_path": "html > body > form#printKBArticleForm > div#content > div.container-fluid.gutter-top > div#divRelatedArticles"
+        },
+        "article_id_from_page": "5913",
+        "article_id_source": "#ArticleID",
+        "summary_text": "How to connect a smart device to USD's wireless network",
+        "custom_attributes": {
+          "KCS Article Status": "Validated"
+        },
+        "details_fields": [
+          "Article ID:",
+          "Created",
+          "Modified",
+          "KCS Article Status"
+        ],
+        "article_id_matches_url": true
+      },
+      "server_rendered": true,
+      "body_text_identical_normal_vs_print": true,
+      "body_length_diff_chars": 0
+    },
+    {
+      "article_id": "1027",
+      "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/1027/Email-Delivery-Failure",
+      "phrase": "Error: We are unable to deliver your message to its intended recipient(s). Unrecognized sender email address:",
+      "phrase_normalized": "Error: We are unable to deliver your message to its intended recipient(s). Unrecognized sender email address:",
+      "errors": [],
+      "normal": {
+        "saved_path": "data/samples/html/1027.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 41618,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Article - Email Delivery Failure",
+        "h1": [
+          "Email Delivery Failure"
+        ],
+        "headings_document": [
+          [
+            "h2",
+            "Updating..."
+          ],
+          [
+            "h1",
+            "Email Delivery Failure"
+          ],
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h2",
+            "Related Articles (1)"
+          ],
+          [
+            "h2",
+            "Deleting..."
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ]
+        ],
+        "meta": {
+          "article:section": "Outlook",
+          "article:published_time": "2018-10-25T20:06Z",
+          "article:modified_time": "2022-08-22T17:33Z",
+          "og:description": "What to do when an email is not delivered to its recipient(s).",
+          "og:title": "Email Delivery Failure",
+          "og:url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/1027/Email-Delivery-Failure",
+          "article:tag": [
+            "email-blocked",
+            "emails",
+            "delivery",
+            "email"
+          ]
+        },
+        "body": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divBody",
+          "matches": 1,
+          "dom_path": "html > body > form#aspnetForm > main > div#content > div#kbContent > div.row.gutter-top > div#divMainContent > div#ctl00_ctl00_cpContent_cpContent_divBody",
+          "text_length_chars": 843,
+          "text_length_words": 136,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Issue/Question",
+            "Environment",
+            "Resolution"
+          ],
+          "heading_pattern": "Issue/Environment/Cause/Resolution (partial: issue/environment/resolution)",
+          "contains_staff_only_marker": false,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divKB",
+          "present": true,
+          "heading": "Related Articles (1)",
+          "article_link_count": 1,
+          "inside_body": false,
+          "dom_path": "html > body > form#aspnetForm > main > div#content > div#kbContent > div.row.gutter-top > div.col-md-4 > div#ctl00_ctl00_cpContent_cpContent_divKB"
+        },
+        "tags_visible": [
+          "email-blocked",
+          "emails",
+          "delivery",
+          "email"
+        ],
+        "tags_selector": "#ctl00_ctl00_cpContent_cpContent_divTags",
+        "feedback_widget": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divFeedback2",
+          "present": true,
+          "inside_body": false
+        },
+        "article_id_from_page": "1027",
+        "article_id_source": "meta og:url",
+        "article_id_matches_url": true
+      },
+      "print": {
+        "saved_path": "data/samples/html/1027_print.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 9319,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Email Delivery Failure",
+        "h1": [
+          "Email Delivery Failure"
+        ],
+        "headings_document": [
+          [
+            "h1",
+            "Email Delivery Failure"
+          ],
+          [
+            "h2",
+            "Summary"
+          ],
+          [
+            "h2",
+            "Body"
+          ],
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h2",
+            "Details"
+          ],
+          [
+            "h2",
+            "Details"
+          ],
+          [
+            "h2",
+            "Related Articles"
+          ],
+          [
+            "h2",
+            "Related Articles (1)"
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ]
+        ],
+        "meta": {
+          "article:section": null,
+          "article:published_time": null,
+          "article:modified_time": null,
+          "og:description": null,
+          "og:title": null,
+          "og:url": null,
+          "article:tag": []
+        },
+        "body": {
+          "selector": "#divBody minus its first child div.gutter-bottom ('Body' label)",
+          "matches": 1,
+          "dom_path": "html > body > form#printKBArticleForm > div#content > div.container-fluid.gutter-top > div#divBody",
+          "text_length_chars": 843,
+          "text_length_words": 136,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Issue/Question",
+            "Environment",
+            "Resolution"
+          ],
+          "heading_pattern": "Issue/Environment/Cause/Resolution (partial: issue/environment/resolution)",
+          "contains_staff_only_marker": false,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#divRelatedArticles",
+          "present": true,
+          "heading": "Related Articles (1)",
+          "article_link_count": 1,
+          "inside_body": false,
+          "dom_path": "html > body > form#printKBArticleForm > div#content > div.container-fluid.gutter-top > div#divRelatedArticles"
+        },
+        "article_id_from_page": "1027",
+        "article_id_source": "#ArticleID",
+        "summary_text": "What to do when an email is not delivered to its recipient(s).",
+        "custom_attributes": {
+          "KCS Article Status": "Validated"
+        },
+        "details_fields": [
+          "Article ID:",
+          "Created",
+          "Modified",
+          "KCS Article Status"
+        ],
+        "article_id_matches_url": true
+      },
+      "server_rendered": true,
+      "body_text_identical_normal_vs_print": true,
+      "body_length_diff_chars": 0
+    },
+    {
+      "article_id": "508",
+      "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/508/Problems-accessing-departmental-email-account",
+      "phrase": "The shared account is asking for a password",
+      "phrase_normalized": "The shared account is asking for a password",
+      "errors": [],
+      "normal": {
+        "saved_path": "data/samples/html/508.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 39587,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Article - Problems accessing departme...",
+        "h1": [
+          "Problems accessing departmental email account"
+        ],
+        "headings_document": [
+          [
+            "h2",
+            "Updating..."
+          ],
+          [
+            "h1",
+            "Problems accessing departmental email account"
+          ],
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h2",
+            "Deleting..."
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ]
+        ],
+        "meta": {
+          "article:section": "Email, Calendars and Collaboration Tools",
+          "article:published_time": "2018-08-16T12:33Z",
+          "article:modified_time": "2023-08-30T14:45Z",
+          "og:description": "Problems accessing departmental email account",
+          "og:title": "Problems accessing departmental email account",
+          "og:url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/508/Problems-accessing-departmental-email-account",
+          "article:tag": [
+            "departmental",
+            "departmental-account",
+            "email"
+          ]
+        },
+        "body": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divBody",
+          "matches": 1,
+          "dom_path": "html > body > form#aspnetForm > main > div#content > div#kbContent > div.row.gutter-top > div#divMainContent > div#ctl00_ctl00_cpContent_cpContent_divBody",
+          "text_length_chars": 366,
+          "text_length_words": 56,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Issue/Question",
+            "Environment",
+            "Resolution"
+          ],
+          "heading_pattern": "Issue/Environment/Cause/Resolution (partial: issue/environment/resolution)",
+          "contains_staff_only_marker": true,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divKB",
+          "present": false,
+          "heading": null,
+          "article_link_count": 0,
+          "inside_body": false,
+          "dom_path": null
+        },
+        "tags_visible": [
+          "departmental",
+          "departmental-account",
+          "email"
+        ],
+        "tags_selector": "#ctl00_ctl00_cpContent_cpContent_divTags",
+        "feedback_widget": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divFeedback2",
+          "present": true,
+          "inside_body": false
+        },
+        "article_id_from_page": "508",
+        "article_id_source": "meta og:url",
+        "article_id_matches_url": true
+      },
+      "print": {
+        "saved_path": "data/samples/html/508_print.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 7754,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Problems accessing departmental email account",
+        "h1": [
+          "Problems accessing departmental email account"
+        ],
+        "headings_document": [
+          [
+            "h1",
+            "Problems accessing departmental email account"
+          ],
+          [
+            "h2",
+            "Summary"
+          ],
+          [
+            "h2",
+            "Body"
+          ],
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h2",
+            "Details"
+          ],
+          [
+            "h2",
+            "Details"
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ]
+        ],
+        "meta": {
+          "article:section": null,
+          "article:published_time": null,
+          "article:modified_time": null,
+          "og:description": null,
+          "og:title": null,
+          "og:url": null,
+          "article:tag": []
+        },
+        "body": {
+          "selector": "#divBody minus its first child div.gutter-bottom ('Body' label)",
+          "matches": 1,
+          "dom_path": "html > body > form#printKBArticleForm > div#content > div.container-fluid.gutter-top > div#divBody",
+          "text_length_chars": 366,
+          "text_length_words": 56,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Issue/Question",
+            "Environment",
+            "Resolution"
+          ],
+          "heading_pattern": "Issue/Environment/Cause/Resolution (partial: issue/environment/resolution)",
+          "contains_staff_only_marker": true,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#divRelatedArticles",
+          "present": false,
+          "heading": null,
+          "article_link_count": 0,
+          "inside_body": false,
+          "dom_path": null
+        },
+        "article_id_from_page": "508",
+        "article_id_source": "#ArticleID",
+        "summary_text": "Problems accessing departmental email account",
+        "custom_attributes": {
+          "KCS Article Status": "Validated"
+        },
+        "details_fields": [
+          "Article ID:",
+          "Created",
+          "Modified",
+          "KCS Article Status"
+        ],
+        "article_id_matches_url": true
+      },
+      "server_rendered": true,
+      "body_text_identical_normal_vs_print": true,
+      "body_length_diff_chars": 0
+    },
+    {
+      "article_id": "233",
+      "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/233/Printer-is-Not-Printing",
+      "phrase": "Clear the print queue via command prompt",
+      "phrase_normalized": "Clear the print queue via command prompt",
+      "errors": [],
+      "normal": {
+        "saved_path": "data/samples/html/233.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 46855,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Article - Printer is Not Printing",
+        "h1": [
+          "Printer is Not Printing"
+        ],
+        "headings_document": [
+          [
+            "h2",
+            "Updating..."
+          ],
+          [
+            "h1",
+            "Printer is Not Printing"
+          ],
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h3",
+            "Clear the print queue via control panel"
+          ],
+          [
+            "h3",
+            "Clear the print queue via command prompt"
+          ],
+          [
+            "h2",
+            "Related Articles (3)"
+          ],
+          [
+            "h2",
+            "Deleting..."
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h3",
+            "Clear the print queue via control panel"
+          ],
+          [
+            "h3",
+            "Clear the print queue via command prompt"
+          ]
+        ],
+        "meta": {
+          "article:section": "Printers",
+          "article:published_time": "2018-07-12T15:57Z",
+          "article:modified_time": "2024-11-15T15:19Z",
+          "og:description": "Steps to resolve printing issues",
+          "og:title": "Printer is Not Printing",
+          "og:url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/233/Printer-is-Not-Printing",
+          "article:tag": [
+            "printing-issue",
+            "printer-not-printing",
+            "printer-problem",
+            "not-printing"
+          ]
+        },
+        "body": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divBody",
+          "matches": 1,
+          "dom_path": "html > body > form#aspnetForm > main > div#content > div#kbContent > div.row.gutter-top > div#divMainContent > div#ctl00_ctl00_cpContent_cpContent_divBody",
+          "text_length_chars": 1133,
+          "text_length_words": 175,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Issue/Question",
+            "Environment",
+            "Cause",
+            "Resolution",
+            "Clear the print queue via control panel",
+            "Clear the print queue via command prompt"
+          ],
+          "heading_pattern": "Issue/Environment/Cause/Resolution",
+          "contains_staff_only_marker": true,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divKB",
+          "present": true,
+          "heading": "Related Articles (3)",
+          "article_link_count": 3,
+          "inside_body": false,
+          "dom_path": "html > body > form#aspnetForm > main > div#content > div#kbContent > div.row.gutter-top > div.col-md-4 > div#ctl00_ctl00_cpContent_cpContent_divKB"
+        },
+        "tags_visible": [
+          "printing-issue",
+          "printer-not-printing",
+          "printer-problem",
+          "not-printing"
+        ],
+        "tags_selector": "#ctl00_ctl00_cpContent_cpContent_divTags",
+        "feedback_widget": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divFeedback2",
+          "present": true,
+          "inside_body": false
+        },
+        "article_id_from_page": "233",
+        "article_id_source": "meta og:url",
+        "article_id_matches_url": true
+      },
+      "print": {
+        "saved_path": "data/samples/html/233_print.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 12033,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Printer is Not Printing",
+        "h1": [
+          "Printer is Not Printing"
+        ],
+        "headings_document": [
+          [
+            "h1",
+            "Printer is Not Printing"
+          ],
+          [
+            "h2",
+            "Summary"
+          ],
+          [
+            "h2",
+            "Body"
+          ],
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h3",
+            "Clear the print queue via control panel"
+          ],
+          [
+            "h3",
+            "Clear the print queue via command prompt"
+          ],
+          [
+            "h2",
+            "Details"
+          ],
+          [
+            "h2",
+            "Details"
+          ],
+          [
+            "h2",
+            "Related Articles"
+          ],
+          [
+            "h2",
+            "Related Articles (3)"
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h3",
+            "Clear the print queue via control panel"
+          ],
+          [
+            "h3",
+            "Clear the print queue via command prompt"
+          ]
+        ],
+        "meta": {
+          "article:section": null,
+          "article:published_time": null,
+          "article:modified_time": null,
+          "og:description": null,
+          "og:title": null,
+          "og:url": null,
+          "article:tag": []
+        },
+        "body": {
+          "selector": "#divBody minus its first child div.gutter-bottom ('Body' label)",
+          "matches": 1,
+          "dom_path": "html > body > form#printKBArticleForm > div#content > div.container-fluid.gutter-top > div#divBody",
+          "text_length_chars": 1133,
+          "text_length_words": 175,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Issue/Question",
+            "Environment",
+            "Cause",
+            "Resolution",
+            "Clear the print queue via control panel",
+            "Clear the print queue via command prompt"
+          ],
+          "heading_pattern": "Issue/Environment/Cause/Resolution",
+          "contains_staff_only_marker": true,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#divRelatedArticles",
+          "present": true,
+          "heading": "Related Articles (3)",
+          "article_link_count": 3,
+          "inside_body": false,
+          "dom_path": "html > body > form#printKBArticleForm > div#content > div.container-fluid.gutter-top > div#divRelatedArticles"
+        },
+        "article_id_from_page": "233",
+        "article_id_source": "#ArticleID",
+        "summary_text": "Steps to resolve printing issues",
+        "custom_attributes": {
+          "KCS Article Status": "Validated"
+        },
+        "details_fields": [
+          "Article ID:",
+          "Created",
+          "Modified",
+          "KCS Article Status"
+        ],
+        "article_id_matches_url": true
+      },
+      "server_rendered": true,
+      "body_text_identical_normal_vs_print": true,
+      "body_length_diff_chars": 0
+    },
+    {
+      "article_id": "8721",
+      "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/8721/Coyote-Card-Resources",
+      "phrase": "Using eAccounts, students, faculty, staff, family and friends can add funds to the Coyote Card using our online deposit system. It is available 24/7 and accepts credit card payment methods.",
+      "phrase_normalized": "Using eAccounts, students, faculty, staff, family and friends can add funds to the Coyote Card using our online deposit system. It is available 24/7 and accepts credit card payment methods.",
+      "errors": [],
+      "normal": {
+        "saved_path": "data/samples/html/8721.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 48269,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Article - Coyote Card Resources",
+        "h1": [
+          "Coyote Card Resources"
+        ],
+        "headings_document": [
+          [
+            "h2",
+            "Updating..."
+          ],
+          [
+            "h1",
+            "Coyote Card Resources"
+          ],
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h2",
+            "Related Articles (1)"
+          ],
+          [
+            "h3",
+            "Related Services / Offerings (2)"
+          ],
+          [
+            "h2",
+            "Deleting..."
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ]
+        ],
+        "meta": {
+          "article:section": "Coyote Card",
+          "article:published_time": "2023-10-04T19:02Z",
+          "article:modified_time": "2026-09-22T19:49Z",
+          "og:description": "List of Coyote Card resources.",
+          "og:title": "Coyote Card Resources",
+          "og:url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/8721/Coyote-Card-Resources",
+          "article:tag": []
+        },
+        "body": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divBody",
+          "matches": 1,
+          "dom_path": "html > body > form#aspnetForm > main > div#content > div#kbContent > div.row.gutter-top > div#divMainContent > div#ctl00_ctl00_cpContent_cpContent_divBody",
+          "text_length_chars": 1408,
+          "text_length_words": 214,
+          "phrase_in_body": false,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Issue/Question",
+            "Environment",
+            "Resolution"
+          ],
+          "heading_pattern": "Issue/Environment/Cause/Resolution (partial: issue/environment/resolution)",
+          "contains_staff_only_marker": false,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divKB",
+          "present": true,
+          "heading": "Related Articles (1)",
+          "article_link_count": 1,
+          "inside_body": false,
+          "dom_path": "html > body > form#aspnetForm > main > div#content > div#kbContent > div.row.gutter-top > div.col-md-4 > div#ctl00_ctl00_cpContent_cpContent_divKB"
+        },
+        "tags_visible": [],
+        "tags_selector": null,
+        "feedback_widget": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divFeedback2",
+          "present": true,
+          "inside_body": false
+        },
+        "article_id_from_page": "8721",
+        "article_id_source": "meta og:url",
+        "article_id_matches_url": true
+      },
+      "print": {
+        "saved_path": "data/samples/html/8721_print.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 14142,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Coyote Card Resources",
+        "h1": [
+          "Coyote Card Resources"
+        ],
+        "headings_document": [
+          [
+            "h1",
+            "Coyote Card Resources"
+          ],
+          [
+            "h2",
+            "Summary"
+          ],
+          [
+            "h2",
+            "Body"
+          ],
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h2",
+            "Details"
+          ],
+          [
+            "h2",
+            "Details"
+          ],
+          [
+            "h2",
+            "Related Articles"
+          ],
+          [
+            "h2",
+            "Related Articles (1)"
+          ],
+          [
+            "h2",
+            "Related Services / Offerings"
+          ],
+          [
+            "h3",
+            "Related Services / Offerings (2)"
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ]
+        ],
+        "meta": {
+          "article:section": null,
+          "article:published_time": null,
+          "article:modified_time": null,
+          "og:description": null,
+          "og:title": null,
+          "og:url": null,
+          "article:tag": []
+        },
+        "body": {
+          "selector": "#divBody minus its first child div.gutter-bottom ('Body' label)",
+          "matches": 1,
+          "dom_path": "html > body > form#printKBArticleForm > div#content > div.container-fluid.gutter-top > div#divBody",
+          "text_length_chars": 1408,
+          "text_length_words": 214,
+          "phrase_in_body": false,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Issue/Question",
+            "Environment",
+            "Resolution"
+          ],
+          "heading_pattern": "Issue/Environment/Cause/Resolution (partial: issue/environment/resolution)",
+          "contains_staff_only_marker": false,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#divRelatedArticles",
+          "present": true,
+          "heading": "Related Articles (1)",
+          "article_link_count": 1,
+          "inside_body": false,
+          "dom_path": "html > body > form#printKBArticleForm > div#content > div.container-fluid.gutter-top > div#divRelatedArticles"
+        },
+        "article_id_from_page": "8721",
+        "article_id_source": "#ArticleID",
+        "summary_text": "List of Coyote Card resources.",
+        "custom_attributes": {
+          "KCS Article Status": "Validated"
+        },
+        "details_fields": [
+          "Article ID:",
+          "Created",
+          "Modified",
+          "KCS Article Status"
+        ],
+        "article_id_matches_url": true
+      },
+      "server_rendered": true,
+      "body_text_identical_normal_vs_print": true,
+      "body_length_diff_chars": 0
+    },
+    {
+      "article_id": "6260",
+      "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/6260/Coyote-Card-Mobile-Not-Working",
+      "phrase": "If you have received a new phone follow Removing Coyote Card Mobile ID to remove the card from your old device",
+      "phrase_normalized": "If you have received a new phone follow Removing Coyote Card Mobile ID to remove the card from your old device",
+      "errors": [],
+      "normal": {
+        "saved_path": "data/samples/html/6260.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 44797,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Article - Coyote Card Mobile Not Working",
+        "h1": [
+          "Coyote Card Mobile Not Working"
+        ],
+        "headings_document": [
+          [
+            "h2",
+            "Updating..."
+          ],
+          [
+            "h1",
+            "Coyote Card Mobile Not Working"
+          ],
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h2",
+            "Related Articles (2)"
+          ],
+          [
+            "h2",
+            "Deleting..."
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ]
+        ],
+        "meta": {
+          "article:section": "Coyote Card",
+          "article:published_time": "2021-04-16T20:08Z",
+          "article:modified_time": "2026-05-01T16:59Z",
+          "og:description": "What to do if your Coyote Card Mobile is not working. error Your login is correct, but your account has not been properly registered in your school's Transact system and we cannot access your account information.",
+          "og:title": "Coyote Card Mobile Not Working",
+          "og:url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/6260/Coyote-Card-Mobile-Not-Working",
+          "article:tag": [
+            "blackboard"
+          ]
+        },
+        "body": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divBody",
+          "matches": 1,
+          "dom_path": "html > body > form#aspnetForm > main > div#content > div#kbContent > div.row.gutter-top > div#divMainContent > div#ctl00_ctl00_cpContent_cpContent_divBody",
+          "text_length_chars": 1450,
+          "text_length_words": 230,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Issue/Question",
+            "Environment",
+            "Resolution"
+          ],
+          "heading_pattern": "Issue/Environment/Cause/Resolution (partial: issue/environment/resolution)",
+          "contains_staff_only_marker": true,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divKB",
+          "present": true,
+          "heading": "Related Articles (2)",
+          "article_link_count": 2,
+          "inside_body": false,
+          "dom_path": "html > body > form#aspnetForm > main > div#content > div#kbContent > div.row.gutter-top > div.col-md-4 > div#ctl00_ctl00_cpContent_cpContent_divKB"
+        },
+        "tags_visible": [
+          "blackboard"
+        ],
+        "tags_selector": "#ctl00_ctl00_cpContent_cpContent_divTags",
+        "feedback_widget": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divFeedback2",
+          "present": true,
+          "inside_body": false
+        },
+        "article_id_from_page": "6260",
+        "article_id_source": "meta og:url",
+        "article_id_matches_url": true
+      },
+      "print": {
+        "saved_path": "data/samples/html/6260_print.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 11473,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Coyote Card Mobile Not Working",
+        "h1": [
+          "Coyote Card Mobile Not Working"
+        ],
+        "headings_document": [
+          [
+            "h1",
+            "Coyote Card Mobile Not Working"
+          ],
+          [
+            "h2",
+            "Summary"
+          ],
+          [
+            "h2",
+            "Body"
+          ],
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h2",
+            "Details"
+          ],
+          [
+            "h2",
+            "Details"
+          ],
+          [
+            "h2",
+            "Related Articles"
+          ],
+          [
+            "h2",
+            "Related Articles (2)"
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ]
+        ],
+        "meta": {
+          "article:section": null,
+          "article:published_time": null,
+          "article:modified_time": null,
+          "og:description": null,
+          "og:title": null,
+          "og:url": null,
+          "article:tag": []
+        },
+        "body": {
+          "selector": "#divBody minus its first child div.gutter-bottom ('Body' label)",
+          "matches": 1,
+          "dom_path": "html > body > form#printKBArticleForm > div#content > div.container-fluid.gutter-top > div#divBody",
+          "text_length_chars": 1450,
+          "text_length_words": 230,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Issue/Question",
+            "Environment",
+            "Resolution"
+          ],
+          "heading_pattern": "Issue/Environment/Cause/Resolution (partial: issue/environment/resolution)",
+          "contains_staff_only_marker": true,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#divRelatedArticles",
+          "present": true,
+          "heading": "Related Articles (2)",
+          "article_link_count": 2,
+          "inside_body": false,
+          "dom_path": "html > body > form#printKBArticleForm > div#content > div.container-fluid.gutter-top > div#divRelatedArticles"
+        },
+        "article_id_from_page": "6260",
+        "article_id_source": "#ArticleID",
+        "summary_text": "What to do if your Coyote Card Mobile is not working. error Your login is correct, but your account has not been properly registered in your school's Transact system and we cannot access your account information.",
+        "custom_attributes": {
+          "KCS Article Status": "Validated"
+        },
+        "details_fields": [
+          "Article ID:",
+          "Created",
+          "Modified",
+          "KCS Article Status"
+        ],
+        "article_id_matches_url": true
+      },
+      "server_rendered": true,
+      "body_text_identical_normal_vs_print": true,
+      "body_length_diff_chars": 0
+    },
+    {
+      "article_id": "1866",
+      "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/1866/Cannot-Play-Panopto-Video-in-D2L",
+      "phrase": "Note:  If you are still having issues please contact your instructor and have them unhide the Panopto content item, then click the link to Panopto - USD under content",
+      "phrase_normalized": "Note: If you are still having issues please contact your instructor and have them unhide the Panopto content item, then click the link to Panopto - USD under content",
+      "errors": [],
+      "normal": {
+        "saved_path": "data/samples/html/1866.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 39875,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Article - Cannot Play Panopto Video i...",
+        "h1": [
+          "Cannot Play Panopto Video in D2L"
+        ],
+        "headings_document": [
+          [
+            "h2",
+            "Updating..."
+          ],
+          [
+            "h1",
+            "Cannot Play Panopto Video in D2L"
+          ],
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h2",
+            "Deleting..."
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ]
+        ],
+        "meta": {
+          "article:section": "Desire2Learn",
+          "article:published_time": "2019-01-08T21:47Z",
+          "article:modified_time": "2026-09-14T18:18Z",
+          "og:description": "How to play Panopto videos in D2L",
+          "og:title": "Cannot Play Panopto Video in D2L",
+          "og:url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/1866/Cannot-Play-Panopto-Video-in-D2L",
+          "article:tag": []
+        },
+        "body": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divBody",
+          "matches": 1,
+          "dom_path": "html > body > form#aspnetForm > main > div#content > div#kbContent > div.row.gutter-top > div#divMainContent > div#ctl00_ctl00_cpContent_cpContent_divBody",
+          "text_length_chars": 778,
+          "text_length_words": 135,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Issue/Question",
+            "Environment",
+            "Cause",
+            "Resolution"
+          ],
+          "heading_pattern": "Issue/Environment/Cause/Resolution",
+          "contains_staff_only_marker": true,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divKB",
+          "present": false,
+          "heading": null,
+          "article_link_count": 0,
+          "inside_body": false,
+          "dom_path": null
+        },
+        "tags_visible": [],
+        "tags_selector": null,
+        "feedback_widget": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divFeedback2",
+          "present": true,
+          "inside_body": false
+        },
+        "article_id_from_page": "1866",
+        "article_id_source": "meta og:url",
+        "article_id_matches_url": true
+      },
+      "print": {
+        "saved_path": "data/samples/html/1866_print.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 8382,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Cannot Play Panopto Video in D2L",
+        "h1": [
+          "Cannot Play Panopto Video in D2L"
+        ],
+        "headings_document": [
+          [
+            "h1",
+            "Cannot Play Panopto Video in D2L"
+          ],
+          [
+            "h2",
+            "Summary"
+          ],
+          [
+            "h2",
+            "Body"
+          ],
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h2",
+            "Details"
+          ],
+          [
+            "h2",
+            "Details"
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ]
+        ],
+        "meta": {
+          "article:section": null,
+          "article:published_time": null,
+          "article:modified_time": null,
+          "og:description": null,
+          "og:title": null,
+          "og:url": null,
+          "article:tag": []
+        },
+        "body": {
+          "selector": "#divBody minus its first child div.gutter-bottom ('Body' label)",
+          "matches": 1,
+          "dom_path": "html > body > form#printKBArticleForm > div#content > div.container-fluid.gutter-top > div#divBody",
+          "text_length_chars": 778,
+          "text_length_words": 135,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Issue/Question",
+            "Environment",
+            "Cause",
+            "Resolution"
+          ],
+          "heading_pattern": "Issue/Environment/Cause/Resolution",
+          "contains_staff_only_marker": true,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#divRelatedArticles",
+          "present": false,
+          "heading": null,
+          "article_link_count": 0,
+          "inside_body": false,
+          "dom_path": null
+        },
+        "article_id_from_page": "1866",
+        "article_id_source": "#ArticleID",
+        "summary_text": "How to play Panopto videos in D2L",
+        "custom_attributes": {
+          "KCS Article Status": "Validated"
+        },
+        "details_fields": [
+          "Article ID:",
+          "Created",
+          "Modified",
+          "KCS Article Status"
+        ],
+        "article_id_matches_url": true
+      },
+      "server_rendered": true,
+      "body_text_identical_normal_vs_print": true,
+      "body_length_diff_chars": 0
+    },
+    {
+      "article_id": "352",
+      "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/352/Receiving-Page-Not-Found-Error-when-Playing-Video-in-D2L",
+      "phrase": "You will need to copy the correct link and update the one beginning with https://d2l.sdbor.edu",
+      "phrase_normalized": "You will need to copy the correct link and update the one beginning with https://d2l.sdbor.edu",
+      "errors": [],
+      "normal": {
+        "saved_path": "data/samples/html/352.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 39496,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Article - Receiving Page Not Found Er...",
+        "h1": [
+          "Receiving Page Not Found Error when Playing Video in D2L"
+        ],
+        "headings_document": [
+          [
+            "h2",
+            "Updating..."
+          ],
+          [
+            "h1",
+            "Receiving Page Not Found Error when Playing Video in D2L"
+          ],
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h2",
+            "Deleting..."
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ]
+        ],
+        "meta": {
+          "article:section": "Desire2Learn",
+          "article:published_time": "2018-07-26T12:59Z",
+          "article:modified_time": "2021-05-18T19:43Z",
+          "og:description": "How to fix a link in D2L that is pointing to a previous course's materials",
+          "og:title": "Receiving Page Not Found Error when Playing Video in D2L",
+          "og:url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/352/Receiving-Page-Not-Found-Error-when-Playing-Video-in-D2L",
+          "article:tag": []
+        },
+        "body": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divBody",
+          "matches": 1,
+          "dom_path": "html > body > form#aspnetForm > main > div#content > div#kbContent > div.row.gutter-top > div#divMainContent > div#ctl00_ctl00_cpContent_cpContent_divBody",
+          "text_length_chars": 788,
+          "text_length_words": 132,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Issue/Question",
+            "Environment",
+            "Cause",
+            "Resolution"
+          ],
+          "heading_pattern": "Issue/Environment/Cause/Resolution",
+          "contains_staff_only_marker": false,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divKB",
+          "present": false,
+          "heading": null,
+          "article_link_count": 0,
+          "inside_body": false,
+          "dom_path": null
+        },
+        "tags_visible": [],
+        "tags_selector": null,
+        "feedback_widget": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divFeedback2",
+          "present": true,
+          "inside_body": false
+        },
+        "article_id_from_page": "352",
+        "article_id_source": "meta og:url",
+        "article_id_matches_url": true
+      },
+      "print": {
+        "saved_path": "data/samples/html/352_print.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 8202,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Receiving Page Not Found Error when Playing Video in D2L",
+        "h1": [
+          "Receiving Page Not Found Error when Playing Video in D2L"
+        ],
+        "headings_document": [
+          [
+            "h1",
+            "Receiving Page Not Found Error when Playing Video in D2L"
+          ],
+          [
+            "h2",
+            "Summary"
+          ],
+          [
+            "h2",
+            "Body"
+          ],
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h2",
+            "Details"
+          ],
+          [
+            "h2",
+            "Details"
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ]
+        ],
+        "meta": {
+          "article:section": null,
+          "article:published_time": null,
+          "article:modified_time": null,
+          "og:description": null,
+          "og:title": null,
+          "og:url": null,
+          "article:tag": []
+        },
+        "body": {
+          "selector": "#divBody minus its first child div.gutter-bottom ('Body' label)",
+          "matches": 1,
+          "dom_path": "html > body > form#printKBArticleForm > div#content > div.container-fluid.gutter-top > div#divBody",
+          "text_length_chars": 788,
+          "text_length_words": 132,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Issue/Question",
+            "Environment",
+            "Cause",
+            "Resolution"
+          ],
+          "heading_pattern": "Issue/Environment/Cause/Resolution",
+          "contains_staff_only_marker": false,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#divRelatedArticles",
+          "present": false,
+          "heading": null,
+          "article_link_count": 0,
+          "inside_body": false,
+          "dom_path": null
+        },
+        "article_id_from_page": "352",
+        "article_id_source": "#ArticleID",
+        "summary_text": "How to fix a link in D2L that is pointing to a previous course's materials",
+        "custom_attributes": {
+          "KCS Article Status": "Validated"
+        },
+        "details_fields": [
+          "Article ID:",
+          "Created",
+          "Modified",
+          "KCS Article Status"
+        ],
+        "article_id_matches_url": true
+      },
+      "server_rendered": true,
+      "body_text_identical_normal_vs_print": true,
+      "body_length_diff_chars": 0
+    },
+    {
+      "article_id": "430",
+      "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/430/Updating-Accounts-for-Wellness-Center-Access",
+      "phrase": "If you are not registered, please contact your advisor to get registered for classes",
+      "phrase_normalized": "If you are not registered, please contact your advisor to get registered for classes",
+      "errors": [],
+      "normal": {
+        "saved_path": "data/samples/html/430.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 40508,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Article - Updating Accounts for Welln...",
+        "h1": [
+          "Updating Accounts for Wellness Center Access"
+        ],
+        "headings_document": [
+          [
+            "h2",
+            "Updating..."
+          ],
+          [
+            "h1",
+            "Updating Accounts for Wellness Center Access"
+          ],
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h2",
+            "Deleting..."
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ]
+        ],
+        "meta": {
+          "article:section": "Accounts and User Access",
+          "article:published_time": "2018-08-03T13:47Z",
+          "article:modified_time": "2025-10-01T19:12Z",
+          "og:description": "Information on updating accounts in Fusion, Wellness Center access",
+          "og:title": "Updating Accounts for Wellness Center Access",
+          "og:url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/430/Updating-Accounts-for-Wellness-Center-Access",
+          "article:tag": []
+        },
+        "body": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divBody",
+          "matches": 1,
+          "dom_path": "html > body > form#aspnetForm > main > div#content > div#kbContent > div.row.gutter-top > div#divMainContent > div#ctl00_ctl00_cpContent_cpContent_divBody",
+          "text_length_chars": 943,
+          "text_length_words": 141,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Issue/Question",
+            "Environment",
+            "Cause",
+            "Resolution"
+          ],
+          "heading_pattern": "Issue/Environment/Cause/Resolution",
+          "contains_staff_only_marker": true,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divKB",
+          "present": false,
+          "heading": null,
+          "article_link_count": 0,
+          "inside_body": false,
+          "dom_path": null
+        },
+        "tags_visible": [],
+        "tags_selector": null,
+        "feedback_widget": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divFeedback2",
+          "present": true,
+          "inside_body": false
+        },
+        "article_id_from_page": "430",
+        "article_id_source": "meta og:url",
+        "article_id_matches_url": true
+      },
+      "print": {
+        "saved_path": "data/samples/html/430_print.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 8704,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Updating Accounts for Wellness Center Access",
+        "h1": [
+          "Updating Accounts for Wellness Center Access"
+        ],
+        "headings_document": [
+          [
+            "h1",
+            "Updating Accounts for Wellness Center Access"
+          ],
+          [
+            "h2",
+            "Summary"
+          ],
+          [
+            "h2",
+            "Body"
+          ],
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h2",
+            "Details"
+          ],
+          [
+            "h2",
+            "Details"
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ]
+        ],
+        "meta": {
+          "article:section": null,
+          "article:published_time": null,
+          "article:modified_time": null,
+          "og:description": null,
+          "og:title": null,
+          "og:url": null,
+          "article:tag": []
+        },
+        "body": {
+          "selector": "#divBody minus its first child div.gutter-bottom ('Body' label)",
+          "matches": 1,
+          "dom_path": "html > body > form#printKBArticleForm > div#content > div.container-fluid.gutter-top > div#divBody",
+          "text_length_chars": 943,
+          "text_length_words": 141,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Issue/Question",
+            "Environment",
+            "Cause",
+            "Resolution"
+          ],
+          "heading_pattern": "Issue/Environment/Cause/Resolution",
+          "contains_staff_only_marker": true,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#divRelatedArticles",
+          "present": false,
+          "heading": null,
+          "article_link_count": 0,
+          "inside_body": false,
+          "dom_path": null
+        },
+        "article_id_from_page": "430",
+        "article_id_source": "#ArticleID",
+        "summary_text": "Information on updating accounts in Fusion, Wellness Center access",
+        "custom_attributes": {
+          "KCS Article Status": "Validated"
+        },
+        "details_fields": [
+          "Article ID:",
+          "Created",
+          "Modified",
+          "KCS Article Status"
+        ],
+        "article_id_matches_url": true
+      },
+      "server_rendered": true,
+      "body_text_identical_normal_vs_print": true,
+      "body_length_diff_chars": 0
+    },
+    {
+      "article_id": "9079",
+      "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/9079/Password-Reset-USD-Account",
+      "phrase": "As you set your password each requirement you have met will change from red to green",
+      "phrase_normalized": "As you set your password each requirement you have met will change from red to green",
+      "errors": [],
+      "normal": {
+        "saved_path": "data/samples/html/9079.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 54263,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Article - Password Reset USD Account",
+        "h1": [
+          "Password Reset USD Account"
+        ],
+        "headings_document": [
+          [
+            "h2",
+            "Updating..."
+          ],
+          [
+            "h1",
+            "Password Reset USD Account"
+          ],
+          [
+            "h2",
+            "Question"
+          ],
+          [
+            "h2",
+            "Products or Services Involved"
+          ],
+          [
+            "h2",
+            "Instructions"
+          ],
+          [
+            "h3",
+            "Don't know your password"
+          ],
+          [
+            "h3",
+            ""
+          ],
+          [
+            "h3",
+            "Know your password"
+          ],
+          [
+            "h2",
+            "Need More Help?"
+          ],
+          [
+            "h2",
+            "ITS Staff Only"
+          ],
+          [
+            "h2",
+            "Related Articles (5)"
+          ],
+          [
+            "h3",
+            "Related Services / Offerings (2)"
+          ],
+          [
+            "h2",
+            "Deleting..."
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Question"
+          ],
+          [
+            "h2",
+            "Products or Services Involved"
+          ],
+          [
+            "h2",
+            "Instructions"
+          ],
+          [
+            "h3",
+            "Don't know your password"
+          ],
+          [
+            "h3",
+            ""
+          ],
+          [
+            "h3",
+            "Know your password"
+          ],
+          [
+            "h2",
+            "Need More Help?"
+          ],
+          [
+            "h2",
+            "ITS Staff Only"
+          ]
+        ],
+        "meta": {
+          "article:section": "Accounts and User Access",
+          "article:published_time": "2024-04-29T19:26Z",
+          "article:modified_time": "2026-08-22T14:30Z",
+          "og:description": "How do I reset my password Password Reset USD Account",
+          "og:title": "Password Reset USD Account",
+          "og:url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/9079/Password-Reset-USD-Account",
+          "article:tag": [
+            "password",
+            "Password-Reset",
+            "usd-password",
+            "usd-account"
+          ]
+        },
+        "body": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divBody",
+          "matches": 1,
+          "dom_path": "html > body > form#aspnetForm > main > div#content > div#kbContent > div.row.gutter-top > div#divMainContent > div#ctl00_ctl00_cpContent_cpContent_divBody",
+          "text_length_chars": 1774,
+          "text_length_words": 308,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Question",
+            "Products or Services Involved",
+            "Instructions",
+            "Need More Help?",
+            "ITS Staff Only"
+          ],
+          "heading_pattern": "other",
+          "contains_staff_only_marker": true,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divKB",
+          "present": true,
+          "heading": "Related Articles (5)",
+          "article_link_count": 5,
+          "inside_body": false,
+          "dom_path": "html > body > form#aspnetForm > main > div#content > div#kbContent > div.row.gutter-top > div.col-md-4 > div#ctl00_ctl00_cpContent_cpContent_divKB"
+        },
+        "tags_visible": [
+          "password",
+          "Password-Reset",
+          "usd-password",
+          "usd-account"
+        ],
+        "tags_selector": "#ctl00_ctl00_cpContent_cpContent_divTags",
+        "feedback_widget": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divFeedback2",
+          "present": true,
+          "inside_body": false
+        },
+        "article_id_from_page": "9079",
+        "article_id_source": "meta og:url",
+        "article_id_matches_url": true
+      },
+      "print": {
+        "saved_path": "data/samples/html/9079_print.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 17185,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Password Reset USD Account",
+        "h1": [
+          "Password Reset USD Account"
+        ],
+        "headings_document": [
+          [
+            "h1",
+            "Password Reset USD Account"
+          ],
+          [
+            "h2",
+            "Summary"
+          ],
+          [
+            "h2",
+            "Body"
+          ],
+          [
+            "h2",
+            "Question"
+          ],
+          [
+            "h2",
+            "Products or Services Involved"
+          ],
+          [
+            "h2",
+            "Instructions"
+          ],
+          [
+            "h3",
+            "Don't know your password"
+          ],
+          [
+            "h3",
+            ""
+          ],
+          [
+            "h3",
+            "Know your password"
+          ],
+          [
+            "h2",
+            "Need More Help?"
+          ],
+          [
+            "h2",
+            "ITS Staff Only"
+          ],
+          [
+            "h2",
+            "Details"
+          ],
+          [
+            "h2",
+            "Details"
+          ],
+          [
+            "h2",
+            "Related Articles"
+          ],
+          [
+            "h2",
+            "Related Articles (5)"
+          ],
+          [
+            "h2",
+            "Related Services / Offerings"
+          ],
+          [
+            "h3",
+            "Related Services / Offerings (2)"
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Question"
+          ],
+          [
+            "h2",
+            "Products or Services Involved"
+          ],
+          [
+            "h2",
+            "Instructions"
+          ],
+          [
+            "h3",
+            "Don't know your password"
+          ],
+          [
+            "h3",
+            ""
+          ],
+          [
+            "h3",
+            "Know your password"
+          ],
+          [
+            "h2",
+            "Need More Help?"
+          ],
+          [
+            "h2",
+            "ITS Staff Only"
+          ]
+        ],
+        "meta": {
+          "article:section": null,
+          "article:published_time": null,
+          "article:modified_time": null,
+          "og:description": null,
+          "og:title": null,
+          "og:url": null,
+          "article:tag": []
+        },
+        "body": {
+          "selector": "#divBody minus its first child div.gutter-bottom ('Body' label)",
+          "matches": 1,
+          "dom_path": "html > body > form#printKBArticleForm > div#content > div.container-fluid.gutter-top > div#divBody",
+          "text_length_chars": 1774,
+          "text_length_words": 308,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Question",
+            "Products or Services Involved",
+            "Instructions",
+            "Need More Help?",
+            "ITS Staff Only"
+          ],
+          "heading_pattern": "other",
+          "contains_staff_only_marker": true,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#divRelatedArticles",
+          "present": true,
+          "heading": "Related Articles (5)",
+          "article_link_count": 5,
+          "inside_body": false,
+          "dom_path": "html > body > form#printKBArticleForm > div#content > div.container-fluid.gutter-top > div#divRelatedArticles"
+        },
+        "article_id_from_page": "9079",
+        "article_id_source": "#ArticleID",
+        "summary_text": "How do I reset my password Password Reset USD Account",
+        "custom_attributes": {
+          "KCS Article Status": "Validated"
+        },
+        "details_fields": [
+          "Article ID:",
+          "Created",
+          "Modified",
+          "KCS Article Status"
+        ],
+        "article_id_matches_url": true
+      },
+      "server_rendered": true,
+      "body_text_identical_normal_vs_print": true,
+      "body_length_diff_chars": 0
+    },
+    {
+      "article_id": "4613",
+      "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/4613/Locked-Out-of-Duo",
+      "phrase": "Your account will automatically unlock after 30 minutes from last activity",
+      "phrase_normalized": "Your account will automatically unlock after 30 minutes from last activity",
+      "errors": [],
+      "normal": {
+        "saved_path": "data/samples/html/4613.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 37797,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Article - Locked Out of Duo",
+        "h1": [
+          "Locked Out of Duo"
+        ],
+        "headings_document": [
+          [
+            "h2",
+            "Updating..."
+          ],
+          [
+            "h1",
+            "Locked Out of Duo"
+          ],
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h2",
+            "Deleting..."
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ]
+        ],
+        "meta": {
+          "article:section": "Duo",
+          "article:published_time": "2020-02-05T22:00Z",
+          "article:modified_time": "2026-04-22T15:48Z",
+          "og:description": "Resolving being locked out of Duo",
+          "og:title": "Locked Out of Duo",
+          "og:url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/4613/Locked-Out-of-Duo",
+          "article:tag": [
+            "Duo",
+            "locked-out"
+          ]
+        },
+        "body": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divBody",
+          "matches": 1,
+          "dom_path": "html > body > form#aspnetForm > main > div#content > div#kbContent > div.row.gutter-top > div#divMainContent > div#ctl00_ctl00_cpContent_cpContent_divBody",
+          "text_length_chars": 278,
+          "text_length_words": 44,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Issue/Question",
+            "Environment",
+            "Cause",
+            "Resolution"
+          ],
+          "heading_pattern": "Issue/Environment/Cause/Resolution",
+          "contains_staff_only_marker": false,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divKB",
+          "present": false,
+          "heading": null,
+          "article_link_count": 0,
+          "inside_body": false,
+          "dom_path": null
+        },
+        "tags_visible": [
+          "Duo",
+          "locked-out"
+        ],
+        "tags_selector": "#ctl00_ctl00_cpContent_cpContent_divTags",
+        "feedback_widget": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divFeedback2",
+          "present": true,
+          "inside_body": false
+        },
+        "article_id_from_page": "4613",
+        "article_id_source": "meta og:url",
+        "article_id_matches_url": true
+      },
+      "print": {
+        "saved_path": "data/samples/html/4613_print.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 7200,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Locked Out of Duo",
+        "h1": [
+          "Locked Out of Duo"
+        ],
+        "headings_document": [
+          [
+            "h1",
+            "Locked Out of Duo"
+          ],
+          [
+            "h2",
+            "Summary"
+          ],
+          [
+            "h2",
+            "Body"
+          ],
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h2",
+            "Details"
+          ],
+          [
+            "h2",
+            "Details"
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ]
+        ],
+        "meta": {
+          "article:section": null,
+          "article:published_time": null,
+          "article:modified_time": null,
+          "og:description": null,
+          "og:title": null,
+          "og:url": null,
+          "article:tag": []
+        },
+        "body": {
+          "selector": "#divBody minus its first child div.gutter-bottom ('Body' label)",
+          "matches": 1,
+          "dom_path": "html > body > form#printKBArticleForm > div#content > div.container-fluid.gutter-top > div#divBody",
+          "text_length_chars": 278,
+          "text_length_words": 44,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Issue/Question",
+            "Environment",
+            "Cause",
+            "Resolution"
+          ],
+          "heading_pattern": "Issue/Environment/Cause/Resolution",
+          "contains_staff_only_marker": false,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#divRelatedArticles",
+          "present": false,
+          "heading": null,
+          "article_link_count": 0,
+          "inside_body": false,
+          "dom_path": null
+        },
+        "article_id_from_page": "4613",
+        "article_id_source": "#ArticleID",
+        "summary_text": "Resolving being locked out of Duo",
+        "custom_attributes": {
+          "KCS Article Status": "Validated"
+        },
+        "details_fields": [
+          "Article ID:",
+          "Created",
+          "Modified",
+          "KCS Article Status"
+        ],
+        "article_id_matches_url": true
+      },
+      "server_rendered": true,
+      "body_text_identical_normal_vs_print": true,
+      "body_length_diff_chars": 0
+    },
+    {
+      "article_id": "8318",
+      "url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/8318/Duo-Not-Allowing-Me-To-Select-My-Authentication-Method",
+      "phrase": "Duo Universal Prompt chooses your login option automatically, selecting your most secure method",
+      "phrase_normalized": "Duo Universal Prompt chooses your login option automatically, selecting your most secure method",
+      "errors": [],
+      "normal": {
+        "saved_path": "data/samples/html/8318.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 38535,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Article - Duo Not Allowing Me To Sele...",
+        "h1": [
+          "Duo Not Allowing Me To Select My Authentication Method"
+        ],
+        "headings_document": [
+          [
+            "h2",
+            "Updating..."
+          ],
+          [
+            "h1",
+            "Duo Not Allowing Me To Select My Authentication Method"
+          ],
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h2",
+            "Deleting..."
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ]
+        ],
+        "meta": {
+          "article:section": "Duo",
+          "article:published_time": "2023-04-05T13:45Z",
+          "article:modified_time": "2026-04-16T19:41Z",
+          "og:description": "Duo Universal Prompt chooses your login option automatically, selecting your most secure method",
+          "og:title": "Duo Not Allowing Me To Select My Authentication Method",
+          "og:url": "https://td.usd.edu/TDClient/33/Portal/KB/Article/8318/Duo-Not-Allowing-Me-To-Select-My-Authentication-Method",
+          "article:tag": []
+        },
+        "body": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divBody",
+          "matches": 1,
+          "dom_path": "html > body > form#aspnetForm > main > div#content > div#kbContent > div.row.gutter-top > div#divMainContent > div#ctl00_ctl00_cpContent_cpContent_divBody",
+          "text_length_chars": 534,
+          "text_length_words": 85,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Issue/Question",
+            "Environment",
+            "Cause",
+            "Resolution"
+          ],
+          "heading_pattern": "Issue/Environment/Cause/Resolution",
+          "contains_staff_only_marker": false,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divKB",
+          "present": false,
+          "heading": null,
+          "article_link_count": 0,
+          "inside_body": false,
+          "dom_path": null
+        },
+        "tags_visible": [],
+        "tags_selector": null,
+        "feedback_widget": {
+          "selector": "#ctl00_ctl00_cpContent_cpContent_divFeedback2",
+          "present": true,
+          "inside_body": false
+        },
+        "article_id_from_page": "8318",
+        "article_id_source": "meta og:url",
+        "article_id_matches_url": true
+      },
+      "print": {
+        "saved_path": "data/samples/html/8318_print.html",
+        "http_status": 200,
+        "fetch_error": null,
+        "available": true,
+        "bytes": 7810,
+        "decode_error": null,
+        "server_rendered": true,
+        "phrase_only_in_script": false,
+        "title_tag": "Duo Not Allowing Me To Select My Authentication Method",
+        "h1": [
+          "Duo Not Allowing Me To Select My Authentication Method"
+        ],
+        "headings_document": [
+          [
+            "h1",
+            "Duo Not Allowing Me To Select My Authentication Method"
+          ],
+          [
+            "h2",
+            "Summary"
+          ],
+          [
+            "h2",
+            "Body"
+          ],
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ],
+          [
+            "h2",
+            "Details"
+          ],
+          [
+            "h2",
+            "Details"
+          ]
+        ],
+        "headings_in_body": [
+          [
+            "h2",
+            "Issue/Question"
+          ],
+          [
+            "h2",
+            "Environment"
+          ],
+          [
+            "h2",
+            "Cause"
+          ],
+          [
+            "h2",
+            "Resolution"
+          ]
+        ],
+        "meta": {
+          "article:section": null,
+          "article:published_time": null,
+          "article:modified_time": null,
+          "og:description": null,
+          "og:title": null,
+          "og:url": null,
+          "article:tag": []
+        },
+        "body": {
+          "selector": "#divBody minus its first child div.gutter-bottom ('Body' label)",
+          "matches": 1,
+          "dom_path": "html > body > form#printKBArticleForm > div#content > div.container-fluid.gutter-top > div#divBody",
+          "text_length_chars": 534,
+          "text_length_words": 85,
+          "phrase_in_body": true,
+          "script_tags_in_body": 0,
+          "section_headings": [
+            "Issue/Question",
+            "Environment",
+            "Cause",
+            "Resolution"
+          ],
+          "heading_pattern": "Issue/Environment/Cause/Resolution",
+          "contains_staff_only_marker": false,
+          "contains_related_articles_text": false
+        },
+        "related_articles": {
+          "selector": "#divRelatedArticles",
+          "present": false,
+          "heading": null,
+          "article_link_count": 0,
+          "inside_body": false,
+          "dom_path": null
+        },
+        "article_id_from_page": "8318",
+        "article_id_source": "#ArticleID",
+        "summary_text": "Duo Universal Prompt chooses your login option automatically, selecting your most secure method",
+        "custom_attributes": {
+          "KCS Article Status": "Validated"
+        },
+        "details_fields": [
+          "Article ID:",
+          "Created",
+          "Modified",
+          "KCS Article Status"
+        ],
+        "article_id_matches_url": true
+      },
+      "server_rendered": true,
+      "body_text_identical_normal_vs_print": true,
+      "body_length_diff_chars": 0
+    }
+  ],
+  "categories": [
+    {
+      "category_id": "12",
+      "url": "https://td.usd.edu/TDClient/33/Portal/KB/Category/12/Software-and-Applications",
+      "saved_path": "data/samples/category_html/12.html",
+      "http_status": 200,
+      "fetch_error": null,
+      "available": true,
+      "bytes": 281146,
+      "decode_error": null,
+      "title_tag": "Knowledge Base - Software and Applications",
+      "h1": [
+        " Software and Applications"
+      ],
+      "article_links_in_raw_html": true,
+      "unique_article_ids_anywhere": 610,
+      "listing_selector": "#divCats h3.gutter-bottom-xs > a[href*='/KB/Article/']",
+      "listing_count": 603,
+      "listing_unique_ids": 603,
+      "listing_duplicate_ids": [],
+      "articles_header_count": 603,
+      "listing_matches_header_count": true,
+      "titles_accompany_urls": true,
+      "summaries_accompany_urls": 566,
+      "href_style": [
+        "relative"
+      ],
+      "example_articles": [
+        {
+          "id": "1813",
+          "title": "Access to ACEware",
+          "href": "/TDClient/33/Portal/KB/Article/1813/Access-to-ACEware",
+          "summary": "Requesting permission to Aceware"
+        },
+        {
+          "id": "1152",
+          "title": "Access to Customer Relationship Management System (CRM) for Nursing",
+          "href": "/TDClient/33/Portal/KB/Article/1152/Access-to-Customer-Relationship-Management-System-CRM-for-Nursing",
+          "summary": "Steps to setup a new Nursing CRM user."
+        },
+        {
+          "id": "2064",
+          "title": "Access to Deleted OneDrive Account",
+          "href": "/TDClient/33/Portal/KB/Article/2064/Access-to-Deleted-OneDrive-Account",
+          "summary": "Access to former employee's OneDrive account"
+        },
+        {
+          "id": "367",
+          "title": "Access to PhotoShop",
+          "href": "/TDClient/33/Portal/KB/Article/367/Access-to-PhotoShop",
+          "summary": null
+        },
+        {
+          "id": "9412",
+          "title": "Accessing a B-School Azure Labs Virtual Machine (VM)",
+          "href": "/TDClient/33/Portal/KB/Article/9412/Accessing-a-B-School-Azure-Labs-Virtual-Machine-VM",
+          "summary": "Accessing or connecting to a virtual machine assigned to you in Azure Labs (this service is used for b-school courses.only)"
+        }
+      ],
+      "sidebar_only_article_ids": [
+        "5519",
+        "6897",
+        "7829",
+        "7834",
+        "7872",
+        "8426",
+        "9794"
+      ],
+      "ids_outside_listing_and_sidebar": [],
+      "subcategories_header_count": 18,
+      "subcategories": [
+        {
+          "id": "88",
+          "name": "25Live",
+          "href": "/TDClient/33/Portal/KB/Category/88/25Live"
+        },
+        {
+          "id": "216",
+          "name": "Artificial Intelligence (AI)",
+          "href": "/TDClient/33/Portal/KB/Category/216/Artificial-Intelligence-AI"
+        },
+        {
+          "id": "89",
+          "name": "Adobe",
+          "href": "/TDClient/33/Portal/KB/Category/89/Adobe"
+        },
+        {
+          "id": "37",
+          "name": "Banner / Self Service Banner",
+          "href": "/TDClient/33/Portal/KB/Category/37/Banner-Self-Service-Banner"
+        },
+        {
+          "id": "38",
+          "name": "Cognos",
+          "href": "/TDClient/33/Portal/KB/Category/38/Cognos"
+        },
+        {
+          "id": "106",
+          "name": "Coyote Card",
+          "href": "/TDClient/33/Portal/KB/Category/106/Coyote-Card"
+        },
+        {
+          "id": "39",
+          "name": "DocuSign",
+          "href": "/TDClient/33/Portal/KB/Category/39/DocuSign"
+        },
+        {
+          "id": "45",
+          "name": "Experience portal (Formerly SNAP)",
+          "href": "/TDClient/33/Portal/KB/Category/45/Experience-portal-Formerly-SNAP"
+        },
+        {
+          "id": "41",
+          "name": "Google Apps",
+          "href": "/TDClient/33/Portal/KB/Category/41/Google-Apps"
+        },
+        {
+          "id": "40",
+          "name": "ImageNow / Perceptive Content",
+          "href": "/TDClient/33/Portal/KB/Category/40/ImageNow-Perceptive-Content"
+        },
+        {
+          "id": "42",
+          "name": "Microsoft Office",
+          "href": "/TDClient/33/Portal/KB/Category/42/Microsoft-Office"
+        },
+        {
+          "id": "139",
+          "name": "Qualtrics",
+          "href": "/TDClient/33/Portal/KB/Category/139/Qualtrics"
+        },
+        {
+          "id": "90",
+          "name": "Remote Access",
+          "href": "/TDClient/33/Portal/KB/Category/90/Remote-Access"
+        },
+        {
+          "id": "43",
+          "name": "Salesforce",
+          "href": "/TDClient/33/Portal/KB/Category/43/Salesforce"
+        },
+        {
+          "id": "162",
+          "name": "Slate",
+          "href": "/TDClient/33/Portal/KB/Category/162/Slate"
+        },
+        {
+          "id": "46",
+          "name": "TMA",
+          "href": "/TDClient/33/Portal/KB/Category/46/TMA"
+        },
+        {
+          "id": "104",
+          "name": "TeamDynamix",
+          "href": "/TDClient/33/Portal/KB/Category/104/TeamDynamix"
+        },
+        {
+          "id": "91",
+          "name": "Windows",
+          "href": "/TDClient/33/Portal/KB/Category/91/Windows"
+        }
+      ],
+      "other_category_links": [
+        "/TDClient/33/Portal/KB/Category/61/Technology"
+      ],
+      "pagination": {
+        "pager_elements": [],
+        "page_query_links": [],
+        "postback_targets": [
+          "ctl00$ctl00$cpContent$cpContent$btnCategorySearch",
+          "ctl00$ctl00$cpContent$cpContent$btnToggleSubscribe"
+        ],
+        "javascript_links": [
+          "All",
+          "Blank",
+          "Expand",
+          "Knowledge Base",
+          "More Applications",
+          "Service Catalog"
+        ]
+      }
+    },
+    {
+      "category_id": "23",
+      "url": "https://td.usd.edu/TDClient/33/Portal/KB/Category/23/Classroom-and-Computer-Lab-Support",
+      "saved_path": "data/samples/category_html/23.html",
+      "http_status": 200,
+      "fetch_error": null,
+      "available": true,
+      "bytes": 78350,
+      "decode_error": null,
+      "title_tag": "Knowledge Base - Classroom and Computer Lab Support",
+      "h1": [
+        " Classroom and Computer Lab Support"
+      ],
+      "article_links_in_raw_html": true,
+      "unique_article_ids_anywhere": 119,
+      "listing_selector": "#divCats h3.gutter-bottom-xs > a[href*='/KB/Article/']",
+      "listing_count": 109,
+      "listing_unique_ids": 109,
+      "listing_duplicate_ids": [],
+      "articles_header_count": 109,
+      "listing_matches_header_count": true,
+      "titles_accompany_urls": true,
+      "summaries_accompany_urls": 108,
+      "href_style": [
+        "relative"
+      ],
+      "example_articles": [
+        {
+          "id": "3343",
+          "title": "Arena Concourse TVs Displaying Color Bars, Not Displaying New Reach Content or Not Displaying Content from Show Control Computer",
+          "href": "/TDClient/33/Portal/KB/Article/3343/Arena-Concourse-TVs-Displaying-Color-Bars-Not-Displaying-New-Reach-Content-or-Not-Displaying-Content",
+          "summary": "Verify that signal is being output to the HDMI and HD-SDI inputs on the Blonder Tongue units."
+        },
+        {
+          "id": "4543",
+          "title": "Available Equipment or Software in a Specific Classroom",
+          "href": "/TDClient/33/Portal/KB/Article/4543/Available-Equipment-or-Software-in-a-Specific-Classroom",
+          "summary": "Smart classrooms provide audio and video technology to aid in delivering information for classes and meetings"
+        },
+        {
+          "id": "3114",
+          "title": "B-Line Software is Not Displaying Patient Monitor Correctly",
+          "href": "/TDClient/33/Portal/KB/Article/3114/B-Line-Software-is-Not-Displaying-Patient-Monitor-Correctly",
+          "summary": "The B-Line Medical software in the Nursing Simulation Center is not displaying the camera from one of the exam rooms, or is displaying a distorted image"
+        },
+        {
+          "id": "6991",
+          "title": "Cable TV Showing This Channel is Not Available",
+          "href": "/TDClient/33/Portal/KB/Article/6991/Cable-TV-Showing-This-Channel-is-Not-Available",
+          "summary": "Contact the Service Desk with the location of the cable box and when the issue first occurred."
+        },
+        {
+          "id": "1474",
+          "title": "Camera Controls Moving the Wrong Camera",
+          "href": "/TDClient/33/Portal/KB/Article/1474/Camera-Controls-Moving-the-Wrong-Camera",
+          "summary": "The camera controls for the Main and Aux Camera have switched"
+        }
+      ],
+      "sidebar_only_article_ids": [
+        "5519",
+        "6897",
+        "7829",
+        "7834",
+        "7872",
+        "8426",
+        "9016",
+        "9431",
+        "9432",
+        "9794"
+      ],
+      "ids_outside_listing_and_sidebar": [],
+      "subcategories_header_count": null,
+      "subcategories": [],
+      "other_category_links": [
+        "/TDClient/33/Portal/KB/Category/61/Technology"
+      ],
+      "pagination": {
+        "pager_elements": [],
+        "page_query_links": [],
+        "postback_targets": [
+          "ctl00$ctl00$cpContent$cpContent$btnCategorySearch",
+          "ctl00$ctl00$cpContent$cpContent$btnToggleSubscribe"
+        ],
+        "javascript_links": [
+          "All",
+          "Blank",
+          "Knowledge Base",
+          "More Applications",
+          "Service Catalog"
+        ]
+      }
+    }
+  ]
+}

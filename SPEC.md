@@ -11,7 +11,7 @@ Personal project. Not an official university tool.
 - Source: the public Coyote OneStop Knowledge Base, Technology
   categories only (about 1,200 articles).
 - Collection: plain HTTP, robots.txt respected, descriptive
-  User-Agent, 2-second delay between requests.
+  User-Agent, 6-second delay between requests.
 - Print route (known): /TDClient/33/Portal/KB/PrintArticle?ID=<id>
 - Body selector and discovery method: to be set from the Phase 1
   inspection report, not assumed.
