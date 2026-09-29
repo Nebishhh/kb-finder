@@ -148,6 +148,43 @@ class FixtureTests(unittest.TestCase):
         self.assertIsNone(parsed("430")["footer"])
         self.assertNotIn("staff only", parsed("508")["footer"].lower())
 
+    def test_standard_footer_only_adds_nothing(self):
+        a = parsed("233")  # footer is only the standard line
+        self.assertEqual(a["warnings"], [])
+        self.assertTrue(a["fullText"].endswith(a["resolution"].splitlines()[-1]))
+        self.assertNotIn("further assistance", a["fullText"])
+
+    def test_8721_footer_content_in_fulltext(self):
+        a = parsed("8721")
+        self.assertIn("eAccounts, students, faculty", a["fullText"])
+        self.assertIn("Add Coyote Cash or Add-on Flex", a["fullText"])
+        self.assertIn("eAccounts, students", a["footer"])  # original preserved
+        self.assertTrue(a["fullText"].endswith(a["footer"].splitlines()[-1]))  # document order: last
+        self.assertNotIn("eAccounts ,", a["fullText"])
+        self.assertEqual(a["warnings"], ["footer_nonstandard"])
+        self.assertNotIn("Add Coyote Cash or Add-on Flex", a["resolution"])  # footer not in fields
+
+    def test_no_fulltext_contains_standard_line(self):
+        for i in IDS:
+            for line in parsed(i)["fullText"].splitlines():
+                self.assertIsNone(parse_kb.STANDARD_FOOTER_RE.match(parse_kb.norm_key(line)), (i, line))
+            self.assertNotIn("if you need further assistance", parsed(i)["fullText"].lower().replace(
+                "if you need further assistance, please", ""), i)
+
+    def test_508_footer_kept_and_flagged_staff_out(self):
+        a = parsed("508")
+        self.assertIn("Please contact the Service Desk with the following information:", a["fullText"])
+        self.assertIn("email address you are trying to access", a["fullText"])
+        self.assertIn("footer_nonstandard", a["warnings"])
+        self.assertIn("footer_unclassified", a["warnings"])
+        self.assertNotIn("Shared Account Prompting", a["fullText"])  # staff block inside footer
+        self.assertIn("Shared Account Prompting", a["staffOnly"]["text"])
+
+    def test_only_expected_warnings_on_fixtures(self):
+        got = {i: parsed(i)["warnings"] for i in IDS if parsed(i)["warnings"]}
+        self.assertEqual(got, {"508": ["footer_nonstandard", "footer_unclassified"],
+                               "8721": ["footer_nonstandard"]})
+
     def test_deterministic(self):
         for i in IDS:
             raw = (FIX / f"{i}.html").read_bytes()
@@ -211,6 +248,53 @@ class SyntheticTests(unittest.TestCase):
         self.assertEqual(a["staffOnly"],
                          {"text": "Tech doc", "links": [{"text": "Tech doc", "href": "/k"}]})
         self.assertEqual(a["fullText"], "Resolution\nDo it.\nafter")
+
+    STD = "<p>Please contact the Service Desk if you need further assistance</p>"
+
+    def test_footer_only_standard_line(self):
+        a = parse_kb.parse_article(wrap("<h2>Resolution</h2><p>Do it.</p><footer>" + self.STD + "</footer>"))
+        self.assertEqual(a["fullText"], "Resolution\nDo it.")
+        self.assertEqual(a["footer"], "Please contact the Service Desk if you need further assistance")
+        self.assertEqual(a["warnings"], [])
+
+    def test_footer_standard_line_removed_anywhere_and_rest_kept_in_order(self):
+        a = parse_kb.parse_article(wrap(
+            "<h2>Resolution</h2><p>Do it.</p><footer><p>Extra tip.</p>" + self.STD +
+            "<p>Another tip.</p></footer>"))
+        self.assertEqual(a["fullText"], "Resolution\nDo it.\nExtra tip.\nAnother tip.")
+        self.assertEqual(a["resolution"], "Do it.")
+        self.assertEqual(a["footer"].splitlines()[1],
+                         "Please contact the Service Desk if you need further assistance")
+        self.assertEqual(a["warnings"], ["footer_nonstandard"])
+
+    def test_footer_staff_only_stays_in_staff_only(self):
+        a = parse_kb.parse_article(wrap(
+            "<h2>Resolution</h2><p>Do it.</p><footer>" + self.STD +
+            '<div style="x"><p>ITS STAFF ONLY</p><ol><li><a href="/k">Doc</a></li></ol></div></footer>'))
+        self.assertEqual(a["fullText"], "Resolution\nDo it.")
+        self.assertEqual(a["staffOnly"]["text"], "Doc")
+        self.assertNotIn("Doc", a["footer"])
+        self.assertEqual(a["warnings"], [])
+
+    def test_footer_unclassifiable_kept_and_warned(self):
+        a = parse_kb.parse_article(wrap(
+            "<h2>Resolution</h2><p>Do it.</p><footer><p>Call the help desk at extension 5</p></footer>"))
+        self.assertIn("Call the help desk at extension 5", a["fullText"])
+        self.assertEqual(a["warnings"], ["footer_nonstandard", "footer_unclassified"])
+
+    def test_nested_footer_kept_in_place_and_warned(self):
+        a = parse_kb.parse_article(wrap(
+            "<h2>Resolution</h2><div><p>Do it.</p><footer><p>Nested note.</p></footer></div>"))
+        self.assertIn("Nested note.", a["fullText"])
+        self.assertIn("footer_unclassified", a["warnings"])
+
+    def test_zero_width_characters_removed(self):
+        zw = "".join(map(chr, (0x200B, 0x200C, 0x200D, 0x2060, 0xFEFF)))
+        a = parse_kb.parse_article(wrap("<p>ab" + zw + "cd</p><p>" + zw + "</p><p>e" + zw + " f</p>"))
+        self.assertEqual(a["fullText"], "abcd\ne f")
+        for i in IDS:
+            for ch in zw:
+                self.assertNotIn(ch, parsed(i)["fullText"])
 
     def test_missing_body_raises(self):
         with self.assertRaises(parse_kb.ParseError):

@@ -44,12 +44,25 @@ ITS STAFF ONLY
              container, or "staff only" text left in the body, leaves the body
              untouched and adds a warning (staff_only_unbounded / staff_only_unmatched).
 
-Footer       Every <footer> in the body (after staff removal) is removed from
-             fullText and the sections and preserved in `footer`. If its text is not
-             exactly the standard service-desk line, warning footer_nonstandard.
+Footer       1. After the staff-only block is removed, the full text of every
+                outermost <footer> is preserved in `footer` (never discarded).
+             2. From each footer, only lines that are exactly the standard line
+                ("Please contact the Service Desk [if you need further
+                assistance]", casefold, whitespace/trailing ":?" normalized) are
+                removed, wherever they appear in the footer.
+             3. Whatever footer lines remain are appended to fullText in document
+                order (at the footer's position) and are NOT part of `sections` or
+                the issue/resolution/... fields.
+             4. Warnings: footer_nonstandard (informational: the footer was not
+                only the standard line); footer_unclassified (needs review; the
+                content is still kept in fullText): a remaining line mentions
+                "service desk"/"help desk" but is not the standard line, a
+                remaining line mentions "staff only", or the footer is not a direct
+                child of the body (nested footers stay in place in their section).
 
-fullText     Body text: preamble + each heading line + its content, without the
-             staff-only block and without footers.
+fullText     Body text: preamble + each heading line + its content, in document
+             order, with leftover footer lines, without the staff-only block and
+             without the standard service-desk line.
 """
 from __future__ import annotations
 
@@ -68,7 +81,8 @@ BODY_SELECTOR = "#ctl00_ctl00_cpContent_cpContent_divBody"
 
 WS_RE = re.compile(r"[ \t\r\n\f\v ]+")
 INVISIBLE_RE = re.compile("[" + "".join(map(chr, (0x200B, 0x200C, 0x200D, 0x2060, 0xFEFF))) + "]")  # zero-width
-ARTICLE_ID_RE =re.compile(r"/KB/Article(?:Det)?/(\d+)(?:/|$)|[?&]ID=(\d+)")
+DESK_RE = re.compile(r"\b(?:service|help) desk\b", re.I)
+ARTICLE_ID_RE = re.compile(r"/KB/Article(?:Det)?/(\d+)(?:/|$)|[?&]ID=(\d+)")
 SKIP_TAGS = {"script", "style", "noscript", "template", "head", "img", "svg"}
 BLOCK_TAGS = {
     "p", "div", "h1", "h2", "h3", "h4", "h5", "h6", "li", "ul", "ol", "dl", "dt", "dd",
@@ -228,20 +242,37 @@ def extract_staff_only(body: Tag, warnings: list[str]) -> dict | None:
     return {"text": "\n".join(texts), "links": links}
 
 
-def extract_footer(body: Tag, warnings: list[str]) -> str | None:
-    texts = []
+def process_footers(body: Tag, warnings: list[str]) -> str | None:
+    """Return the full footer text (staff block already removed). Each outermost
+    footer is rewritten in place to hold only its non-boilerplate lines, so they
+    stay in document order. See the Footer rule in the module docstring."""
+    originals: list[str] = []
+    unclassified = False
     for f in body.find_all("footer"):
-        if f.parent is None:
-            continue  # nested inside an already-removed footer
-        t = text_of(f)
-        if t:
-            texts.append(t)
-        f.decompose()
-    if not texts:
+        if f.find_parent("footer") is not None:
+            continue  # nested in an outer footer: handled as part of it
+        lines = lines_of(f)
+        if not lines:
+            continue
+        originals.append("\n".join(lines))
+        keep = [ln for ln in lines if not STANDARD_FOOTER_RE.match(norm_key(ln))]
+        if f.parent is not body:
+            unclassified = True  # position in the article is ambiguous
+        if any(DESK_RE.search(ln) for ln in keep) or any("staff only" in ln.casefold() for ln in keep):
+            unclassified = True  # contact-like or staff-like text that is not the standard line
+        new = Tag(name="footer")
+        for ln in keep:
+            p = Tag(name="p")
+            p.append(NavigableString(ln))
+            new.append(p)
+        f.replace_with(new)
+    if not originals:
         return None
-    joined = "\n".join(texts)
-    if not STANDARD_FOOTER_RE.match(norm_key(joined).replace("\n", " ")):
+    joined = "\n".join(originals)
+    if not all(STANDARD_FOOTER_RE.match(norm_key(o)) for o in originals):
         warnings.append("footer_nonstandard")
+    if unclassified:
+        warnings.append("footer_unclassified")
     return joined
 
 
@@ -256,6 +287,10 @@ def split_sections(body: Tag) -> list[dict]:
             if type(child) is NavigableString and child.strip():
                 units[-1]["lines"].extend(lines_of(child))
             continue
+        if child.name == "footer":
+            units.append({"heading": None, "footer": True, "lines": lines_of(child)})
+            units.append({"heading": None, "lines": []})  # anything after the footer
+            continue
         if child.name == "h2":
             units.append({"heading": _collapse(child.get_text()), "lines": []})
             continue
@@ -269,9 +304,7 @@ def split_sections(body: Tag) -> list[dict]:
                     units[-1]["lines"].extend(lines_of(part))
                 continue
         units[-1]["lines"].extend(lines_of(child))
-    if not units[0]["lines"]:
-        units.pop(0)
-    return units
+    return [u for u in units if u["lines"] or u["heading"]]
 
 
 # ------------------------------------------------------------------ main entry
@@ -308,13 +341,16 @@ def parse_article(raw: bytes, url: str | None = None) -> dict:
             tags.append(t)
 
     staff_only = extract_staff_only(body, warnings)
-    footer = extract_footer(body, warnings)
+    footer = process_footers(body, warnings)
     units = split_sections(body)
 
     full_lines: list[str] = []
     sections: list[dict] = []
     fields: dict[str, str] = {}
     for u in units:
+        if u.get("footer"):  # leftover footer content: fullText only, in document order
+            full_lines.extend(u["lines"])
+            continue
         text = "\n".join(u["lines"])
         if u["heading"]:
             full_lines.append(u["heading"])
