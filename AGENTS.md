@@ -15,6 +15,9 @@ Python for offline ingestion and evaluation orchestration.
 - py -3.12 -m venv .venv
 - .venv/Scripts/python -m pip install -r requirements.txt
 - .venv/Scripts/python scripts/inspect_kb.py
+- .venv/Scripts/python scripts/collect_kb.py [--limit N] [--refresh-categories]
+- .venv/Scripts/python scripts/parse_kb.py
+- .venv/Scripts/python -m unittest discover -s tests
 
 Always run Python through .venv/Scripts/python. Never use bare
 python or python3 (python3 on this machine is 3.9).

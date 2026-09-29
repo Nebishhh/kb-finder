@@ -7,3 +7,5 @@ node_modules/
 dist/
 .DS_Store
 Thumbs.db
+data/raw/articles/
+data/raw/categories/

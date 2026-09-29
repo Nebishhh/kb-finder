@@ -3,70 +3,52 @@
 Disposable. Rewritten by the agent at the end of every session.
 Anything that must survive across sessions goes in NOTES.md.
 
-## What was built (Phase 1: KB inspection)
-- scripts/inspect_kb.py: fetches robots.txt once, then the 13 sample
-  articles, their PrintArticle pages, and the 2 category pages (2s
-  delay, no retries, redirects not followed). Saves raw bytes and writes
-  data/samples/inspection_report.md/.json. `--offline` re-analyzes
-  saved HTML with sockets blocked (zero network requests).
-- requirements.txt: requests, beautifulsoup4 (pinned).
-- Fixtures: data/samples/html/ (26 files), data/samples/category_html/
-  (12.html, 23.html). All 28 requests returned 200; robots.txt allows
-  /TDClient/.
-- The network fetch ran exactly once (2026-09-29T02:22Z UTC). All later
-  analysis runs were --offline.
+## What was built (Phase 2: collect and parse)
+- scripts/collect_kb.py: robots-respecting plain-HTTP collector. Pre-order DFS
+  from Category/61 (Technology), dedupe by article ID, delay = max(6s, robots
+  Crawl-delay), no cookies/redirects/retries, incremental JSONL manifest,
+  resume rule (200 + saved file + body selector valid, re-checked from disk),
+  category pages cached (`--refresh-categories` to refetch), `--limit N` counts
+  articles processed in discovery order (skips count).
+- scripts/parse_kb.py: deterministic parser -> data/parsed/articles.jsonl and
+  parse_report.json. Own text walker (inline adds nothing, blocks break lines,
+  zero-width chars dropped). Rules are in the module docstring.
+- tests/test_parse_kb.py, tests/test_collect_kb.py: 35 offline unittest tests.
+- .gitignore: data/raw/articles/, data/raw/categories/. AGENTS.md: 3 commands added.
+- Layout: data/raw/{articles,categories}/ (ignored), data/raw/manifest.jsonl and
+  category_manifest.jsonl (tracked), data/parsed/* (tracked).
 
 ## Results
-- Server-rendered gate: **13/13 pass.** The first analysis failed 8721
-  because the tag stripper inserted a space at each tag boundary
-  ("<a>eAccounts</a>," became "eAccounts ,"). That was an
-  implementation bug. The fixed gate removes markup without inserting
-  anything; all other gate rules are unchanged.
-- Category discovery works with plain HTTP. Each page lists all of its
-  direct articles on one page, and the count matches the "Articles (N)"
-  header (603 for cat 12, 109 for cat 23). There is no pagination.
-  Subcategories are plain links (18 under cat 12, none under 23) and
-  must be walked recursively. Postbacks are used only for
-  subscribe/search.
-- Recommended body selector: #ctl00_ctl00_cpContent_cpContent_divBody
-  on the normal page. It matches exactly once in all 13 samples, and
-  Related Articles (#ctl00_ctl00_cpContent_cpContent_divKB, sidebar)
-  and feedback are outside it. Print #divBody gives identical body
-  text but the print page has no meta tags, so the normal page wins.
+- Tests: 35/35 pass. Live: `collect_kb.py --limit 5` fetched 5/5 valid
+  (7 requests, 36s). Rerun: 5 skipped, 0 article fetches, category reused.
+  Parser on those 5: 5/5 parsed, deterministic across runs.
+- Fixtures: 13/13 parse; ITS STAFF ONLY found in exactly the 7 Phase 1 IDs,
+  none elsewhere; fullText never contains staff text.
 
 ## Surprising
-- **robots.txt has `Crawl-delay: 5`.** Phase 1 used 2s for its 28 page
-  requests before this was known. Future collection will honor the 5s
-  Crawl-delay (human decision; the human updates the project docs).
-- No sample has a Question/Answer pair. The templates are
-  "Issue/Question / Environment / [Cause] / Resolution" and
-  "Question / Products or Services Involved / Instructions / Need More
-  Help?". The latter has no Answer heading.
-- "ITS STAFF ONLY" sections appear inside the body container in 7/13
-  articles. They are publicly visible (human-checked logged out on 233)
-  and consist of links to technician articles. Not decided in Phase 1.
-- Body text from BeautifulSoup get_text(" ") puts a space before
-  punctuation after inline tags ("eAccounts , students"), so the
-  phrase-in-body check still fails for 8721. This affects Phase 2 body
-  extraction, not the gate.
-- Cat 12 lists 603 direct articles, but WORKFLOW.md says 617. The
-  difference is unexplained (it may count subcategory articles).
-- .gitattributes had no -text rules for the fixture directories when
-  this session checked it, and git log showed no new commit.
-- 5/13 articles have no tags.
+- Category 61 (root) lists articles directly AND has 12 subcategories, so the
+  limited live run never descended into a subcategory (recursion is covered by
+  offline tests only).
+- Real Question/Answer articles exist (4571, 8120) plus a "Description / FAQs"
+  template (4789) and "Online Resources for Students" (4822).
+- `<footer>` in the body is NOT reliably boilerplate: 8721 has real content
+  (Coyote Cash/eAccounts text and links) in it, 508 has a contact-with-info list.
+  Per instruction footers are kept out of fullText and stored in `footer`;
+  non-standard ones warn (footer_nonstandard). 8721 and 508 warn.
+- 4911 has a standard footer; 233's staff box is mid-body, not last.
 
-## What remains (Phase 2 parsing decisions)
-- ITS STAFF ONLY: likely store it as a separate field rather than merge
-  it into body text, so including or excluding it can be measured later.
-- Body text extraction: do not insert spaces at inline element
-  boundaries (a, strong, em, span).
-- Section mapping: treat "Issue/Question" as the Issue section and
-  allow a missing Cause. Decide how to map the "Question / Products or
-  Services Involved / Instructions / Need More Help?" template.
-- Human: confirm .gitattributes, then review and commit the Phase 1
-  files.
+## What remains
+- Human runs the full collection, then parse_kb.py, then reviews
+  parse_report.json warnings (staff_only_*, footer_nonstandard, failures).
+- Decide whether footer_nonstandard content (e.g. 8721) should count in retrieval.
+- Human: SPEC.md updates (see chat proposals), DECISIONS.md entries, commit.
+- Codex checkpoint review of collector + parser (WORKFLOW section 1).
+
+## Unresolved human decisions
+- Footer policy for non-standard footers (above).
+- Whether staffOnly text/links are included in retrieval (measure later).
 
 ## Next intended step
-Phase 2 collector (scripts/collect_kb.py): plain HTTP recursive
-category walk, dedupe by article ID, 5s delay honoring Crawl-delay,
-validity check with the recommended body selector.
+Run full collection (~2h, resumable):
+`.venv/Scripts/python scripts/collect_kb.py`
+then `.venv/Scripts/python scripts/parse_kb.py`, review warnings, commit.
