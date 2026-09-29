@@ -1,0 +1,15 @@
+#!/bin/sh
+protected=$(git diff --cached --name-only --no-renames | grep -E '^(eval/|data/samples/urls\.txt$|data/samples/category_urls\.txt$)')
+[ -z "$protected" ] && exit 0
+
+echo "Protected files staged:"
+echo "$protected"
+
+if ! { exec 3</dev/tty; } 2>/dev/null; then
+  echo "No interactive terminal. Commit refused."
+  exit 1
+fi
+
+printf "Type yes to commit these: " > /dev/tty
+read ans <&3
+[ "$ans" = "yes" ] || { echo "Commit refused."; exit 1; }

@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "deny": [
+      "Edit(eval/**)",
+      "Edit(data/samples/urls.txt)",
+      "Edit(data/samples/category_urls.txt)",
+      "Bash(git commit --no-verify:*)",
+      "Bash(git commit -n:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git commit --amend:*)",
+      "Bash(git rebase:*)",
+      "Bash(git reset:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git -c:*)",
+      "Bash(git config:*)",
+      "Edit(.git/**)",
+      "Edit(.githooks/**)",
+      "Edit(.claude/**)",
+      "Edit(NOTES.md)",
+      "Read(eval/**)",
+      "Read(cache/**)"
+    ]
+  }
+}
