@@ -102,7 +102,7 @@ Request:
 const SearchRequestSchema = z.object({
   query: z.string().min(1).max(5000),
   mode: z.literal("lexical"),
-});
+}).strict(); // extra request fields (e.g. limit) are rejected with 400
 ```
 
 Only `lexical` exists until later experiments add modes.
@@ -111,8 +111,9 @@ Retrieval depth is fixed server-side at 50: the response holds at
 most 50 results. The client cannot choose or increase it. It is
 part of the frozen lexical baseline and does not change after
 seeing evaluation results. The UI displays only the first 10.
-Empty input, or input with no searchable terms (whitespace,
-punctuation or stopwords only), returns 200 with results [].
+An empty query string ("") is rejected with 400. Input with no
+searchable terms (whitespace-only, punctuation-only or
+stopword-only) returns 200 with results [].
 
 Response:
 

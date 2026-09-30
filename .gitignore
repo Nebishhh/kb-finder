@@ -10,3 +10,8 @@ dist/
 Thumbs.db
 data/raw/articles/
 data/raw/categories/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+coverage/

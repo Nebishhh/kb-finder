@@ -7,6 +7,7 @@ Retrieval quality comes before UI polish.
 
 ## Current Stack
 - Python 3.12 (in .venv) for KB inspection and collection
+- next.config.ts must keep agentRules: false (next dev otherwise writes to AGENTS.md)
 
 Planned later: Next.js, React, strict TypeScript, PostgreSQL, pgvector,
 Python for offline ingestion and evaluation orchestration.
@@ -24,6 +25,12 @@ Python for offline ingestion and evaluation orchestration.
   (needs $env:DATABASE_URL; see .env.example)
 - .venv/Scripts/python -m unittest tests.test_ingest_kb
 - .venv/Scripts/python -m unittest tests.test_search_sql
+  (live DB; skipped unless $env:KB_FINDER_TEST_DATABASE_URL is set)
+- npm install
+- npm run lint
+- npm run build
+- npm run test:unit
+- npm run test:db
   (live DB; skipped unless $env:KB_FINDER_TEST_DATABASE_URL is set)
 
 Always run Python through .venv/Scripts/python. Never use bare
