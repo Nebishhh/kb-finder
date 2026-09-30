@@ -1,0 +1,177 @@
+[
+  {
+    "id": "case_001",
+    "customer_query": "i got a new iphone and now duo says account disabled when i try to log in, how do i get the push notifications working on this phone?",
+    "technician_query": "Duo push setup on new phone",
+    "target_article_ids": [],
+    "has_match": true
+  },
+  {
+    "id": "case_002",
+    "customer_query": "i keep recieving pushes from duo and im not requestinig it is something wrong",
+    "technician_query": "Unexpected Duo Push",
+    "target_article_ids": [],
+    "has_match": true
+  },
+  {
+    "id": "case_003",
+    "customer_query": "so i forgot my password and was trying to reset it, but its confusing me what do i do",
+    "technician_query": "Password reset help",
+    "target_article_ids": [],
+    "has_match": true
+  },
+  {
+    "id": "case_004",
+    "customer_query": "So I was trying to log in to my account, and it wasn't letting me in, and now it says I'm locked out. Is there a way you can help me",
+    "technician_query": "Locked out of account",
+    "target_article_ids": [],
+    "has_match": true
+  },
+  {
+    "id": "case_005",
+    "customer_query": "so i recently changed my password and eversince its not letting me in to the wifi , what do i do in order to fix this",
+    "technician_query": "WiFi fails after password change",
+    "target_article_ids": [],
+    "has_match": true
+  },
+  {
+    "id": "case_006",
+    "customer_query": "I am connected to the wifi but its says no internet can you help me",
+    "technician_query": "wireless connected but no web access",
+    "target_article_ids": [],
+    "has_match": true
+  },
+  {
+    "id": "case_007",
+    "customer_query": "i just got a new ps5 and wanted to connect to Wi-Fi, but it doesnt let me sign in im having trouble with that can you help me",
+    "technician_query": "PS5 wont connect to dorm wifi",
+    "target_article_ids": [],
+    "has_match": true
+  },
+  {
+    "id": "case_008",
+    "customer_query": "I'm trying to add my student email to the mail app on my iPhone, but when I choose Google it keeps saying my account doesn't exist. How do I get my campus inbox on my phone?",
+    "technician_query": "iOS Mail setup",
+    "target_article_ids": [],
+    "has_match": true
+  },
+  {
+    "id": "case_009",
+    "customer_query": "my email app on my phone keeps asking me to log in over and over again every few minutes even after i put my info in",
+    "technician_query": "Mobile email login loop",
+    "target_article_ids": [],
+    "has_match": true
+  },
+  {
+    "id": "case_010",
+    "customer_query": "My supervisor added me to our department shared inbox and calendar, but nothing is showing up in my Outlook. Where am I supposed to find it?",
+    "technician_query": "shared mailbox not showing up",
+    "target_article_ids": [],
+    "has_match": true
+  },
+  {
+    "id": "case_011",
+    "customer_query": "I accidentally deleted my final paper folder from my OneDrive yesterday and I really need it back before midnight. Can someone help me restore it?",
+    "technician_query": "OneDrive deleted file recovery",
+    "target_article_ids": [],
+    "has_match": true
+  },
+  {
+    "id": "case_012",
+    "customer_query": "i sent my paper to the printer ten minutes ago and swiped my card but nothing came out and the machine just says error",
+    "technician_query": "Printer will not print",
+    "target_article_ids": [],
+    "has_match": true
+  },
+  {
+    "id": "case_013",
+    "customer_query": "The printer in the commons took 50 cents off my balance, but the paper jammed immediately and nothing came out. Can I get a refund or my credits put back?",
+    "technician_query": "Charged for failed print job",
+    "target_article_ids": [],
+    "has_match": true
+  },
+  {
+    "id": "case_014",
+    "customer_query": "My semester starts tomorrow and my Sociology class still isn't showing up on my Canvas dashboard. Did my professor forget to publish the course?",
+    "technician_query": "Enrolled course missing from D2L",
+    "target_article_ids": [],
+    "has_match": true
+  },
+  {
+    "id": "case_015",
+    "customer_query": "my lockdown browser wont open and i have an exam in 20 min can you help",
+    "technician_query": "Lockdown Browser not working",
+    "target_article_ids": [],
+    "has_match": true
+  },
+  {
+    "id": "case_016",
+    "customer_query": "Whenever I try logging into the myUSD portal, I enter my credentials and it just refreshes right back to the empty sign-in page without any error. How do I get in?",
+    "technician_query": "myUSD portal login loop",
+    "target_article_ids": [],
+    "has_match": true
+  },
+  {
+    "id": "case_017",
+    "customer_query": "where on the student portal do i actually go to check my midterm grades? i looked everywhere on the website and cant find them",
+    "technician_query": "student looking for midterm grades portal",
+    "target_article_ids": [],
+    "has_match": true
+  },
+  {
+    "id": "case_018",
+    "customer_query": "I'm trying to connect to the campus network from my apartment using the VPN software, but it keeps giving me a gateway connection timeout error. What am I doing wrong?",
+    "technician_query": "VPN wont connect from apartment",
+    "target_article_ids": [],
+    "has_match": true
+  },
+  {
+    "id": "case_019",
+    "customer_query": "I can access the library research databases when I'm in the campus library, but when I click the same database links from my apartment it denies my access. Why won't it load off campus?",
+    "technician_query": "library databases not loading at home",
+    "target_article_ids": [],
+    "has_match": true
+  },
+  {
+    "id": "case_020",
+    "customer_query": "Someone in class told me students get Word and Excel for free, but when I open them on my personal laptop it asks for a product key or paid subscription. How do I install the school version?",
+    "technician_query": "Microsoft 365 installation",
+    "target_article_ids": [],
+    "has_match": true
+  },
+  {
+    "id": "case_021",
+    "customer_query": "hi, so my laptop fell to ground in the morning as i was making my bed and the screen broke , is there anything you can do",
+    "technician_query": "laptop screen cracked",
+    "target_article_ids": [],
+    "has_match": false
+  },
+  {
+    "id": "case_022",
+    "customer_query": "hi, i wwanted to attend online meetings but everytime i do only one side of the airpos work is there anything you can do",
+    "technician_query": "airpods no sound left side",
+    "target_article_ids": [],
+    "has_match": false
+  },
+  {
+    "id": "case_023",
+    "customer_query": "My home Wi-Fi in my off-campus apartment has been super slow and buffering all evening. Can someone from IT check my router and make the internet faster?",
+    "technician_query": "Home network speed issue",
+    "target_article_ids": [],
+    "has_match": false
+  },
+  {
+    "id": "case_024",
+    "customer_query": "I keep getting an IndentationError and a recursion depth exceeded error on my Python assignment. Can IT jump on a call and help me debug my script?",
+    "technician_query": "Python coding assignment debugging assistance",
+    "target_article_ids": [],
+    "has_match": false
+  },
+  {
+    "id": "case_025",
+    "customer_query": "My personal HP DeskJet printer in my bedroom won't connect to my home laptop and says offline. Can IT fix my printer setup?",
+    "technician_query": "Personal home printer troubleshooting",
+    "target_article_ids": [],
+    "has_match": false
+  }
+]
