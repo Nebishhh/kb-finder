@@ -54,3 +54,30 @@ is removed and everything else stays searchable.
 When the parser can't identify a layout with a clear rule, it keeps
 the text and raises a warning. The remaining warnings were reviewed
 and accepted as known limitations.
+
+
+
+## 2026-09-29: Phase 3 evaluation rules
+
+Set before any queries are frozen, so they are not tuned to results.
+
+**A positive with no fitting article becomes a negative.**
+Queries are drafted with no KB access, so some will have no match in
+the 3,109. If none fits, I set has_match to false and leave the
+query text unchanged. I log how many flipped here.
+
+**Several targets per case are allowed.**
+The KB has near-duplicates (per-OS versions of one how-to). A hit is
+any target ID in the top k.
+
+**Negatives are report-only.**
+Top article, top score, ranked list. No pass/fail and no threshold
+until an abstention mechanism exists.
+
+**Queries are frozen before targets are assigned.**
+Two commits: queries first, then target IDs. No rewording after the
+first one.
+
+**Candidates for targets come from category browsing first.**
+Keyword grep is second, and each candidate is recorded with how it
+was found. This keeps targets from skewing toward lexical matches.

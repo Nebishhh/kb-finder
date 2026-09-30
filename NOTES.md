@@ -13,7 +13,7 @@ Persistent notes for later phases and new ideas go here.
   all file-editing tools. .claude/settings.json uses Edit only.
 - Phase 2: td.usd.edu robots.txt sets Crawl-delay: 5. Collector must
   use a 6-second delay (robots.txt asks for 5; 6 for margin).
-  ~1,200 articles = ~2 hours first pass.
+  ~1,200 articles = ~2 hours first pass (superseded, see corpus note below).
   Phase 1 used 2s for 28 requests before this was known.
 - Phase 2: "ITS STAFF ONLY" sections (7/13 samples) are public, visible
   logged out. Content is a list of links to technician articles. Parser

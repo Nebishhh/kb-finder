@@ -38,26 +38,35 @@ Exact field shapes are defined in scripts/parse_kb.py.
 
 ```ts
 type Article = {
-  id: string;                // internal ID (assigned at ingestion)
+  id: string;                // internal ID (assigned at ingestion; not in articles.jsonl)
   sourceArticleId: string;   // KB article ID
   title: string;
   url: string;
-  category?: string;         // meta article:section
+  category: string | null;   // meta article:section
   tags: string[];
-  description?: string;      // og:description
-  publishedTime?: string;
-  modifiedTime?: string;
+  description: string | null;   // og:description
+  publishedTime: string | null;
+  modifiedTime: string | null;
   fullText: string;          // see fullText rules below
-  question?: string;
-  answer?: string;
-  issue?: string;
-  environment?: string;
-  cause?: string;
-  resolution?: string;
-  sections: { heading: string; text: string }[]; // all sections, in order
-  staffOnly?: object | null; // internal technician content, kept separate
+  question: string | null;   // null when the section is missing (never invented)
+  answer: string | null;
+  issue: string | null;
+  environment: string | null;
+  cause: string | null;
+  resolution: string | null;
+  // all sections, in order; heading is null for content before the first
+  // heading (preamble) or after a footer
+  sections: { heading: string | null; text: string }[];
+  // internal technician content, kept separate
+  staffOnly: { text: string; links: { text: string; href: string }[] } | null;
   audienceLabels: string[];  // e.g. "USD STAFF ONLY"; content stays searchable
-  footer?: string | null;    // original footer, kept for inspection
+  // original footer text before the standard line is removed (staff-only block
+  // already excluded); null if no footer. For inspection only. Leftover
+  // non-standard footer lines are also in fullText.
+  footer: string | null;
+  parserVersion: string;     // parser revision that produced the record (currently "2")
+  warnings: string[];        // parser flags, e.g. footer_nonstandard, footer_unclassified,
+                             // staff_only_unmatched; [] if none
 };
 ```
 

@@ -63,8 +63,7 @@ Anything that must survive across sessions goes in NOTES.md.
 - Collector fixes are covered offline only; the live collector was not run this session.
 
 ## What remains
-- Short Codex re-review of these three fixes, then Phase 3.
-- Human: SPEC.md audienceLabels addition, DECISIONS.md entries, commit.
+- Human: DECISIONS.md entries, commit.
 
 ## Unresolved human decisions
 - Whether staffOnly text/links are included in retrieval (measure later).
