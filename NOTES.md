@@ -46,3 +46,13 @@ Persistent notes for later phases and new ideas go here.
   when it is absent, e.g. on a fresh clone.
 
 ## Ideas
+
+
+- Real sourceArticleId values are unpadded strings like "4778". The
+  "00001" in SPEC's fake example is not real. Match IDs as exact
+  strings in run_eval.py.
+- Several student-facing articles (cases 13, 16, 18, 19 in the eval)
+  link in staffOnly to technician articles whose IDs are not in the
+  3,109 corpus. Indexing staffOnly text cannot surface an article
+  that is absent, so keep that in mind when deciding whether
+  staffOnly is searchable.

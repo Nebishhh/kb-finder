@@ -100,3 +100,32 @@ No label changes after the first eval run.
 
 **Set size.**
 20 positives and 5 negatives, as in WORKFLOW.md.
+
+## 2026-09-29: Phase 3b target assignment
+
+**Label changes: 3, query text unchanged.**
+case_013 (charged for a print that never printed) became has_match
+false: the only student-facing refund article never mentions printing
+and the print-funds fix is staff-only. case_021 (broken personal
+laptop) and case_023 (slow home internet) became has_match true after
+finding articles that answer them. The set is 21 positives and 4
+negatives, not 20 and 5. case_005 stayed a positive as a judgment
+call: the generic wifi articles fix it even though they never
+mention a password change. case_025 stayed a negative: the nearest
+articles cover USB printers and campus wireless, not a home Wi-Fi
+printer.
+
+**Targets.**
+8 positives have two targets (002, 004, 005, 007, 010, 014, 016,
+018) and 13 have one. Candidates came from category browsing with
+no keyword search. Per the agent's flags, every target has its
+answer in student-facing text. case_009 and case_018 are partial
+matches: no article names the exact symptom.
+
+**Rule used for targets.**
+An article is a target only if following it would resolve the issue
+as the case is written. Multiple targets are included only when each
+article is a legitimate answer on its own, such as near-duplicates or
+articles for different platforms the case does not rule out.
+Adjacent or background articles and articles that answer only part of
+the case are not targets, because any target counts as a hit.
