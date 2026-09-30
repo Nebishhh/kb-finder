@@ -56,3 +56,10 @@ Persistent notes for later phases and new ideas go here.
   3,109 corpus. Indexing staffOnly text cannot surface an article
   that is absent, so keep that in mind when deciding whether
   staffOnly is searchable.
+- Before hosting (Phase 7): add a request body size limit. request.json()
+  reads the whole body before zod enforces the 5000 character limit.
+- Low priority: rename vitest.config.ts to vitest.config.mts to remove
+  the Vite configLoader warning. Do not set "type": "module" in
+  package.json.
+- Set $env:NEXT_TELEMETRY_DISABLED = "1" in the shell before any next
+  command; .env.local is not read by the next dev parent process.

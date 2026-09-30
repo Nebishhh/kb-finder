@@ -171,3 +171,25 @@ Behavior was tested on placeholder articles in a throwaway schema.
 No query or ranking was tried on the real corpus. The SQL needed no
 changes after the first apply. Weak numbers are baseline evidence, not
 a reason to retune.
+
+## 2026-09-30: Phase 4 slice 2, search API (frozen with the baseline)
+
+**Database settings.**
+statement_timeout 5000 ms and a pool of 5 connections are part of the
+frozen baseline. They do not change after seeing eval results.
+
+**Request rules.**
+Extra request fields are rejected with 400. An empty query string is
+rejected with 400. Whitespace-only, punctuation-only and stopword-only
+input returns 200 with an empty result list. Depth is fixed at 50 on
+the server.
+
+**Pinned versions.**
+Next.js 16.3.8, React 19.2.8, TypeScript 5.9.3, ESLint 9.39.5, zod
+4.6.5, pg 8.23.1, Vitest 5.0.3, all exact, with the lockfile
+committed.
+
+**Privacy checks.**
+Query text is never logged, echoed, stored or put in a URL. A
+sentinel test covers ten request paths, and the real-data tests only
+check empty results and invalid requests, never rankings.
