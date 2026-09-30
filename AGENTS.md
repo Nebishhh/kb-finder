@@ -26,6 +26,9 @@ Python for offline ingestion and evaluation orchestration.
 - .venv/Scripts/python -m unittest tests.test_ingest_kb
 - .venv/Scripts/python -m unittest tests.test_search_sql
   (live DB; skipped unless $env:KB_FINDER_TEST_DATABASE_URL is set)
+- .venv/Scripts/python scripts/run_eval.py --mode lexical --cases <path> [--base-url URL] [--allow-remote] [--json-out PATH]
+  (needs the app running; agents pass only tests/fixtures/fake_cases.json)
+- .venv/Scripts/python -m unittest tests.test_run_eval
 - npm install
 - npm run lint
 - npm run build

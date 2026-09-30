@@ -1,0 +1,16 @@
+[
+  {
+    "id": "case_fake_001",
+    "customer_query": "my laptop keeps saying the thing is wrong when i log in",
+    "technician_query": "login error on laptop",
+    "target_article_ids": ["00001"],
+    "has_match": true
+  },
+  {
+    "id": "case_fake_002",
+    "customer_query": "how do i fix my car radio",
+    "technician_query": "car radio repair",
+    "target_article_ids": [],
+    "has_match": false
+  }
+]
