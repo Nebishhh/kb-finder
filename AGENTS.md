@@ -55,3 +55,8 @@ Before reporting work complete:
 - report failures
 - show the actual diff
 - do not claim success from code inspection alone
+
+
+- Never add Co-Authored-By trailers, "Generated with" lines, or any
+  agent name to commit messages, PR text, or git author fields.
+  Never change git user.name or user.email.
