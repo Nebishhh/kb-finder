@@ -18,6 +18,13 @@ Python for offline ingestion and evaluation orchestration.
 - .venv/Scripts/python scripts/collect_kb.py [--limit N] [--refresh-categories]
 - .venv/Scripts/python scripts/parse_kb.py
 - .venv/Scripts/python -m unittest discover -s tests
+- supabase start -x gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+- supabase db reset
+- .venv/Scripts/python scripts/ingest_kb.py [--input PATH] [--prune] [--allow-remote]
+  (needs $env:DATABASE_URL; see .env.example)
+- .venv/Scripts/python -m unittest tests.test_ingest_kb
+- .venv/Scripts/python -m unittest tests.test_search_sql
+  (live DB; skipped unless $env:KB_FINDER_TEST_DATABASE_URL is set)
 
 Always run Python through .venv/Scripts/python. Never use bare
 python or python3 (python3 on this machine is 3.9).

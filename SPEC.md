@@ -107,6 +107,13 @@ const SearchRequestSchema = z.object({
 
 Only `lexical` exists until later experiments add modes.
 
+Retrieval depth is fixed server-side at 50: the response holds at
+most 50 results. The client cannot choose or increase it. It is
+part of the frozen lexical baseline and does not change after
+seeing evaluation results. The UI displays only the first 10.
+Empty input, or input with no searchable terms (whitespace,
+punctuation or stopwords only), returns 200 with results [].
+
 Response:
 
 ```ts
@@ -119,7 +126,7 @@ type SearchResponse = {
     url: string;
     category?: string;
     score: number;           // mode-specific; not a probability
-  }[];
+  }[];                       // at most 50, ordered by rank
 };
 ```
 
@@ -193,9 +200,14 @@ run_eval.py:
 - Logs the SHA-256 of the cases file with every run.
 - Reports Track A (customer_query) and Track B
   (technician_query) separately.
-- Positive cases: Top-1, Top-3, MRR, with raw counts
+- Uses all returned rows (up to 50).
+- Positive cases: Top-1, Top-3, MRR@50, with raw counts
   (e.g. 14/20 (70%)). A hit means any ID in target_article_ids
-  appears.
+  appears. MRR@50: a case with no target in the returned top 50
+  contributes 0 reciprocal rank. Always labeled MRR@50, never
+  plain "MRR".
+- Also reports the raw count of positive cases with no target
+  anywhere in the top 50, as X / <number of positives>.
 - Negative cases: top article, top score, ranked list, for
   qualitative review. No precision/recall until an abstention
   mechanism exists.

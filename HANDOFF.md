@@ -3,68 +3,66 @@
 Disposable. Rewritten by the agent at the end of every session.
 Anything that must survive across sessions goes in NOTES.md.
 
-## What was built (Phase 2: collect and parse)
-- scripts/collect_kb.py: robots-respecting plain-HTTP collector. Pre-order DFS
-  from Category/61 (Technology), dedupe by article ID, delay = max(6s, robots
-  Crawl-delay), no cookies/redirects/retries, incremental JSONL manifest,
-  resume rule (200 + saved file + body selector valid, re-checked from disk),
-  category pages cached (`--refresh-categories` to refetch), `--limit N` counts
-  articles processed in discovery order (skips count).
-- scripts/parse_kb.py: deterministic parser -> data/parsed/articles.jsonl and
-  parse_report.json. Own text walker (inline adds nothing, blocks break lines,
-  zero-width chars dropped). Rules are in the module docstring.
-- Staff-only handling (parserVersion 2): top-level "Internal Staff Only" panels go to
-  staffOnly; "ITS STAFF ONLY" boxes go to staffOnly; department labels
-  (`^[A-Z]{2,10} STAFF ONLY$`, not ITS) go to `audienceLabels` and content stays searchable.
-- Layout: data/raw/{articles,categories}/ (ignored), data/raw/manifest.jsonl and
-  category_manifest.jsonl (tracked), data/parsed/* (tracked).
-
-## Codex checkpoint fixes (this session)
-1. Standard service-desk line, now global. Before, only <footer> elements were cleaned, so
-   213 articles kept "Please contact the Service Desk [if you need further assistance]" in
-   fullText and sections. Now `drop_standard()` (exact `STANDARD_FOOTER_RE` match on a whole
-   line, no fuzzy matching) runs on every body-derived line in `split_sections`, so fullText,
-   sections and the canonical fields are clean wherever the line appears (footer, direct
-   paragraph, panel, other section). Near-miss wording is kept. The `footer` field still holds
-   the original footer text. Warnings did not move.
-2. Category validation. `check_category()` requires `#divCats` to match exactly once (an
-   empty category with the container is still valid; 184, 210, 216 are real examples).
-   Applied to fresh and cached pages. Invalid fresh page: bytes saved for diagnosis, manifest
-   `valid=false` + error, `categories_invalid` counted, not walked. Invalid cached page: not
-   a cache hit, live refetch; if the refetch is valid the cache is repaired and it counts as
-   `categories_recovered` (not fatal). Category manifest records gained `valid`,
-   `article_count`, `subcategory_count`, `sha256`. Exit status: `Collector.exit_code()` is 1
-   if any unresolved category failure/invalid category, article fetch failure, or invalid
-   article parse remains; diagnostics are still written. Robots stop is 2, Ctrl-C is 130.
-3. Atomic parse output. parse_kb.py writes articles.jsonl to a sibling `.tmp`, and replaces
-   the real file only if every input parsed. On any failure the old file is kept, the temp is
-   removed, exit 1. parse_report.json is always written (also on failure), via temp + replace.
-- Fresh-clone coverage: tests/fixtures/regression_289_style_guide.html and
-  regression_9050_footer_layout.html (minimal, labeled, placeholder text only).
+## What was built (Phase 4, slice 1: database and ingestion)
+- Local Postgres via the Supabase CLI (2.118.0), DB-only: `supabase start -x ...` (all
+  non-DB services excluded; only `supabase_db_kb-finder`, Postgres 17.6, runs). DB URL
+  `postgresql://postgres:postgres@127.0.0.1:54322/postgres`. `supabase/config.toml` is the
+  unmodified `supabase init` default.
+- Migration `supabase/migrations/20260930042716_create_articles.sql`
+  (SHA-256 93903628588f6f313e33ebe130d6c0de8f0e17817602034c27289f46a7d02d59):
+  - `articles` table mirroring articles.jsonl (snake_case, `source_article_id` text,
+    `id` bigint identity, times timestamptz, sections/staff_only jsonb).
+  - `search_vector`: STORED generated column. title A; tags B (via immutable
+    `kb_join_tags`); description B; full_text C; `english`. GIN index.
+    staff_only is stored but not in the vector and not indexed.
+  - `kb_lexical_tsquery(q)`: OR of the query's distinct english lexemes, built in SQL;
+    NULL when there are none (empty, whitespace, punctuation, stopwords only).
+  - `kb_search_lexical(q, k)`: `ts_rank` (default weights, normalization 0), ties by
+    `source_article_id COLLATE "C"`, 1-based rank. The API is to pass k = 50.
+  - Ranking is frozen. Changes need an approved DECISIONS.md entry.
+- `scripts/ingest_kb.py`: validates every record before connecting (all errors collected,
+  named by sourceArticleId or line, never the value), then one-transaction upsert in
+  numeric ID order that only rewrites changed rows. `--prune` is opt-in; without it
+  DB-only rows are counted as `db_only`. DATABASE_URL from the environment only; non-local
+  hosts need `--allow-remote`. DB errors print only class, SQLSTATE and constraint.
+  Exit codes 0 ok, 1 validation, 2 usage/config, 3 database.
+- Tests: `tests/test_ingest_kb.py` (35, offline, fake DB layer, sentinel checks that no
+  values leak) and `tests/test_search_sql.py` (9, live DB, skipped unless
+  KB_FINDER_TEST_DATABASE_URL is set; each test runs the real migration in a throwaway
+  schema with search_path set to only that schema, inside a rolled-back transaction, and
+  checks public is untouched).
+- SPEC.md: retrieval depth fixed server-side at 50, UI shows 10, empty/no-term input
+  returns 200 with results [], run_eval reports MRR@50 and a no-target-in-top-50 count.
+- requirements.txt: `psycopg[binary]==3.3.6`. `.env.example` (local DATABASE_URL only).
 
 ## Results
-- Tests: 89/89 pass (26 new). Parser tests that read data/raw/articles skip if it is absent.
-- Full corpus ultimately collected and parses 3109/3109 (files 3109, parsed 3109, failed 0).
-  Article 4902 was a TeamDynamix error page served as HTTP 200; it succeeded on retry.
-- Exact standard line occurrences after the fix: 0 in fullText, sections, question, answer,
-  issue, environment, cause, resolution (was 213 articles).
-- Warnings unchanged: footer_nonstandard 248, footer_unclassified 92, staff_only_unmatched 4
-  (288, 289, 300, 2506). Two parser runs byte-identical.
-- data/parsed/articles.jsonl changed only for the 213 affected articles.
+- Ingest: input sha256 103f2b008085d9e38ece49b3e67467ae527d6fea1b8c26935e507ab16da9c1d3,
+  run 1 `inserted 3109`, run 2 `unchanged 3109 db_only 0 deleted 0`, both exit 0.
+- Counts: 3109 rows, 0 null search_vector, 1255 with staff_only,
+  `kb_search_lexical('the and of', 50)` returns 0 rows.
+- Tests: full offline suite 124/124 OK (about 8 minutes; parser tests read
+  data/raw/articles). Live SQL tests 9/9 OK; unset, 9 skipped. public.articles stayed
+  3109 and no kbtest_ schema remained after either run.
+- No ranking was inspected on the real corpus. No eval run.
 
 ## Known limitations
-- 9050 has the whole article inside a <footer>: environment/cause/resolution are null (text
-  is in fullText).
-- 288, 289, 300, 2506 keep staff_only_unmatched (documentation/prose mentions). 289's example
-  panel goes to staffOnly ("Follow article XYZ"); harmless.
-- ~92 footer_unclassified articles keep leftover footer lines in fullText (not suppressed).
-- Old category manifest records (before this change) have no `valid` field; only the saved
-  file itself is re-validated.
-- Collector fixes are covered offline only; the live collector was not run this session.
+- `supabase start -x` still pulls the realtime, storage-api and gotrue images during
+  schema initialisation; they do not stay running.
+- `supabase stop` has not been run in this session.
+- The special-character test proves queries with quotes, backslashes and tsquery
+  operators do not error; no english-parser input was found that yields a lexeme
+  containing `'` or `\`, so that escaping path is untested by a real lexeme.
+- tsvector positions cap at 16,383; positions in the longest articles are clamped
+  (no effect on ts_rank).
+- `seed.sql` does not exist; `supabase db reset` warns and skips seeding.
 
 ## What remains
-- Human: DECISIONS.md entries, commit.
+- Human: commit slice 1.
+- Slice 2: Next.js scaffold (in a temp folder outside the repo, copy in only approved
+  files), POST /api/search calling `kb_search_lexical($1, 50)`, mode gating, no request
+  logging, bare UI showing 10, npm lint/build/test:unit.
+- Slice 3: run_eval.py (calls /api/search only; Top-1, Top-3, MRR@50,
+  no-target-in-top-50 count), tests/fixtures/fake_cases.json, smoke test, README.
 
 ## Unresolved human decisions
-- Whether staffOnly text/links are included in retrieval (measure later).
-- Whether 289's example panel in staffOnly is acceptable, and whether 288/289/300/2506 warrant a note.
+- Whether staffOnly text is searchable (measure later; currently excluded).
