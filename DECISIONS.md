@@ -129,3 +129,45 @@ article is a legitimate answer on its own, such as near-duplicates or
 articles for different platforms the case does not rule out.
 Adjacent or background articles and articles that answer only part of
 the case are not targets, because any target counts as a hit.
+
+## 2026-09-30: Phase 4 lexical baseline configuration (frozen)
+
+Set before any evaluation run. Nothing below changes after seeing
+eval numbers. Any later change is a new, logged experiment.
+
+**Retrieval.**
+Postgres full-text search, called the "Postgres FTS baseline", not
+BM25. english config. Search vector: title weight A, tags and
+description weight B, full text weight C. staffOnly is stored but not
+indexed or searchable. The vector is a stored generated column and
+app code never computes it.
+
+**Query handling.**
+The query goes through the same english parser as the documents. The
+distinct lexemes are ORed together, so long natural-language queries
+still match. Empty, punctuation-only or stopword-only input gives no
+results, returned as 200 with an empty list.
+
+**Ranking.**
+ts_rank with default weights and normalization 0. Ties break on
+source_article_id with C collation. Ranking lives in one SQL
+function, kb_search_lexical. /api/search calls it and nothing
+reimplements it.
+
+**Depth and metrics.**
+Fixed retrieval depth of 50, not settable by the client. The UI shows
+10. Reported per track: Top-1, Top-3, MRR@50 (a miss scores 0) and the
+count of positives with no target in the top 50. Semantic retrieval
+later uses the same depth of 50.
+
+**What is pinned.**
+Corpus: data/parsed/articles.jsonl, 3,109 articles, parserVersion 2,
+sha256 103f2b008085d9e38ece49b3e67467ae527d6fea1b8c26935e507ab16da9c1d3.
+Migration: supabase/migrations/20260930042716_create_articles.sql,
+sha256 93903628588f6f313e33ebe130d6c0de8f0e17817602034c27289f46a7d02d59.
+
+**How it was checked.**
+Behavior was tested on placeholder articles in a throwaway schema.
+No query or ranking was tried on the real corpus. The SQL needed no
+changes after the first apply. Weak numbers are baseline evidence, not
+a reason to retune.
