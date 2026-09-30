@@ -193,3 +193,37 @@ committed.
 Query text is never logged, echoed, stored or put in a URL. A
 sentinel test covers ten request paths, and the real-data tests only
 check empty results and invalid requests, never rankings.
+
+## 2026-09-30: First lexical baseline result (Postgres FTS, frozen config)
+
+One run, made with the committed code at 40b23d7 and the committed
+eval/cases.json (sha256
+9f2b2afc33d0fea9f0ee5855cee959dc53ec514966283b5056987fcd9e9e47cf,
+labels from commit 3eecb22). Corpus 3,109 articles, migration sha256
+93903628588f6f313e33ebe130d6c0de8f0e17817602034c27289f46a7d02d59.
+Depth 50. An earlier attempt failed to start because of a pasted
+command typo, before any request was sent.
+
+Track A (customer_query), 21 positives: Top-1 7/21 (33%), Top-3
+13/21 (62%), MRR@50 0.481, no target in top 50: 1/21.
+Track B (technician_query), 21 positives: Top-1 8/21 (38%), Top-3
+11/21 (52%), MRR@50 0.489, no target in top 50: 1/21.
+
+**Observations, not actions.**
+The target is in the top 50 for 20 of 21 cases on both tracks, but is
+first only about a third of the time. Both tracks are within one or
+two cases of each other, which is not a difference at this sample
+size. case_021 misses on both tracks (vocabulary gap: the query says
+laptop screen broke, the article is titled Student Personal Computer
+Hardware Repair). Rank gaps are large for case_012 (29, Track A) and
+case_019 (46, Track B), which top-10 would have counted as misses.
+The four negatives return keyword matches (for example print articles
+for case_013, Troubleshooting Home Internet for case_025). case_013
+and case_025 returned articles close to what the student asked for,
+which matters for the labels; per the Phase 3 rule labels do not change
+after this run, so this goes to a later, separately versioned eval set.
+
+**No tuning.**
+Nothing in the lexical configuration, depth or labels changes because
+of these numbers. Improvements are separate logged experiments, scored
+at the same depth of 50.
