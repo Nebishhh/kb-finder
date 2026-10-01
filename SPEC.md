@@ -25,11 +25,14 @@ Personal project. Not an official university tool.
 
 ## Stack
 - Python 3.12 (.venv): KB inspection, collection, parsing,
-  ingestion, evaluation orchestration.
+  ingestion, offline article embedding, evaluation orchestration.
 - Next.js, React, strict TypeScript: app and /api/search.
 - PostgreSQL from the first retrieval slice. Local via the
   Supabase CLI; hosted on Supabase.
-- pgvector: added only when semantic retrieval begins (Phase 5).
+- pgvector (in the `extensions` schema): semantic retrieval, since
+  Phase 5.
+- OpenAI text-embedding-3-small: article embeddings (offline, once)
+  and query embeddings (per semantic request).
 - No SQLite, no FTS5.
 
 ## Article model
@@ -91,6 +94,35 @@ fullText rules:
 - Zero-width characters (U+200B-U+200D, U+2060, U+FEFF) are removed.
 - Deterministic: same HTML in, same output out.
 
+## Storage
+
+Postgres, two migrations, both pinned by sha256 in DECISIONS.md.
+The first (articles, lexical) is never edited.
+
+- `articles`: one row per article. `source_article_id` is unique and
+  is the durable key. The internal `id` is an identity column that a
+  clean `supabase db reset` regenerates, so nothing references it.
+  `search_vector` is a stored generated column (lexical only).
+- `embedding_configs`: one row per embedding configuration.
+  `config_sha256` (primary key) is the sha256 of the canonical bytes
+  of `config/embedding/article-v1.json`; also `config` (jsonb),
+  `model`, `dimensions` (must be 1536), `template_version`.
+- `article_embeddings`: one row per (config, article), primary key
+  `(config_sha256, source_article_id)`.
+  - `source_article_id` references `articles(source_article_id)`
+    ON DELETE RESTRICT: `ingest_kb.py --prune` of an embedded
+    article fails loudly until that config's embeddings are removed.
+  - `config_sha256` references `embedding_configs` ON DELETE CASCADE.
+  - `source_text_sha256` (sha256 of the article-v1 text the vector
+    was made from), `input_kind` (`text` or `tokens`),
+    `input_sha256` (of exactly what was sent), `input_tokens`,
+    `truncated` (true exactly when `input_kind` is `tokens`),
+    `embedding vector(1536)` (non-zero), `loaded_at`.
+  - No vector index: search is exact.
+- After `supabase db reset`, run `ingest_kb.py`, then
+  `embed_kb.py load` to reload embeddings from the article cache with
+  no API call.
+
 ## Search API
 
 `POST /api/search` is the only production retrieval path.
@@ -101,19 +133,24 @@ Request:
 ```ts
 const SearchRequestSchema = z.object({
   query: z.string().min(1).max(5000),
-  mode: z.literal("lexical"),
+  mode: z.enum(["lexical", "semantic"]),
 }).strict(); // extra request fields (e.g. limit) are rejected with 400
 ```
 
-Only `lexical` exists until later experiments add modes.
+A schema-valid mode must still pass the server-side gate (below).
 
-Retrieval depth is fixed server-side at 50: the response holds at
-most 50 results. The client cannot choose or increase it. It is
-part of the frozen lexical baseline and does not change after
-seeing evaluation results. The UI displays only the first 10.
-An empty query string ("") is rejected with 400. Input with no
-searchable terms (whitespace-only, punctuation-only or
-stopword-only) returns 200 with results [].
+Retrieval depth is fixed server-side at 50 for every mode: the
+response holds at most 50 results. The client cannot choose or
+increase it. It does not change after seeing evaluation results.
+The UI displays only the first 10.
+
+An empty query string ("") is rejected with 400 in every mode.
+
+- `lexical`: input with no searchable terms (whitespace-only,
+  punctuation-only or stopword-only) returns 200 with results [].
+- `semantic`: there is no such rule. Any schema-valid query is
+  embedded and searched, and the response holds up to 50 results
+  (no score threshold, no abstention).
 
 Response:
 
@@ -131,28 +168,79 @@ type SearchResponse = {
 };
 ```
 
-Planned modes, each added only when its experiment starts:
+Modes:
 - `lexical`: Postgres full-text search ("Postgres FTS baseline",
-  not BM25).
-- `semantic`: text-embedding-3-small + pgvector, whole articles
-  (template `article-v1`).
-- `normalized_lexical`, `normalized_semantic`: query rewritten by
-  the normalization model (prompt `normalize-v1`), then searched.
+  not BM25). Score is `ts_rank`. Ranking lives only in
+  `kb_search_lexical`. Frozen configuration: DECISIONS.md, Phase 4.
+- `semantic`: text-embedding-3-small + pgvector over whole articles.
+  Frozen configuration: DECISIONS.md, "Phase 5 semantic-v1
+  configuration".
+- Planned, not built: `normalized_lexical`, `normalized_semantic`
+  (query rewritten by the normalization model, prompt
+  `normalize-v1`, then searched). Each is added only when its
+  experiment starts.
+
+Semantic mode:
+- Article text is template `article-v1`, exactly
+  `"Title: {title}\n\n{fullText}"` with LF newlines. No tags,
+  description, category, URL, staffOnly or separate section fields.
+  Lexical indexes title, tags, description and full text, so the two
+  modes do not see identical fields.
+- Model `text-embedding-3-small`, `dimensions: 1536` sent on every
+  article and query call. The config is
+  `config/embedding/article-v1.json`; its sha256 is the config
+  identity, and both the embed script and the server read it from
+  that file.
+- Truncation: article text is tokenized with `cl100k_base` (the
+  encoding file is pinned by sha256 in the config). An article that
+  fits in 8,000 tokens is sent as its string; a longer one is sent as
+  its first 8,000 token IDs. One article (9431) is truncated. One
+  embedding request never mixes strings and token arrays.
+- The query is embedded as typed, with no template
+  (`raw-query-string-v1`).
+- Ranking: exact cosine search with pgvector, no ANN index, in one
+  SQL function, `kb_search_semantic`. Score = 1 - cosine distance,
+  i.e. cosine similarity in [-1, 1]. It is not a probability.
+  Order: score descending, then `source_article_id COLLATE "C"`.
+- The server passes its config sha256 to `kb_search_semantic`, which
+  fails loudly instead of searching a partial, stale or mismatched
+  set:
+  - KBF01: k outside 1..50.
+  - KBF02: config not loaded.
+  - KBF03: query vector not 1536-d, or all zeros.
+  - KBF04: an article has no embedding for the config, or the counts
+    differ.
+  - KBF05: an embedding was made from text that no longer matches its
+    article.
+- Any failure, whether a KBF error, an OpenAI error, a missing key or
+  an invalid config, returns 500 with the fixed body
+  `{"error":"Search failed"}`. The log line is the error class plus a
+  fixed code (e.g. `DatabaseError KBF04`,
+  `EmbeddingError OPENAI_HTTP_429`), never provider text or query
+  text.
 
 Mode gating (server-side):
-- `DEFAULT_SEARCH_MODE` is always allowed.
-- `EVAL_MODES_ENABLED=true` unlocks other modes for eval runs.
-- Any other mode is rejected.
-- Query embedding config must match stored embedding config, or
-  the request fails loudly.
+- `DEFAULT_SEARCH_MODE` is always allowed. Unset means `lexical`.
+- `EVAL_MODES_ENABLED` exactly `"true"` unlocks the other modes.
+  Any other value, including `"TRUE"` or `"1"`, does not.
+- Any other mode is rejected with 400.
 
 ## Data handling
 - Public KB article content may be stored.
 - Issue text is ephemeral. Request bodies are never logged or
   stored.
+- Query embeddings are ephemeral. Query text, its hash and its
+  vector are never written to disk, cache, logs or the database.
 - No names, IDs, emails, phone numbers, or ticket data.
 - Semantic and normalized modes send query text to OpenAI.
   Issues are typed in manually with personal details removed.
+- `OPENAI_API_KEY` is set only in the shell that runs the app (or the
+  paid article embed), never in `.env.local` or any other file and
+  never under a `NEXT_PUBLIC_` name.
+  - The server reads it only at request time, in one server-only
+    module.
+  - Supabase is never started from a shell that holds it, and
+    `supabase/config.toml` does not reference it.
 
 ## Evaluation
 
@@ -213,11 +301,28 @@ run_eval.py:
   qualitative review. No precision/recall until an abstention
   mechanism exists.
 
-Caches (outside eval/, eval runs only):
-- `cache/embeddings/`: keyed by query hash, embedding model,
-  dimensions. Stores the hash, not the query text.
-- `cache/normalization/`: keyed by case, track, model, prompt
-  version.
+Caches (under `cache/`, outside eval/, gitignored, never committed):
+- `cache/article_embeddings/<first 16 hex of config sha256>.jsonl`:
+  the article embedding cache, the only embedding cache.
+  - Line 1 is a header holding the config. Then one row per article,
+    sorted by numeric sourceArticleId, as canonical JSON.
+  - Each row holds source_text_sha256, input_kind, input_sha256,
+    input_tokens, truncated and the vector as base64 little-endian
+    float32. No article text, no timestamps.
+  - Written only by `embed_kb.py embed`, through an fsynced journal
+    and an atomic replace, so an interrupted run never re-bills
+    finished batches.
+  - Its sha256 is pinned in DECISIONS.md, because a second paid run
+    would not give bit-identical vectors.
+- `cache/tiktoken/`: the cl100k_base encoding file, checked against
+  the sha256 pinned in the config before use.
+- Query embeddings: no cache. The earlier plan for a query cache in
+  `cache/embeddings/` (keyed by query hash) is superseded by
+  DECISIONS.md, "Phase 5 semantic-v1 configuration": query embeddings
+  are ephemeral. Consequence: two semantic eval runs may differ
+  slightly, so the first complete run is the scored one.
+- `cache/normalization/`: planned for Phase 6, keyed by case, track,
+  model, prompt version.
 
 ## Out of scope before AfroTech
 Hybrid retrieval, reranking, chunking (unless the eval shows long

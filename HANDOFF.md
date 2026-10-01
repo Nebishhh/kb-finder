@@ -4,84 +4,101 @@ Disposable. Rewritten by the agent at the end of every session.
 Anything that must survive across sessions goes in NOTES.md.
 
 ## State
-Phase 4 slices 1 to 3 are done and committed. The first lexical
-baseline has been run and recorded. main matches origin/main as of
-the last fetch.
+Phase 5 (semantic retrieval) is complete.
+- Both modes are built and evaluated.
+- Semantic met the pre-registered decision rule, so it becomes the
+  default when hosted. The switch has not been made yet:
+  `DEFAULT_SEARCH_MODE` is unset (lexical), and `app/page.tsx:24`
+  hard-codes `mode: "lexical"` in the UI's request.
+- DECISIONS.md is the source of truth for every number. Do not copy
+  numbers from anywhere else.
 
-## Commits
-- 0ff4941 docs: freeze phase 4 lexical baseline configuration
-- 08fe595 feat: articles schema, lexical search SQL and ingestion (slice 1)
-- b133def feat: lexical /api/search and bare search UI (slice 2)
-- 3cabe8d docs: log slice 2 configuration and notes
-- 40b23d7 feat: eval runner with metric and privacy tests (slice 3)
-- c798c25 docs: record first lexical baseline result
+## Commits since ea38faf
+- 717851e refactor: per-mode retriever map and shared search row
+- 03d68c4 feat: pgvector embeddings schema and kb_search_semantic
+- 5295a0e feat: offline article embedding pipeline
+- 8772e3c feat: gated semantic search mode
+- da1640d fix: address phase 5 review findings (Codex)
+- dcbc846 docs: freeze phase 5 semantic configuration and decision rule
+- ffb0c7c fix: never mix text and token inputs in one embedding request
+- eec5d3c docs: record phase 5 article embed and pin cache hash
+- 840226e docs: record first semantic eval result
+- (this session, uncommitted) docs: SPEC, README, AGENTS and HANDOFF
+  updated for Phase 5
 
 ## What was built
-- Slice 1: `articles` table, stored `search_vector`, `kb_search_lexical`
-  and `scripts/ingest_kb.py`. Migration
-  `supabase/migrations/20260930042716_create_articles.sql`.
-  3,109 articles ingested.
-- Slice 2: Next.js app. `POST /api/search` calls
-  `kb_search_lexical($1, 50)`. Bare UI shows the first 10.
-  Extra fields and empty strings get 400. No-term input gets 200
-  with `results: []`. Query text is never logged, echoed, stored
-  or put in a URL.
-- Slice 3: `scripts/run_eval.py`. Calls `/api/search` only. Reports
-  Top-1, Top-3, MRR@50 and no-target-in-top-50 per track. Never
-  prints or writes query text. `--json-out` writes case IDs, ranks,
-  scores and article IDs only, and never overwrites a file.
-  Smoke fixture: `tests/fixtures/fake_cases.json`.
+- **Migration** `20261001011735_add_semantic_embeddings.sql`.
+  - pgvector, `embedding_configs`, and `article_embeddings` keyed on
+    `source_article_id` (FK ON DELETE RESTRICT).
+  - `kb_article_v1_sha256`, and `kb_search_semantic` with exact
+    cosine search and KBF01-05 loud failures.
+  - The lexical migration is unchanged.
+- **`scripts/embed_kb.py`** with three commands:
+  - `preflight`: zero API.
+  - `embed --paid`: human only; cost ceiling, hard caps, journal.
+  - `load`: no API, one transaction.
+- **Config** `config/embedding/article-v1.json`. Both Python and the
+  server derive the config sha256 from it.
+- **Server:** `lib/embeddings/openai.ts` (key read at request time,
+  fixed error codes, little-endian decoding), `lib/search/semantic.ts`
+  and `lib/search/semantic-config.ts`. `/api/search` dispatches per
+  mode, and semantic is gated by `EVAL_MODES_ENABLED` exactly "true".
+- **`scripts/compare_eval_json.py`:** case-by-case report comparison.
+  The lexical rerun at eec5d3c was identical to the baseline.
+- **Credentials:** `supabase/config.toml` no longer passes
+  `OPENAI_API_KEY` to Studio.
 
-## Tests (as of commit c798c25)
-- Python: 217 tests. 9 skipped: the live SQL tests that need
-  KB_FINDER_TEST_DATABASE_URL.
-- tests.test_run_eval: 84.
-- Web unit tests (`npm run test:unit`): 33.
-- `npm run test:db`: 6.
-
-## First lexical baseline
-- One run, by the human, at 40b23d7. Depth 50.
-- The numbers, cases file hash, corpus and migration hashes are in
-  DECISIONS.md, "First lexical baseline result". That entry is the
-  source of truth. Do not copy numbers from anywhere else.
-- The results JSON from `--json-out` is kept outside the repo, on
-  the project owner's machine.
-- The frozen config does not change because of these numbers.
-  Improvements are new, logged experiments at depth 50.
+## Tests (as of ffb0c7c, the last code commit)
+- Python: 332, run with `KB_FINDER_TEST_DATABASE_URL` set (live-DB
+  tests included).
+  - `tests.test_embed_kb`: 72.
+  - `tests.test_semantic_sql`: 29.
+  - `tests.test_compare_eval_json`: 14.
+- Web unit tests (`npm run test:unit`): 90.
+- `npm run test:db`: 8.
+- No test calls OpenAI. Web tests block real fetch. The embedding
+  tests block the network and never build a real client.
 
 ## Known limitations
-- Small set: 21 positives, 4 negatives. One case moves Top-1 by
+- **Small set:** 21 positives, 4 negatives. One case moves a metric by
   about 5 points.
-- case_021 misses on both tracks (vocabulary gap).
-- case_013 and case_025 (negatives) returned close articles. Labels
-  do not change after the first run. This goes to a later,
-  separately versioned eval set.
-- Case topics came partly from ChatGPT. See the Phase 3 provenance
-  entry in DECISIONS.md.
-- staffOnly text is stored but not searchable.
-- `request.json()` reads the whole body before zod checks the 5000
-  character limit. A body size limit is needed before hosting.
-- `supabase start -x` still pulls some excluded images during
-  schema setup. They do not stay running.
-- No real english-parser lexeme containing `'` or `\` was found, so
-  that escaping path is untested by a real lexeme.
-- tsvector positions cap at 16,383 in the longest articles (no
-  effect on ts_rank).
-- No `seed.sql`. `supabase db reset` warns and skips seeding.
-- `next dev` does not read `.env.local` in the parent process. Set
-  `$env:NEXT_TELEMETRY_DISABLED = "1"` in the shell first.
+- **Thin margin:** Track A met the rule exactly (16/21 against 16).
+  Track B Top-1 fell from 8 to 6.
+- **Different fields:** the modes index different fields. Semantic
+  embeds title and full text only.
+- **Case movements:** case_021 is fixed by semantic. case_012 Track B
+  regressed from rank 6 to 39.
+- **No abstention:** semantic always returns up to 50 results.
+  Negatives score 0.33 to 0.62, overlapping real matches.
+- **Reruns can differ:** query embeddings are not cached, so semantic
+  eval reruns can differ slightly. The first complete run is the
+  scored one.
+- **Local-only cache:** the article embedding cache lives only on the
+  project owner's machine, pinned by sha256 in DECISIONS.md. Losing it
+  means a new paid embed with different vectors and a new pin.
+- **KBF05 cost:** the per-request staleness check costs about 47 ms.
+  Revisit in Phase 7, per DECISIONS.md.
+- **Exact model check:** both embedding clients require the response
+  `model` to be exactly `text-embedding-3-small`.
+- **staffOnly:** not searchable in either mode.
+- **Setup quirks:** `supabase start -x` still pulls some excluded
+  images. There is no `seed.sql`. `next dev` needs
+  `NEXT_TELEMETRY_DISABLED` set in the shell. Vite prints a
+  configLoader warning.
 
 ## What remains
-- README.md and the `npm run dev` line in AGENTS.md (drafted in
-  this session, awaiting approval).
-- Phase 5, semantic experiment (WORKFLOW.md section 8): cost
-  protection first, pgvector, `article-v1` template, offline embed,
-  `semantic` mode behind server-side gating, and a pre-registered
-  decision rule committed before any semantic eval run.
-- NOTES.md items: request body size limit before hosting; rename
-  `vitest.config.ts` to `vitest.config.mts` (low priority); decide
-  whether staffOnly is searchable, keeping in mind that some linked
-  technician articles are not in the corpus.
+- **Phase 7, clean UI and hosting:**
+  - Make semantic the default: `DEFAULT_SEARCH_MODE` plus the UI's
+    hard-coded mode.
+  - The pre-hosting items in NOTES.md: the "Phase 7 (before hosting)"
+    section, and the request body size limit under "Ideas".
+  - WORKFLOW.md's Codex checkpoint 4 (keys, access gate, rate
+    limiting, cost protection).
+- **Phase 6, query normalization:** a stretch goal, only after Phase 7.
+- **Separate, logged experiments:** hybrid retrieval, reranking, and a
+  new, separately versioned eval set.
 
 ## Unresolved human decisions
-- Whether staffOnly text is searchable (currently excluded).
+- Whether staffOnly text is searchable (currently excluded in both
+  modes).
+- When to version a new eval set (case_013 and case_025 labels).
