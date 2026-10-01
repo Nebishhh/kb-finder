@@ -76,3 +76,9 @@ Persistent notes for later phases and new ideas go here.
   sha256 and config contents.
 - Embed runs: a provider success with a lost response can re-bill at
   most one batch on a later run.
+
+
+
+  ## Dev notes
+- If next dev returns 404 on /api/search, stop it, delete .next and
+  restart. A stale dev cache after npm run build caused this once.
