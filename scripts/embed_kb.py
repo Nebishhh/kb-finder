@@ -17,9 +17,12 @@ preflight  Default. No API call, no database. Prints article and token counts, c
            OPENAI_API_KEY. May download the public cl100k_base file once (no key).
 embed      Paid. Refuses without --paid. --max-cost-usd is required, may not exceed
            HARD_CAP_USD, and the run aborts before the first request if the projected
-           cost exceeds it or the token count exceeds HARD_CAP_TOKENS. Stops mid-run if
-           the tokens the API reports would exceed the ceiling. Writes the cache only;
-           never connects to the database. No automatic retries.
+           cost exceeds it or the token count exceeds HARD_CAP_TOKENS. After every
+           response the cumulative tokens the API reports billed are checked against
+           both HARD_CAP_TOKENS and --max-cost-usd; passing either stops the run.
+           Planned vs billed tokens are printed per request and in the summary; a
+           mismatch is reported, not a reason to stop. Writes the cache only; never
+           connects to the database. No automatic retries.
 load       No API call. DATABASE_URL only; non-local hosts are refused unless
            --allow-remote. One transaction: config row, this config's embeddings
            replaced, then kb_search_semantic is called once so every KBF check runs.
@@ -594,6 +597,10 @@ def cmd_preflight(args, cfg, config_sha256, enc) -> int:
     return EXIT_OK
 
 
+def _mismatch(planned: int, billed: int) -> str:
+    return "" if planned == billed else f" (billed {billed - planned:+d} vs planned)"
+
+
 def cmd_embed(args, cfg, config_sha256, enc, environ, transport_factory) -> int:
     if not args.paid:
         raise EmbedError("embed makes paid API calls; pass --paid to confirm", EXIT_USAGE)
@@ -617,7 +624,7 @@ def cmd_embed(args, cfg, config_sha256, enc, environ, transport_factory) -> int:
         send = transport_factory(environ)
         args.cache_dir.mkdir(parents=True, exist_ok=True)
         journal = Journal(plan["journal_path"], cfg, config_sha256)
-        billed = requests_sent = 0
+        billed = planned_total = requests_sent = 0
         try:
             for batch in batches(misses):
                 planned = sum(p["input_tokens"] for p in batch)
@@ -638,14 +645,24 @@ def cmd_embed(args, cfg, config_sha256, enc, environ, transport_factory) -> int:
                 journal.add(new_rows)
                 rows.update((r["source_article_id"], r) for r in new_rows)
                 billed += used
-                print(f"request {requests_sent}: {len(batch)} articles, {used} tokens billed")
+                planned_total += planned
+                # A planned/billed mismatch is reported, never a reason to stop; the
+                # caps below are checked against what the API says it billed.
+                print(f"request {requests_sent}: {len(batch)} articles, "
+                      f"tokens planned {planned} billed {used}"
+                      f"{_mismatch(planned, used)}")
+                if billed > HARD_CAP_TOKENS:
+                    raise EmbedError(f"billed tokens {billed} (planned {planned_total}) passed "
+                                     f"the hard cap {HARD_CAP_TOKENS}; stopped, journal kept",
+                                     EXIT_COST)
                 if cost_usd(billed) > ceiling:
-                    raise EmbedError(f"billed tokens {billed} passed --max-cost-usd {ceiling}; "
-                                     "stopped, journal kept", EXIT_COST)
+                    raise EmbedError(f"billed tokens {billed} (planned {planned_total}) passed "
+                                     f"--max-cost-usd {ceiling}; stopped, journal kept",
+                                     EXIT_COST)
         finally:
             journal.close()
-        print(f"requests {requests_sent}, tokens billed {billed}, "
-              f"cost ${cost_usd(billed):.6f}")
+        print(f"requests {requests_sent}, tokens planned {planned_total} billed {billed}"
+              f"{_mismatch(planned_total, billed)}, cost ${cost_usd(billed):.6f}")
     else:
         print("nothing to embed: no request sent")
 

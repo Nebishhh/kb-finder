@@ -493,22 +493,85 @@ class GuardTests(Base):
 
     def test_billed_tokens_over_ceiling_stop_mid_run(self):
         t = FakeTransport(usage=10_000_000)  # $0.20 reported for the first batch
-        with mock.patch.object(embed_kb, "BATCH_MAX_INPUTS", 1):
+        # Token cap raised so this exercises the cost ceiling, not the token cap.
+        with mock.patch.object(embed_kb, "HARD_CAP_TOKENS", 100_000_000), \
+                mock.patch.object(embed_kb, "BATCH_MAX_INPUTS", 1):
             code, out = self.embed(t, "0.10")
         self.assertEqual(code, 4)
         self.assertEqual(len(t.bodies), 1)
-        self.assertIn("stopped, journal kept", out)
+        self.assertIn("passed --max-cost-usd 0.1; stopped, journal kept", out)
         self.assertEqual(len(embed_kb.read_journal(self.journal_path(), *self.cfg())), 1)
         self.assertFalse(self.cache_path().exists())
 
     def test_next_request_that_would_pass_ceiling_is_not_sent(self):
         # First batch bills just under the ceiling; the planned second would pass it.
         t = FakeTransport(usage=4_999_995)  # $0.0999999; one more small batch passes $0.10
-        with mock.patch.object(embed_kb, "BATCH_MAX_INPUTS", 1):
+        # Token cap raised so this exercises the cost ceiling, not the token cap.
+        with mock.patch.object(embed_kb, "HARD_CAP_TOKENS", 100_000_000), \
+                mock.patch.object(embed_kb, "BATCH_MAX_INPUTS", 1):
             code, out = self.embed(t, "0.10")
         self.assertEqual(code, 4)
         self.assertEqual(len(t.bodies), 1)
         self.assertIn("next request would pass", out)
+
+    def test_cumulative_billed_tokens_over_hard_cap_stop(self):
+        # Each response bills 600 tokens: cost stays far under $0.10, but the
+        # cumulative 1,200 after the second response passes a 1,000-token cap.
+        t = FakeTransport(usage=600)
+        with mock.patch.object(embed_kb, "HARD_CAP_TOKENS", 1000), \
+                mock.patch.object(embed_kb, "BATCH_MAX_INPUTS", 1):
+            code, out = self.embed(t, "0.10")
+        self.assertEqual(code, 4, out)
+        self.assertEqual(len(t.bodies), 2)
+        self.assertIn("billed tokens 1200 (planned ", out)
+        self.assertIn("passed the hard cap 1000; stopped, journal kept", out)
+        self.assertEqual(len(embed_kb.read_journal(self.journal_path(), *self.cfg())), 2)
+        self.assertFalse(self.cache_path().exists())
+
+    def test_single_response_over_hard_cap_stops(self):
+        t = FakeTransport(usage=5000)
+        with mock.patch.object(embed_kb, "HARD_CAP_TOKENS", 1000):
+            code, out = self.embed(t, "0.50")
+        self.assertEqual(code, 4, out)
+        self.assertEqual(len(t.bodies), 1)
+        self.assertIn("passed the hard cap 1000", out)
+        self.assertFalse(self.cache_path().exists())
+
+    def test_billed_exactly_at_hard_cap_continues(self):
+        t = FakeTransport(usage=100)
+        with mock.patch.object(embed_kb, "HARD_CAP_TOKENS", 300), \
+                mock.patch.object(embed_kb, "BATCH_MAX_INPUTS", 1):
+            code, out = self.embed(t)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(len(t.bodies), 3)
+        self.assertIn("billed 300", out)
+
+    def test_planned_billed_mismatch_is_reported_not_fatal(self):
+        def plus_five(resp):
+            resp["usage"]["total_tokens"] += 5
+            return resp
+
+        t = FakeTransport(mutate=plus_five)
+        with mock.patch.object(embed_kb, "BATCH_MAX_INPUTS", 1):
+            code, out = self.embed(t)
+        self.assertEqual(code, 0, out)
+        request_lines = [line for line in out.splitlines() if line.startswith("request ")]
+        self.assertEqual(len(request_lines), 3)
+        for line in request_lines:
+            self.assertRegex(line, r"tokens planned (\d+) billed \d+ \(billed \+5 vs planned\)$")
+        summary = next(line for line in out.splitlines() if line.startswith("requests "))
+        self.assertRegex(summary, r"^requests 3, tokens planned \d+ billed \d+ "
+                                  r"\(billed \+15 vs planned\), cost \$")
+        self.assertTrue(self.cache_path().exists())
+
+    def test_matching_planned_and_billed_print_no_mismatch(self):
+        t = FakeTransport()
+        code, out = self.embed(t)
+        self.assertEqual(code, 0, out)
+        planned = sum(payload_tokens(p) for p in t.inputs())
+        self.assertIn(f"request 1: 3 articles, tokens planned {planned} billed {planned}\n", out)
+        self.assertIn(f"requests 1, tokens planned {planned} billed {planned}, cost $", out)
+        self.assertNotIn("vs planned", out)
 
 
 # ------------------------------------------------------------------ paid flow (fake)

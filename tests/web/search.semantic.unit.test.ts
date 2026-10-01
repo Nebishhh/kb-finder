@@ -626,9 +626,10 @@ describe("credential isolation", () => {
     ...sourceFiles(join(ROOT, "lib")),
     join(ROOT, "next.config.ts"),
     join(ROOT, ".env.example"),
+    join(ROOT, "supabase", "config.toml"),
   ];
 
-  it("no NEXT_PUBLIC_ name exists anywhere in app, lib, next.config.ts or .env.example", () => {
+  it("no NEXT_PUBLIC_ name exists in app, lib, next.config.ts, .env.example or supabase/config.toml", () => {
     expect(files.length).toBeGreaterThan(5);
     for (const file of files) {
       expect(readFileSync(file, "utf8"), file).not.toMatch(/NEXT_PUBLIC_[A-Za-z0-9_]/);
@@ -645,6 +646,15 @@ describe("credential isolation", () => {
       expect(readFileSync(join(ROOT, f), "utf8").startsWith('import "server-only";'), f)
         .toBe(true);
     }
+  });
+
+  it("no Supabase component reads the OpenAI key", () => {
+    const toml = readFileSync(join(ROOT, "supabase", "config.toml"), "utf8");
+    expect(toml).not.toContain("OPENAI_API_KEY");
+    // No setting (comment lines aside) mentions OpenAI at all, e.g. Studio's
+    // openai_api_key = "env(...)".
+    const settings = toml.split(/\r?\n/).filter((l) => !/^\s*#/.test(l));
+    expect(settings.filter((l) => /openai/i.test(l))).toEqual([]);
   });
 
   it("the client page imports nothing from the semantic or OpenAI modules", () => {
