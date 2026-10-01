@@ -60,9 +60,14 @@ function row(
   };
 }
 
-// The only mode is lexical, so search is the lexical retriever.
+// search is the lexical retriever. The semantic retriever is a fake that throws,
+// so any test here that reached it would get a 500 instead of its expected result.
+const semanticNeverCalled = vi.fn<SearchFn>(async () => {
+  throw new Error("semantic retriever called");
+});
+
 function deps(search: SearchFn, env: SearchEnv = {}) {
-  return { retrievers: { lexical: search }, env };
+  return { retrievers: { lexical: search, semantic: semanticNeverCalled }, env };
 }
 
 async function run(request: Request, search: SearchFn, env: SearchEnv = {}) {
@@ -71,6 +76,7 @@ async function run(request: Request, search: SearchFn, env: SearchEnv = {}) {
 }
 
 afterEach(() => {
+  expect(semanticNeverCalled).not.toHaveBeenCalled();
   vi.restoreAllMocks();
 });
 
@@ -111,10 +117,9 @@ describe("mode gating", () => {
     expect(resolveDefaultMode({})).toBe("lexical");
     expect(resolveDefaultMode({ DEFAULT_SEARCH_MODE: "" })).toBe("lexical");
     expect(resolveDefaultMode({ DEFAULT_SEARCH_MODE: "lexical" })).toBe("lexical");
-    expect(resolveDefaultMode({ DEFAULT_SEARCH_MODE: "semantic" })).toBeNull();
-    expect(resolveDefaultMode({ DEFAULT_SEARCH_MODE: "semantic" }, modes)).toBe(
-      "semantic",
-    );
+    expect(resolveDefaultMode({ DEFAULT_SEARCH_MODE: "semantic" })).toBe("semantic");
+    expect(resolveDefaultMode({ DEFAULT_SEARCH_MODE: "semantic" }, ["lexical"])).toBeNull();
+    expect(resolveDefaultMode({ DEFAULT_SEARCH_MODE: "bm25" })).toBeNull();
   });
 
   it("always allows the default mode", () => {
@@ -137,18 +142,8 @@ describe("mode gating", () => {
   it("rejects unknown modes even with eval modes enabled", () => {
     const env = { EVAL_MODES_ENABLED: "true" };
     expect(isModeAllowed("bm25", "lexical", env, modes)).toBe(false);
-    expect(isModeAllowed("semantic", "lexical", env)).toBe(false);
-  });
-
-  it("returns 400 for semantic even with eval modes enabled (not implemented)", async () => {
-    const { search } = fakeSearch();
-    const result = await run(
-      jsonRequest({ query: "wifi", mode: "semantic" }),
-      search,
-      { EVAL_MODES_ENABLED: "true" },
-    );
-    expect(result).toEqual({ status: 400, body: INVALID });
-    expect(search).not.toHaveBeenCalled();
+    expect(isModeAllowed("bm25", "lexical", env)).toBe(false);
+    expect(isModeAllowed("semantic", "lexical", env, ["lexical"])).toBe(false);
   });
 
   it("returns 500 when DEFAULT_SEARCH_MODE is unknown", async () => {

@@ -17,5 +17,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/web/**/*.test.ts"],
+    // Blocks real fetch and clears OPENAI_API_KEY and the mode switches.
+    setupFiles: ["tests/web/setup.ts"],
   },
 });
