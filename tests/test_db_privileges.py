@@ -30,6 +30,7 @@ MIGRATION_DIR = ROOT / "supabase" / "migrations"
 ARTICLES_MIGRATION = MIGRATION_DIR / "20260930042716_create_articles.sql"
 SEMANTIC_MIGRATION = MIGRATION_DIR / "20261001011735_add_semantic_embeddings.sql"
 LOCKDOWN_MIGRATIONS = sorted(MIGRATION_DIR.glob("*_lock_down_data_api.sql"))
+APP_ROLE_MIGRATIONS = sorted(MIGRATION_DIR.glob("*_add_app_role.sql"))
 
 CLOSED_ROLES = ("anon", "authenticated")  # plus PUBLIC (grantee 0)
 TABLE_PRIVS = ("SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER")
@@ -164,6 +165,10 @@ class LockdownMigrationFileTest(unittest.TestCase):
         self.assertGreater(LOCKDOWN_MIGRATIONS[0].name, SEMANTIC_MIGRATION.name)
         self.assertGreater(SEMANTIC_MIGRATION.name, ARTICLES_MIGRATION.name)
 
+    def test_one_app_role_migration_after_the_lockdown(self):
+        self.assertEqual(len(APP_ROLE_MIGRATIONS), 1, APP_ROLE_MIGRATIONS)
+        self.assertGreater(APP_ROLE_MIGRATIONS[0].name, LOCKDOWN_MIGRATIONS[0].name)
+
 
 @unittest.skipUnless(URL, "KB_FINDER_TEST_DATABASE_URL not set")
 class PublicCatalogTests(unittest.TestCase):
@@ -184,7 +189,7 @@ class PublicCatalogTests(unittest.TestCase):
         self.cur.execute("select c.relname from pg_class c where c.relnamespace = 'public'::regnamespace "
                          "and c.relkind = 'r' order by 1")
         tables = [r[0] for r in self.cur.fetchall()]
-        for name in ("article_embeddings", "articles", "embedding_configs"):
+        for name in ("article_embeddings", "articles", "embedding_configs", "kb_rate_counters"):
             self.assertIn(name, tables)
         self.cur.execute("select count(*) from pg_proc where pronamespace = 'public'::regnamespace "
                          "and proname like 'kb\\_%'")
@@ -265,6 +270,310 @@ class LockdownMigrationTests(unittest.TestCase):
         self.cur.execute(self.lockdown)
         self.cur.execute(self.lockdown)
         self.assertEqual(open_access(self.cur, self.schema), EMPTY)
+
+
+# ------------------------------------------------------------------ kb_app (step 3)
+
+APP_ROLE = "kb_app"
+
+# Exactly what kb_app is granted, as (schema-relative object, privilege).
+APP_TABLE_GRANTS = {
+    ("article_embeddings", "SELECT"),
+    ("articles", "SELECT"),
+    ("embedding_configs", "SELECT"),
+    ("kb_rate_counters", "DELETE"),
+    ("kb_rate_counters", "INSERT"),
+    ("kb_rate_counters", "SELECT"),
+    ("kb_rate_counters", "UPDATE"),
+}
+APP_FUNCTION_GRANTS = {
+    "kb_article_v1_sha256(pg_catalog.text,pg_catalog.text)",
+    "kb_lexical_tsquery(pg_catalog.text)",
+    "kb_search_lexical(pg_catalog.text,pg_catalog.int4)",
+    "kb_search_semantic(extensions.vector,pg_catalog.int4,pg_catalog.text)",
+}
+APP_SCHEMA_GRANTS = {("extensions", "USAGE"), ("public", "USAGE")}
+APP_POLICIES = {
+    ("article_embeddings", "kb_app_select", "r", "true", None),
+    ("articles", "kb_app_select", "r", "true", None),
+    ("embedding_configs", "kb_app_select", "r", "true", None),
+    ("kb_rate_counters", "kb_app_all", "*", "true", "true"),
+}
+ALL_TABLE_PRIVS = TABLE_PRIVS + ("MAINTAIN",)
+
+
+# name(schema.type,...) with every argument type schema-qualified, so the text does
+# not depend on the session's search_path (regprocedure output does).
+SIGNATURE = """p.proname || '(' || coalesce((
+  select string_agg(tn.nspname || '.' || t.typname, ',' order by a.i)
+  from unnest(p.proargtypes) with ordinality as a(oid, i)
+  join pg_type t on t.oid = a.oid join pg_namespace tn on tn.oid = t.typnamespace), '') || ')'"""
+
+
+def app_grants(cur, ns):
+    """kb_app's direct grants anywhere in the database, and its effective rights in ns."""
+    cur.execute("""
+        select n.nspname, c.relname, a.privilege_type
+        from pg_class c join pg_namespace n on n.oid = c.relnamespace
+        cross join lateral aclexplode(c.relacl) a
+        where a.grantee = %(role)s::regrole order by 1, 2, 3""", {"role": APP_ROLE})
+    direct_relations = cur.fetchall()
+    cur.execute("""
+        select c.relname, att.attname, a.privilege_type
+        from pg_attribute att join pg_class c on c.oid = att.attrelid
+        cross join lateral aclexplode(att.attacl) a
+        where att.attacl is not null and a.grantee = %(role)s::regrole order by 1, 2, 3""",
+                {"role": APP_ROLE})
+    direct_columns = cur.fetchall()
+    cur.execute(f"""
+        select n.nspname, {SIGNATURE}
+        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+        cross join lateral aclexplode(p.proacl) a
+        where a.grantee = %(role)s::regrole order by 1, 2""", {"role": APP_ROLE})
+    direct_functions = cur.fetchall()
+    cur.execute("""
+        select n.nspname, a.privilege_type from pg_namespace n
+        cross join lateral aclexplode(n.nspacl) a
+        where a.grantee = %(role)s::regrole order by 1, 2""", {"role": APP_ROLE})
+    direct_schemas = cur.fetchall()
+    cur.execute("""
+        select c.relname, p from pg_class c, unnest(%(privs)s::text[]) p
+        where c.relnamespace = %(ns)s::regnamespace and c.relkind in ('r', 'p', 'v', 'm', 'f')
+          and has_table_privilege(%(role)s, c.oid, p)
+        union all
+        select c.relname, p from pg_class c, unnest(%(seq)s::text[]) p
+        where c.relnamespace = %(ns)s::regnamespace and c.relkind = 'S'
+          and has_sequence_privilege(%(role)s, c.oid, p)
+        order by 1, 2""", {"role": APP_ROLE, "ns": ns, "privs": list(ALL_TABLE_PRIVS),
+                           "seq": list(SEQUENCE_PRIVS)})
+    effective_relations = cur.fetchall()
+    cur.execute(f"""
+        select {SIGNATURE} from pg_proc p
+        where p.pronamespace = %(ns)s::regnamespace
+          and has_function_privilege(%(role)s, p.oid, 'EXECUTE') order by 1""",
+                {"role": APP_ROLE, "ns": ns})
+    effective_functions = [r[0] for r in cur.fetchall()]
+    cur.execute("""
+        select n.nspname from pg_namespace n
+        where has_schema_privilege(%(role)s, n.oid, 'CREATE') order by 1""", {"role": APP_ROLE})
+    create_schemas = [r[0] for r in cur.fetchall()]
+    cur.execute("select has_database_privilege(%s, current_database(), 'CREATE')", [APP_ROLE])
+    create_database = cur.fetchone()[0]
+    cur.execute("select pg_get_userbyid(roleid) from pg_auth_members "
+                "where member = %s::regrole order by 1", [APP_ROLE])
+    member_of = [r[0] for r in cur.fetchall()]
+    return {
+        "direct_relations": direct_relations, "direct_columns": direct_columns,
+        "direct_functions": direct_functions, "direct_schemas": direct_schemas,
+        "effective_relations": effective_relations, "effective_functions": effective_functions,
+        "create_schemas": create_schemas, "create_database": create_database,
+        "member_of": member_of,
+    }
+
+
+def app_policies(cur, ns):
+    cur.execute("""
+        select c.relname, pol.polname, pol.polcmd::text,
+               pg_get_expr(pol.polqual, pol.polrelid), pg_get_expr(pol.polwithcheck, pol.polrelid),
+               pol.polpermissive, array(select pg_get_userbyid(r) from unnest(pol.polroles) r)
+        from pg_policy pol join pg_class c on c.oid = pol.polrelid
+        where c.relnamespace = %s::regnamespace order by 1, 2""", [ns])
+    return cur.fetchall()
+
+
+@unittest.skipUnless(URL, "KB_FINDER_TEST_DATABASE_URL not set")
+class AppRoleCatalogTests(unittest.TestCase):
+    """Catalog reads only, read-only transaction, against the migrated database."""
+
+    def setUp(self):
+        self.conn = psycopg.connect(URL)
+        self.conn.read_only = True
+        self.addCleanup(self.conn.close)
+        self.cur = self.conn.cursor()
+
+    def test_role_attributes_and_settings(self):
+        self.cur.execute("select rolsuper, rolinherit, rolcreaterole, rolcreatedb, rolbypassrls, "
+                         "rolreplication, rolconfig from pg_roles where rolname = %s", [APP_ROLE])
+        row = self.cur.fetchone()
+        self.assertIsNotNone(row, "kb_app does not exist; apply the migrations")
+        *flags, config = row
+        self.assertEqual(flags, [False] * 6)  # super, inherit, createrole, createdb, bypassrls, repl
+        self.assertIn("statement_timeout=5000ms", config)
+        self.assertIn("search_path=public, extensions", config)
+
+    def test_exact_grants(self):
+        got = app_grants(self.cur, "public")
+        self.assertEqual(set(got["direct_relations"]),
+                         {("public", rel, priv) for rel, priv in APP_TABLE_GRANTS})
+        self.assertEqual(got["direct_columns"], [])
+        self.assertEqual(set(got["direct_functions"]),
+                         {("public", f) for f in APP_FUNCTION_GRANTS})
+        self.assertEqual(set(got["direct_schemas"]), APP_SCHEMA_GRANTS)
+        self.assertEqual(set(got["effective_relations"]), APP_TABLE_GRANTS)
+        self.assertEqual(set(got["effective_functions"]), APP_FUNCTION_GRANTS)
+        self.assertEqual(got["create_schemas"], [])
+        self.assertFalse(got["create_database"])
+        self.assertEqual(got["member_of"], [])
+
+    def test_policies_are_only_for_kb_app(self):
+        got = app_policies(self.cur, "public")
+        self.assertEqual({row[:5] for row in got}, APP_POLICIES)
+        for row in got:
+            self.assertTrue(row[5], row)              # permissive
+            self.assertEqual(row[6], [APP_ROLE], row)  # roles
+
+
+@unittest.skipUnless(URL, "KB_FINDER_TEST_DATABASE_URL not set")
+class AppRoleMigrationTests(unittest.TestCase):
+    """All four migrations in a throwaway schema, synthetic rows, then SET LOCAL ROLE
+    kb_app. One transaction, always rolled back."""
+
+    CFG = "a" * 64
+    DIMS = 1536
+    LEXICAL = "select rank, source_article_id, score::text from kb_search_lexical(%s, 50)"
+    SEMANTIC = ("select rank, source_article_id, score::text from "
+                "kb_search_semantic(%s::text::extensions.vector, 50, %s)")
+
+    @classmethod
+    def setUpClass(cls):
+        assert len(APP_ROLE_MIGRATIONS) == 1, APP_ROLE_MIGRATIONS
+        cls.migrations = [ARTICLES_MIGRATION.read_text(encoding="utf-8"),
+                          SEMANTIC_MIGRATION.read_text(encoding="utf-8"),
+                          LOCKDOWN_MIGRATIONS[0].read_text(encoding="utf-8")]
+        cls.app_role = APP_ROLE_MIGRATIONS[0].read_text(encoding="utf-8")
+        with psycopg.connect(URL, autocommit=True) as c:
+            cls.public_before = (base.public_snapshot(c), open_access(c.cursor(), "public"),
+                                 app_grants(c.cursor(), "public"))
+
+    @classmethod
+    def tearDownClass(cls):
+        with psycopg.connect(URL, autocommit=True) as c:
+            after = (base.public_snapshot(c), open_access(c.cursor(), "public"),
+                     app_grants(c.cursor(), "public"))
+        assert after == cls.public_before, "public objects or privileges changed"
+
+    def setUp(self):
+        self.schema = f"kbtest_{uuid.uuid4().hex}"
+        self.conn = psycopg.connect(URL)  # autocommit off: one transaction
+        self.addCleanup(self.rollback_and_verify)
+        cur = self.cur = self.conn.cursor()
+        cur.execute("select exists (select 1 from pg_namespace where nspname = %s)", [self.schema])
+        if cur.fetchone()[0]:
+            self.fail(f"schema {self.schema} already exists; refusing to run")
+        cur.execute(sql.SQL("create schema {}").format(sql.Identifier(self.schema)))
+        cur.execute(sql.SQL("set local search_path to {}").format(sql.Identifier(self.schema)))
+        for migration in self.migrations:
+            cur.execute(migration)
+        cur.execute(self.app_role)
+        self.load_synthetic_rows()
+        # postgres holds ADMIN on kb_app but not SET; this grant lives only in this
+        # transaction.
+        cur.execute("grant kb_app to current_user with inherit false, set true")
+
+    def rollback_and_verify(self):
+        self.conn.rollback()
+        self.conn.close()
+        with psycopg.connect(URL, autocommit=True) as c:
+            with c.cursor() as cur:
+                cur.execute("select exists (select 1 from pg_namespace where nspname = %s)",
+                            [self.schema])
+                self.assertFalse(cur.fetchone()[0], f"{self.schema} survived rollback")
+
+    def unit_literal(self, index):
+        v = ["0"] * self.DIMS
+        v[index] = "1"
+        return "[" + ",".join(v) + "]"
+
+    def load_synthetic_rows(self):
+        cur = self.cur
+        cur.execute(
+            "insert into articles (source_article_id, title, url, full_text, sections, parser_version) "
+            "select id, 'Wifi heading ' || id, "
+            "'https://td.usd.edu/TDClient/33/Portal/KB/Article/' || id || '/x', "
+            "'Connect to wifi. Body ' || id || '.', '[]', '2' "
+            "from unnest(array['9', '10', '100']) as id")
+        cur.execute("insert into embedding_configs values (%s, '{}', 'text-embedding-3-small', "
+                    "%s, 'article-v1')", [self.CFG, self.DIMS])
+        for sid, index in (("9", 1), ("10", 0), ("100", 2)):
+            cur.execute(
+                "insert into article_embeddings (config_sha256, source_article_id, "
+                "source_text_sha256, input_kind, input_sha256, input_tokens, truncated, embedding) "
+                "select %s, a.source_article_id, kb_article_v1_sha256(a.title, a.full_text), "
+                "'text', repeat('c', 64), 5, false, %s::text::extensions.vector "
+                "from articles a where a.source_article_id = %s",
+                [self.CFG, self.unit_literal(index), sid])
+
+    def searches(self):
+        self.cur.execute(self.LEXICAL, ["wifi"])
+        lexical = self.cur.fetchall()
+        self.cur.execute(self.SEMANTIC, [self.unit_literal(0), self.CFG])
+        semantic = self.cur.fetchall()
+        return lexical, semantic
+
+    def as_app(self):
+        self.cur.execute("set local role kb_app")
+        self.cur.execute("select current_user")
+        self.assertEqual(self.cur.fetchone()[0], APP_ROLE)
+
+    def assert_denied(self, statement, args=None):
+        with self.assertRaises(psycopg.errors.InsufficientPrivilege, msg=statement):
+            with self.conn.transaction():  # savepoint: only this statement rolls back
+                self.cur.execute(statement, args)
+
+    def test_kb_app_searches_return_the_owner_rows(self):
+        owner = self.searches()
+        self.assertEqual(len(owner[0]), 3)
+        self.assertEqual([r[1] for r in owner[1]], ["10", "100", "9"])
+        self.as_app()
+        self.assertEqual(self.searches(), owner)
+
+    def test_kb_app_reads_and_writes_rate_counters(self):
+        self.as_app()
+        key = "b" * 64
+        self.cur.execute("insert into kb_rate_counters values ('search_ip_10m', %s, "
+                         "'2026-10-01T00:00Z', 1)", [key])
+        self.cur.execute("insert into kb_rate_counters values ('search_global_day', 'all', "
+                         "'2026-10-01T00:00Z', 1)")
+        self.cur.execute("update kb_rate_counters set count = count + 1 "
+                         "where kind = 'search_ip_10m' and key = %s returning count", [key])
+        self.assertEqual(self.cur.fetchone()[0], 2)
+        self.cur.execute("select count(*) from kb_rate_counters")
+        self.assertEqual(self.cur.fetchone()[0], 2)
+        self.cur.execute("delete from kb_rate_counters where window_start < '2026-10-02T00:00Z'")
+        self.assertEqual(self.cur.rowcount, 2)
+
+    def test_rate_counter_checks(self):
+        for kind, key, count in (("search_ip_10m", "all", 1),            # 'all' only for global
+                                 ("search_global_day", "c" * 64, 1),     # global must be 'all'
+                                 ("search_ip_10m", "C" * 64, 1),         # lowercase hex only
+                                 ("search_ip_10m", "c" * 63, 1),
+                                 ("raw_ip", "c" * 64, 1),
+                                 ("search_ip_10m", "c" * 64, 0)):
+            with self.assertRaises(psycopg.errors.CheckViolation, msg=(kind, key, count)):
+                with self.conn.transaction():
+                    self.cur.execute("insert into kb_rate_counters values (%s, %s, now(), %s)",
+                                     [kind, key, count])
+
+    def test_kb_app_is_denied_everything_else(self):
+        self.as_app()
+        self.assert_denied(
+            "insert into articles (source_article_id, title, url, full_text, sections, "
+            "parser_version) values ('11', 't', "
+            "'https://td.usd.edu/TDClient/33/Portal/KB/Article/11/x', 'b', '[]', '2')")
+        self.assert_denied("update articles set title = 'x'")
+        self.assert_denied("delete from article_embeddings")
+        self.assert_denied("insert into embedding_configs values (%s, '{}', 'm', 1536, 'v')",
+                           ["d" * 64])
+        self.assert_denied("truncate kb_rate_counters")
+        self.assert_denied("select kb_join_tags(array['a'])")
+        self.assert_denied(sql.SQL("create table {}.kb_app_probe (x int)").format(
+            sql.Identifier(self.schema)))
+
+    def test_app_role_migration_is_idempotent(self):
+        owner = self.searches()
+        self.cur.execute(self.app_role)
+        self.as_app()
+        self.assertEqual(self.searches(), owner)
 
 
 if __name__ == "__main__":
