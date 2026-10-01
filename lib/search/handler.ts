@@ -16,12 +16,22 @@ export type SearchFn = (query: string, depth: number) => Promise<SearchRow[]>;
 export type SearchEnv = {
   DEFAULT_SEARCH_MODE?: string;
   EVAL_MODES_ENABLED?: string;
+  // Exactly "off" skips the limiter, allowed only when VERCEL is unset (local
+  // dev and evals). On Vercel it is a config error and every request gets 500.
+  RATE_LIMIT?: string;
+  VERCEL?: string;
 };
+
+// The daily cap (lib/limits/daily-cap.ts). Called once per valid, allowed
+// search, before the retriever, so a failed retrieval still counts.
+export type LimitResult = "ok" | "daily_cap";
+export type LimitFn = () => Promise<LimitResult>;
 
 // One retriever per mode. A request only ever reaches the retriever for the
 // mode it asked for, after gating.
 export type SearchDeps = {
   retrievers: Record<SearchMode, SearchFn>;
+  limit: LimitFn;
   env: SearchEnv;
 };
 
@@ -39,6 +49,7 @@ export type SearchResponse = { mode: string; results: SearchResult[] };
 const INVALID_BODY = { error: "Invalid request" };
 const FAILED_BODY = { error: "Search failed" };
 const TOO_LARGE_BODY = { error: "Request too large" };
+const TOO_MANY_BODY = { error: "Too many requests" };
 
 function json(body: unknown, status: number): Response {
   return Response.json(body, {
@@ -76,6 +87,13 @@ export function isModeAllowed(
   return env.EVAL_MODES_ENABLED === "true";
 }
 
+// "on": the limiter runs. "skip": RATE_LIMIT is exactly "off" off Vercel.
+// "invalid": RATE_LIMIT is "off" on Vercel, which is never allowed.
+export function resolveRateLimit(env: SearchEnv): "on" | "skip" | "invalid" {
+  if (env.RATE_LIMIT !== "off") return "on";
+  return env.VERCEL ? "invalid" : "skip";
+}
+
 // One row in, one result out, in the order the database returned.
 export function toResult(row: SearchRow): SearchResult {
   return {
@@ -97,6 +115,11 @@ export async function handleSearch(
     console.error("search config error: invalid DEFAULT_SEARCH_MODE");
     return json(FAILED_BODY, 500);
   }
+  const rateLimit = resolveRateLimit(deps.env);
+  if (rateLimit === "invalid") {
+    console.error("search config error: RATE_LIMIT=off on Vercel");
+    return json(FAILED_BODY, 500);
+  }
 
   // Byte-capped read (lib/search/body.ts); the body is never logged.
   const body = await readJsonBody(request);
@@ -112,6 +135,22 @@ export async function handleSearch(
   const { query, mode } = parsed.data;
   if (!isModeAllowed(mode, defaultMode, deps.env)) {
     return json(INVALID_BODY, 400);
+  }
+
+  // Only valid, allowed searches reach the cap. Fail closed: a limiter error is
+  // a 500, never a search.
+  if (rateLimit === "on") {
+    let limited: LimitResult;
+    try {
+      limited = await deps.limit();
+    } catch (err) {
+      console.error(`search limit failed: ${errorSummary(err)}`);
+      return json(FAILED_BODY, 500);
+    }
+    if (limited !== "ok") {
+      console.error("search rejected: DAILY_CAP");
+      return json(TOO_MANY_BODY, 429);
+    }
   }
 
   try {

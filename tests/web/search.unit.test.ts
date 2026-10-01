@@ -6,6 +6,7 @@ import { SEARCH_DEPTH } from "@/lib/search/config";
 import {
   handleSearch,
   isModeAllowed,
+  type LimitFn,
   resolveDefaultMode,
   type SearchEnv,
   type SearchFn,
@@ -66,8 +67,10 @@ const semanticNeverCalled = vi.fn<SearchFn>(async () => {
   throw new Error("semantic retriever called");
 });
 
-function deps(search: SearchFn, env: SearchEnv = {}) {
-  return { retrievers: { lexical: search, semantic: semanticNeverCalled }, env };
+const allow: LimitFn = async () => "ok";
+
+function deps(search: SearchFn, env: SearchEnv = {}, limit: LimitFn = allow) {
+  return { retrievers: { lexical: search, semantic: semanticNeverCalled }, limit, env };
 }
 
 async function run(request: Request, search: SearchFn, env: SearchEnv = {}) {
@@ -284,7 +287,7 @@ describe("query text never leaks", () => {
 
   const query = `my laptop ${SENTINEL} will not connect`;
 
-  const cases: [string, Request, SearchFn, SearchEnv][] = [
+  const cases: [string, Request, SearchFn, SearchEnv, LimitFn?][] = [
     [
       "success",
       jsonRequest({ query, mode: "lexical" }),
@@ -361,11 +364,27 @@ describe("query text never leaks", () => {
       fakeSearch().search,
       {},
     ],
+    [
+      "over the daily cap (429)",
+      jsonRequest({ query, mode: "lexical" }),
+      fakeSearch().search,
+      {},
+      async () => "daily_cap",
+    ],
+    [
+      "limiter error echoing the query (500)",
+      jsonRequest({ query, mode: "lexical" }),
+      fakeSearch().search,
+      {},
+      async () => {
+        throw new DatabaseError(query, query);
+      },
+    ],
   ];
 
-  it.each(cases)("%s", async (_name, request, search, env) => {
+  it.each(cases)("%s", async (_name, request, search, env, limit) => {
     const captured = captureOutput();
-    const response = await handleSearch(request, deps(search, env));
+    const response = await handleSearch(request, deps(search, env, limit));
     const text = await response.text();
     vi.restoreAllMocks();
 

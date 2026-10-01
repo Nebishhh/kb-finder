@@ -136,6 +136,7 @@ function jsonRequest(body: unknown): Request {
 async function runSemantic(semantic: SearchFn, env: SearchEnv = EVAL_ON, query = QUERY) {
   const response = await handleSearch(jsonRequest({ query, mode: "semantic" }), {
     retrievers: { lexical: lexicalNeverCalled, semantic },
+    limit: async () => "ok" as const,
     env,
   });
   return { status: response.status, text: await response.text() };
@@ -239,6 +240,7 @@ describe("dispatch and gating", () => {
   async function post(mode: string, env: SearchEnv, f = fakes()) {
     const response = await handleSearch(jsonRequest({ query: "wifi", mode }), {
       retrievers: f,
+      limit: async () => "ok" as const,
       env,
     });
     return { f, status: response.status, body: await response.json() };
