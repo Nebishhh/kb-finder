@@ -227,3 +227,59 @@ after this run, so this goes to a later, separately versioned eval set.
 Nothing in the lexical configuration, depth or labels changes because
 of these numbers. Improvements are separate logged experiments, scored
 at the same depth of 50.
+
+
+
+
+## 2026-10-01: Phase 5 semantic-v1 configuration and decision rule (frozen)
+
+Set before the article embed and before any semantic eval run.
+Nothing below changes after seeing semantic numbers. Any later
+change is a new, logged experiment.
+
+**Embedding.**
+OpenAI text-embedding-3-small, dimensions 1536 passed on every call.
+article-v1 is exactly "Title: {title}\n\n{fullText}" with LF. No
+tags, description, category or staffOnly. Lexical indexes title,
+tags, description and full text, so the two modes do not see
+identical fields. Queries are embedded as typed (raw-query-string-v1).
+
+**Truncation.**
+cl100k_base via tiktoken==0.14.0 (identity is the encoding file
+sha256 below, not the package version). First 8,000 tokens, sent as
+token IDs only for articles over the limit. Chosen from corpus
+counts only: max 15,775, p50 128, p95 408. One article is truncated
+(9431). Encoding file sha256
+223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7.
+
+**Ranking.**
+Exact cosine search with pgvector, no ANN index. Score is 1 minus
+cosine distance (cosine similarity, not a probability). Order is
+score descending, then source_article_id COLLATE "C". Ranking lives
+only in kb_search_semantic. Depth 50. KBF01-05 make the function
+fail loudly on a bad k, unknown config, bad query vector, incomplete
+embeddings or stale article text. The staleness check runs per
+request (about 47 ms); revisit in Phase 7.
+
+**Query privacy.**
+Query embeddings are ephemeral. Query text, hash and vector are
+never written anywhere. This supersedes the query cache in SPEC.md
+and WORKFLOW.md.
+
+**What is pinned.**
+Config config/embedding/article-v1.json, sha256
+051e13da32f484a11e0e87188a71de984563e93a5b3e1495db6da4cd0cb99940.
+Migration supabase/migrations/20261001011735_add_semantic_embeddings.sql,
+sha256 ba47934f0a9365e975febc6bbb5c4e10a5b6307b8f1646424ec14d49836645fc.
+Corpus unchanged, sha256
+103f2b008085d9e38ece49b3e67467ae527d6fea1b8c26935e507ab16da9c1d3.
+Preflight: 544,549 tokens to embed in 32 requests, projected
+$0.011. The article cache sha256 is added here after the paid run.
+
+**Decision rule.**
+Same frozen cases and labels, same run_eval.py, depth 50. Semantic
+becomes the default only if aggregate Track A Top-3 >= 16/21 AND
+aggregate Track B Top-3 >= 11/21. These are aggregate counts, not
+per-case. The scored run is the first complete real semantic eval.
+Aborted runs do not count and are noted here. The fake-case smoke
+run is not an eval run.

@@ -63,3 +63,16 @@ Persistent notes for later phases and new ideas go here.
   package.json.
 - Set $env:NEXT_TELEMETRY_DISABLED = "1" in the shell before any next
   command; .env.local is not read by the next dev parent process.
+
+
+
+
+  
+## Phase 7 (before hosting)
+- Hosted Supabase: review grants/RLS or disable Data API exposure for
+  articles, embedding_configs and article_embeddings.
+- Add safe SET search_path handling to the kb_ functions.
+- Strengthen KBF02 so the stored config row is integrity-bound to its
+  sha256 and config contents.
+- Embed runs: a provider success with a lost response can re-bill at
+  most one batch on a later run.
