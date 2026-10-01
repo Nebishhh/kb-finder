@@ -3,66 +3,85 @@
 Disposable. Rewritten by the agent at the end of every session.
 Anything that must survive across sessions goes in NOTES.md.
 
-## What was built (Phase 4, slice 1: database and ingestion)
-- Local Postgres via the Supabase CLI (2.118.0), DB-only: `supabase start -x ...` (all
-  non-DB services excluded; only `supabase_db_kb-finder`, Postgres 17.6, runs). DB URL
-  `postgresql://postgres:postgres@127.0.0.1:54322/postgres`. `supabase/config.toml` is the
-  unmodified `supabase init` default.
-- Migration `supabase/migrations/20260930042716_create_articles.sql`
-  (SHA-256 93903628588f6f313e33ebe130d6c0de8f0e17817602034c27289f46a7d02d59):
-  - `articles` table mirroring articles.jsonl (snake_case, `source_article_id` text,
-    `id` bigint identity, times timestamptz, sections/staff_only jsonb).
-  - `search_vector`: STORED generated column. title A; tags B (via immutable
-    `kb_join_tags`); description B; full_text C; `english`. GIN index.
-    staff_only is stored but not in the vector and not indexed.
-  - `kb_lexical_tsquery(q)`: OR of the query's distinct english lexemes, built in SQL;
-    NULL when there are none (empty, whitespace, punctuation, stopwords only).
-  - `kb_search_lexical(q, k)`: `ts_rank` (default weights, normalization 0), ties by
-    `source_article_id COLLATE "C"`, 1-based rank. The API is to pass k = 50.
-  - Ranking is frozen. Changes need an approved DECISIONS.md entry.
-- `scripts/ingest_kb.py`: validates every record before connecting (all errors collected,
-  named by sourceArticleId or line, never the value), then one-transaction upsert in
-  numeric ID order that only rewrites changed rows. `--prune` is opt-in; without it
-  DB-only rows are counted as `db_only`. DATABASE_URL from the environment only; non-local
-  hosts need `--allow-remote`. DB errors print only class, SQLSTATE and constraint.
-  Exit codes 0 ok, 1 validation, 2 usage/config, 3 database.
-- Tests: `tests/test_ingest_kb.py` (35, offline, fake DB layer, sentinel checks that no
-  values leak) and `tests/test_search_sql.py` (9, live DB, skipped unless
-  KB_FINDER_TEST_DATABASE_URL is set; each test runs the real migration in a throwaway
-  schema with search_path set to only that schema, inside a rolled-back transaction, and
-  checks public is untouched).
-- SPEC.md: retrieval depth fixed server-side at 50, UI shows 10, empty/no-term input
-  returns 200 with results [], run_eval reports MRR@50 and a no-target-in-top-50 count.
-- requirements.txt: `psycopg[binary]==3.3.6`. `.env.example` (local DATABASE_URL only).
+## State
+Phase 4 slices 1 to 3 are done and committed. The first lexical
+baseline has been run and recorded. main matches origin/main as of
+the last fetch.
 
-## Results
-- Ingest: input sha256 103f2b008085d9e38ece49b3e67467ae527d6fea1b8c26935e507ab16da9c1d3,
-  run 1 `inserted 3109`, run 2 `unchanged 3109 db_only 0 deleted 0`, both exit 0.
-- Counts: 3109 rows, 0 null search_vector, 1255 with staff_only,
-  `kb_search_lexical('the and of', 50)` returns 0 rows.
-- Tests: full offline suite 124/124 OK (about 8 minutes; parser tests read
-  data/raw/articles). Live SQL tests 9/9 OK; unset, 9 skipped. public.articles stayed
-  3109 and no kbtest_ schema remained after either run.
-- No ranking was inspected on the real corpus. No eval run.
+## Commits
+- 0ff4941 docs: freeze phase 4 lexical baseline configuration
+- 08fe595 feat: articles schema, lexical search SQL and ingestion (slice 1)
+- b133def feat: lexical /api/search and bare search UI (slice 2)
+- 3cabe8d docs: log slice 2 configuration and notes
+- 40b23d7 feat: eval runner with metric and privacy tests (slice 3)
+- c798c25 docs: record first lexical baseline result
+
+## What was built
+- Slice 1: `articles` table, stored `search_vector`, `kb_search_lexical`
+  and `scripts/ingest_kb.py`. Migration
+  `supabase/migrations/20260930042716_create_articles.sql`.
+  3,109 articles ingested.
+- Slice 2: Next.js app. `POST /api/search` calls
+  `kb_search_lexical($1, 50)`. Bare UI shows the first 10.
+  Extra fields and empty strings get 400. No-term input gets 200
+  with `results: []`. Query text is never logged, echoed, stored
+  or put in a URL.
+- Slice 3: `scripts/run_eval.py`. Calls `/api/search` only. Reports
+  Top-1, Top-3, MRR@50 and no-target-in-top-50 per track. Never
+  prints or writes query text. `--json-out` writes case IDs, ranks,
+  scores and article IDs only, and never overwrites a file.
+  Smoke fixture: `tests/fixtures/fake_cases.json`.
+
+## Tests (as of commit c798c25)
+- Python: 217 tests. 9 skipped: the live SQL tests that need
+  KB_FINDER_TEST_DATABASE_URL.
+- tests.test_run_eval: 84.
+- Web unit tests (`npm run test:unit`): 33.
+- `npm run test:db`: 6.
+
+## First lexical baseline
+- One run, by the human, at 40b23d7. Depth 50.
+- The numbers, cases file hash, corpus and migration hashes are in
+  DECISIONS.md, "First lexical baseline result". That entry is the
+  source of truth. Do not copy numbers from anywhere else.
+- The results JSON from `--json-out` is kept outside the repo, on
+  the project owner's machine.
+- The frozen config does not change because of these numbers.
+  Improvements are new, logged experiments at depth 50.
 
 ## Known limitations
-- `supabase start -x` still pulls the realtime, storage-api and gotrue images during
-  schema initialisation; they do not stay running.
-- `supabase stop` has not been run in this session.
-- The special-character test proves queries with quotes, backslashes and tsquery
-  operators do not error; no english-parser input was found that yields a lexeme
-  containing `'` or `\`, so that escaping path is untested by a real lexeme.
-- tsvector positions cap at 16,383; positions in the longest articles are clamped
-  (no effect on ts_rank).
-- `seed.sql` does not exist; `supabase db reset` warns and skips seeding.
+- Small set: 21 positives, 4 negatives. One case moves Top-1 by
+  about 5 points.
+- case_021 misses on both tracks (vocabulary gap).
+- case_013 and case_025 (negatives) returned close articles. Labels
+  do not change after the first run. This goes to a later,
+  separately versioned eval set.
+- Case topics came partly from ChatGPT. See the Phase 3 provenance
+  entry in DECISIONS.md.
+- staffOnly text is stored but not searchable.
+- `request.json()` reads the whole body before zod checks the 5000
+  character limit. A body size limit is needed before hosting.
+- `supabase start -x` still pulls some excluded images during
+  schema setup. They do not stay running.
+- No real english-parser lexeme containing `'` or `\` was found, so
+  that escaping path is untested by a real lexeme.
+- tsvector positions cap at 16,383 in the longest articles (no
+  effect on ts_rank).
+- No `seed.sql`. `supabase db reset` warns and skips seeding.
+- `next dev` does not read `.env.local` in the parent process. Set
+  `$env:NEXT_TELEMETRY_DISABLED = "1"` in the shell first.
 
 ## What remains
-- Human: commit slice 1.
-- Slice 2: Next.js scaffold (in a temp folder outside the repo, copy in only approved
-  files), POST /api/search calling `kb_search_lexical($1, 50)`, mode gating, no request
-  logging, bare UI showing 10, npm lint/build/test:unit.
-- Slice 3: run_eval.py (calls /api/search only; Top-1, Top-3, MRR@50,
-  no-target-in-top-50 count), tests/fixtures/fake_cases.json, smoke test, README.
+- README.md and the `npm run dev` line in AGENTS.md (drafted in
+  this session, awaiting approval).
+- Phase 5, semantic experiment (WORKFLOW.md section 8): cost
+  protection first, pgvector, `article-v1` template, offline embed,
+  `semantic` mode behind server-side gating, and a pre-registered
+  decision rule committed before any semantic eval run.
+- NOTES.md items: request body size limit before hosting; rename
+  `vitest.config.ts` to `vitest.config.mts` (low priority); decide
+  whether staffOnly is searchable, keeping in mind that some linked
+  technician articles are not in the corpus.
 
 ## Unresolved human decisions
-- Whether staffOnly text is searchable (measure later; currently excluded).
+- Whether staffOnly text is searchable (currently excluded).

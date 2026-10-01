@@ -30,6 +30,8 @@ Python for offline ingestion and evaluation orchestration.
   (needs the app running; agents pass only tests/fixtures/fake_cases.json)
 - .venv/Scripts/python -m unittest tests.test_run_eval
 - npm install
+- npm run dev
+  (needs $env:DATABASE_URL and $env:NEXT_TELEMETRY_DISABLED = "1")
 - npm run lint
 - npm run build
 - npm run test:unit
