@@ -4,20 +4,25 @@ import {
   SEARCH_MODES,
   type SearchMode,
 } from "@/lib/search/config";
-import type { LexicalRow } from "@/lib/search/lexical";
 import { SearchRequestSchema } from "@/lib/search/schema";
+import type { SearchRow } from "@/lib/search/types";
 
 // Query text is never logged, stored or echoed. Logs carry a fixed string
 // plus errorSummary() only; error bodies are fixed.
 
-export type SearchFn = (query: string, depth: number) => Promise<LexicalRow[]>;
+export type SearchFn = (query: string, depth: number) => Promise<SearchRow[]>;
 
 export type SearchEnv = {
   DEFAULT_SEARCH_MODE?: string;
   EVAL_MODES_ENABLED?: string;
 };
 
-export type SearchDeps = { search: SearchFn; env: SearchEnv };
+// One retriever per mode. A request only ever reaches the retriever for the
+// mode it asked for, after gating.
+export type SearchDeps = {
+  retrievers: Record<SearchMode, SearchFn>;
+  env: SearchEnv;
+};
 
 export type SearchResult = {
   rank: number;
@@ -70,7 +75,7 @@ export function isModeAllowed(
 }
 
 // One row in, one result out, in the order the database returned.
-export function toResult(row: LexicalRow): SearchResult {
+export function toResult(row: SearchRow): SearchResult {
   return {
     rank: row.rank,
     sourceArticleId: row.source_article_id,
@@ -107,7 +112,7 @@ export async function handleSearch(
   }
 
   try {
-    const rows = await deps.search(query, SEARCH_DEPTH);
+    const rows = await deps.retrievers[mode](query, SEARCH_DEPTH);
     const response: SearchResponse = { mode, results: rows.map(toResult) };
     return json(response, 200);
   } catch (err) {

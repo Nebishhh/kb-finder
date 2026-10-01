@@ -10,7 +10,7 @@ import {
   type SearchEnv,
   type SearchFn,
 } from "@/lib/search/handler";
-import type { LexicalRow } from "@/lib/search/lexical";
+import type { SearchRow } from "@/lib/search/types";
 
 // Offline tests: a fake search function stands in for the database.
 
@@ -29,7 +29,7 @@ function rawRequest(text: string): Request {
   });
 }
 
-function fakeSearch(rows: LexicalRow[] = []) {
+function fakeSearch(rows: SearchRow[] = []) {
   const depths: number[] = [];
   const search = vi.fn<SearchFn>(async (_query, depth) => {
     depths.push(depth);
@@ -49,7 +49,7 @@ function row(
   id: string,
   score: number,
   category: string | null,
-): LexicalRow {
+): SearchRow {
   return {
     rank,
     source_article_id: id,
@@ -60,8 +60,13 @@ function row(
   };
 }
 
+// The only mode is lexical, so search is the lexical retriever.
+function deps(search: SearchFn, env: SearchEnv = {}) {
+  return { retrievers: { lexical: search }, env };
+}
+
 async function run(request: Request, search: SearchFn, env: SearchEnv = {}) {
-  const response = await handleSearch(request, { search, env });
+  const response = await handleSearch(request, deps(search, env));
   return { status: response.status, body: await response.json() };
 }
 
@@ -173,7 +178,7 @@ describe("response mapping", () => {
     const { search } = fakeSearch(rows);
     const response = await handleSearch(
       jsonRequest({ query: "wifi", mode: "lexical" }),
-      { search, env: {} },
+      deps(search),
     );
 
     expect(response.status).toBe(200);
@@ -349,7 +354,7 @@ describe("query text never leaks", () => {
 
   it.each(cases)("%s", async (_name, request, search, env) => {
     const captured = captureOutput();
-    const response = await handleSearch(request, { search, env });
+    const response = await handleSearch(request, deps(search, env));
     const text = await response.text();
     vi.restoreAllMocks();
 
@@ -359,10 +364,10 @@ describe("query text never leaks", () => {
 
   it("capture works: the database error path is logged and seen", async () => {
     const captured = captureOutput();
-    await handleSearch(jsonRequest({ query, mode: "lexical" }), {
-      search: failingSearch(new DatabaseError(query, query)),
-      env: {},
-    });
+    await handleSearch(
+      jsonRequest({ query, mode: "lexical" }),
+      deps(failingSearch(new DatabaseError(query, query))),
+    );
     vi.restoreAllMocks();
 
     expect(captured).toContain("search failed: DatabaseError -");
