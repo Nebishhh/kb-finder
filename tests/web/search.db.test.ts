@@ -8,8 +8,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 // KB_FINDER_TEST_DATABASE_URL is set. Only inputs that must return no
 // results or a 400 are used: no ranking is inspected on the real corpus.
 // tests/web/setup.ts clears OPENAI_API_KEY, EVAL_MODES_ENABLED,
-// DEFAULT_SEARCH_MODE, RATE_LIMIT and VERCEL before every test and blocks real
-// fetch.
+// DEFAULT_SEARCH_MODE, RATE_LIMIT, VERCEL and the gate variables before every
+// test and blocks real fetch.
 
 const databaseUrl = process.env.KB_FINDER_TEST_DATABASE_URL;
 
@@ -38,6 +38,7 @@ describe.skipIf(!databaseUrl)("POST /api/search against the local DB", () => {
   // tested in a throwaway schema below.
   beforeEach(() => {
     process.env.RATE_LIMIT = "off";
+    process.env.ACCESS_GATE = "off";
   });
 
   it.each(["   ", "the and of"])(

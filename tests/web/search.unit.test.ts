@@ -6,6 +6,7 @@ import { SEARCH_DEPTH } from "@/lib/search/config";
 import {
   handleSearch,
   isModeAllowed,
+  type GateFn,
   type LimitFn,
   resolveDefaultMode,
   type SearchEnv,
@@ -68,9 +69,15 @@ const semanticNeverCalled = vi.fn<SearchFn>(async () => {
 });
 
 const allow: LimitFn = async () => "ok";
+const open: GateFn = () => "open";
 
-function deps(search: SearchFn, env: SearchEnv = {}, limit: LimitFn = allow) {
-  return { retrievers: { lexical: search, semantic: semanticNeverCalled }, limit, env };
+function deps(
+  search: SearchFn,
+  env: SearchEnv = {},
+  limit: LimitFn = allow,
+  gate: GateFn = open,
+) {
+  return { retrievers: { lexical: search, semantic: semanticNeverCalled }, gate, limit, env };
 }
 
 async function run(request: Request, search: SearchFn, env: SearchEnv = {}) {
@@ -287,7 +294,7 @@ describe("query text never leaks", () => {
 
   const query = `my laptop ${SENTINEL} will not connect`;
 
-  const cases: [string, Request, SearchFn, SearchEnv, LimitFn?][] = [
+  const cases: [string, Request, SearchFn, SearchEnv, LimitFn?, GateFn?][] = [
     [
       "success",
       jsonRequest({ query, mode: "lexical" }),
@@ -380,11 +387,27 @@ describe("query text never leaks", () => {
         throw new DatabaseError(query, query);
       },
     ],
+    [
+      "no gate cookie (401)",
+      jsonRequest({ query, mode: "lexical" }),
+      fakeSearch().search,
+      {},
+      allow,
+      () => "denied",
+    ],
+    [
+      "gate misconfigured (500)",
+      jsonRequest({ query, mode: "lexical" }),
+      fakeSearch().search,
+      {},
+      allow,
+      () => "misconfigured",
+    ],
   ];
 
-  it.each(cases)("%s", async (_name, request, search, env, limit) => {
+  it.each(cases)("%s", async (_name, request, search, env, limit, gate) => {
     const captured = captureOutput();
-    const response = await handleSearch(request, deps(search, env, limit));
+    const response = await handleSearch(request, deps(search, env, limit, gate));
     const text = await response.text();
     vi.restoreAllMocks();
 

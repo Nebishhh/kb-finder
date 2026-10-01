@@ -59,6 +59,7 @@ function harness(limitResult: LimitFn = async () => "ok") {
   async function run(request: Request, env: SearchEnv = {}) {
     const response = await handleSearch(request, {
       retrievers: { lexical, semantic },
+      gate: () => "open",
       limit,
       env,
     });

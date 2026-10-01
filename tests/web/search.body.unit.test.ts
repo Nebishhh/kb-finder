@@ -74,6 +74,7 @@ const semanticNeverCalled = vi.fn<SearchFn>(async () => {
 async function run(request: Request, search: SearchFn) {
   const response = await handleSearch(request, {
     retrievers: { lexical: search, semantic: semanticNeverCalled },
+    gate: () => "open" as const,
     limit: async () => "ok" as const,
     env: {},
   });

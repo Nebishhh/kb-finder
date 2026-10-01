@@ -10,6 +10,9 @@ const CLEARED = [
   "DEFAULT_SEARCH_MODE",
   "RATE_LIMIT",
   "VERCEL",
+  "ACCESS_GATE",
+  "ACCESS_PASSWORD",
+  "GATE_COOKIE_SECRET",
 ] as const;
 
 export const blockedFetch = (): Promise<Response> =>

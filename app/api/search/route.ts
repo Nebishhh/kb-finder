@@ -1,3 +1,4 @@
+import { checkGate, gateEnvFrom } from "@/lib/gate/cookie";
 import { dailyCap } from "@/lib/limits/daily-cap";
 import { handleSearch } from "@/lib/search/handler";
 import { searchLexical } from "@/lib/search/lexical";
@@ -9,6 +10,8 @@ export const dynamic = "force-dynamic";
 export function POST(request: Request): Promise<Response> {
   return handleSearch(request, {
     retrievers: { lexical: searchLexical, semantic: searchSemantic },
+    gate: (req) =>
+      checkGate(req.headers.get("cookie"), gateEnvFrom(process.env), Date.now()),
     limit: dailyCap,
     env: {
       DEFAULT_SEARCH_MODE: process.env.DEFAULT_SEARCH_MODE,

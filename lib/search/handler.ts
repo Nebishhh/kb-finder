@@ -27,10 +27,16 @@ export type SearchEnv = {
 export type LimitResult = "ok" | "daily_cap";
 export type LimitFn = () => Promise<LimitResult>;
 
+// The access gate (lib/gate/cookie.ts checkGate). Checked first, from headers
+// only: a denied request is answered before its body is read or counted.
+export type GateResult = "open" | "denied" | "misconfigured";
+export type GateFn = (request: Request) => GateResult;
+
 // One retriever per mode. A request only ever reaches the retriever for the
 // mode it asked for, after gating.
 export type SearchDeps = {
   retrievers: Record<SearchMode, SearchFn>;
+  gate: GateFn;
   limit: LimitFn;
   env: SearchEnv;
 };
@@ -50,6 +56,7 @@ const INVALID_BODY = { error: "Invalid request" };
 const FAILED_BODY = { error: "Search failed" };
 const TOO_LARGE_BODY = { error: "Request too large" };
 const TOO_MANY_BODY = { error: "Too many requests" };
+const UNAUTHORIZED_BODY = { error: "Unauthorized" };
 
 function json(body: unknown, status: number): Response {
   return Response.json(body, {
@@ -120,6 +127,14 @@ export async function handleSearch(
     console.error("search config error: RATE_LIMIT=off on Vercel");
     return json(FAILED_BODY, 500);
   }
+
+  // Gate before anything reads the body or counts against the cap.
+  const gate = deps.gate(request);
+  if (gate === "misconfigured") {
+    console.error("search config error: access gate");
+    return json(FAILED_BODY, 500);
+  }
+  if (gate !== "open") return json(UNAUTHORIZED_BODY, 401);
 
   // Byte-capped read (lib/search/body.ts); the body is never logged.
   const body = await readJsonBody(request);
