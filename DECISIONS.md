@@ -283,3 +283,26 @@ aggregate Track B Top-3 >= 11/21. These are aggregate counts, not
 per-case. The scored run is the first complete real semantic eval.
 Aborted runs do not count and are noted here. The fake-case smoke
 run is not an eval run.
+
+## 2026-10-01: Phase 5 article embed (H2)
+
+**First run stopped at request 30 of 32 (HTTP 4XX).**
+That request mixed string inputs with the one token-ID input (article
+9431). The embeddings API takes an array of strings or an array of
+token arrays, not a mixture. Requests 1-29 (2,900 articles, 479,471
+tokens) were journaled. Fixed in ffb0c7c by batching each input kind
+separately. No article input, hash or config value changed.
+
+**Resumed run.**
+The remaining 209 articles were sent in 4 requests (65,078 tokens),
+with 9431 alone in the last one. Total 544,549 tokens across both
+runs, planned equal to billed on every request, about $0.011. Nothing
+was billed twice.
+
+**Pinned cache.**
+cache/article_embeddings/051e13da32f484a1.jsonl, 3,109 rows, sha256
+923769b269dfbc2c45cbc688c7f41fa71a49d3589d698300981bb9a44bc85bcf.
+Loaded into the local database: 3,109 of 3,109 articles, with every
+KBF check passing inside the load transaction. The cache is gitignored
+and kept on the project owner's machine. A second paid run would not
+give bit-identical vectors, which is why this one is pinned.
