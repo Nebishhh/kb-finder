@@ -24,7 +24,7 @@ Planned later: query normalization (Phase 6), hosting (Phase 7).
 - .venv/Scripts/python scripts/collect_kb.py [--limit N] [--refresh-categories]
 - .venv/Scripts/python scripts/parse_kb.py
 - .venv/Scripts/python -m unittest discover -s tests
-- supabase start -x gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+- supabase start -x gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector
   (only from a shell without OPENAI_API_KEY)
 - supabase db reset
 - .venv/Scripts/python scripts/ingest_kb.py [--input PATH] [--prune] [--allow-remote]

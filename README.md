@@ -79,7 +79,7 @@ Local Postgres through the Supabase CLI, database only. **Start
 Supabase only from a shell that does not have `OPENAI_API_KEY`.**
 
 ```
-supabase start -x gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+supabase start -x gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector
 supabase db reset
 ```
 
