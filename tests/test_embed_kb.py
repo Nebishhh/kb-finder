@@ -81,11 +81,16 @@ class FakeTransport:
         self.code = code
         self.mutate = mutate
         self.usage = usage
+        self.rejected_mixed = 0
 
     def __call__(self, body):
         self.bodies.append(body)
         if self.fail_on == len(self.bodies):
             raise embed_kb.TransportError(self.code)
+        # Like the API: an array of strings or an array of token arrays, never both.
+        if len({type(p) for p in body["input"]}) > 1:
+            self.rejected_mixed += 1
+            raise embed_kb.TransportError("OPENAI_HTTP_4XX")
         resp = {
             "object": "list",
             "model": body["model"],
@@ -433,7 +438,7 @@ class PreflightTests(Base):
         sent = sum(p["input_tokens"] for p in preps)
         code, out = self.run_main("preflight")
         self.assertIn(f"max {full[-1]} p50 {full[1]} p95 {full[2]} total {sum(full)}", out)
-        self.assertIn(f"tokens to embed {sent} in 1 requests", out)
+        self.assertIn(f"tokens to embed {sent} in 2 requests", out)  # strings, then tokens
         self.assertIn(f"projected cost ${sent * 0.02 / 1e6:.6f}", out)
 
     def test_nearest_rank(self):
@@ -568,9 +573,15 @@ class GuardTests(Base):
         t = FakeTransport()
         code, out = self.embed(t)
         self.assertEqual(code, 0, out)
-        planned = sum(payload_tokens(p) for p in t.inputs())
-        self.assertIn(f"request 1: 3 articles, tokens planned {planned} billed {planned}\n", out)
-        self.assertIn(f"requests 1, tokens planned {planned} billed {planned}, cost $", out)
+        # Articles 1 and 10 are strings, 7 is a token array: two requests.
+        per_request = [sum(payload_tokens(p) for p in b["input"]) for b in t.bodies]
+        self.assertEqual([len(b["input"]) for b in t.bodies], [2, 1])
+        self.assertIn(f"request 1: 2 articles, tokens planned {per_request[0]} "
+                      f"billed {per_request[0]}\n", out)
+        self.assertIn(f"request 2: 1 articles, tokens planned {per_request[1]} "
+                      f"billed {per_request[1]}\n", out)
+        total = sum(per_request)
+        self.assertIn(f"requests 2, tokens planned {total} billed {total}, cost $", out)
         self.assertNotIn("vs planned", out)
 
 
@@ -593,7 +604,8 @@ class EmbedFlowTests(Base):
         preps = {r["sourceArticleId"]: embed_kb.prepare_input(
             r, FakeEncoding(), {"max_tokens": MAX, "rule": "prefix-v1"})
             for r in corpus("2", "10", "9", "7")}
-        self.assertEqual(t.inputs(), [preps[s]["payload"] for s in ("2", "7", "9", "10")])
+        # Strings first (article order), then the token-array input in its own request.
+        self.assertEqual(t.inputs(), [preps[s]["payload"] for s in ("2", "9", "10", "7")])
         self.assertIsInstance(preps["7"]["payload"], list)
 
         raw = self.cache_path().read_bytes()
@@ -747,6 +759,155 @@ class EmbedFlowTests(Base):
         code, out = self.embed(boom)
         self.assertEqual(code, 3)
         self.assertIn("OPENAI_HTTP_4XX", out)
+
+
+# ------------------------------------------------------------------ one input kind per request
+
+
+def old_mixed_batches(preps):
+    """The batching used before the fix: article order only, kinds mixed. Kept here
+    to replay the failure the paid run hit at request 30."""
+    out, cur, cur_tokens = [], [], 0
+    for p in preps:
+        if cur and (len(cur) >= embed_kb.BATCH_MAX_INPUTS
+                    or cur_tokens + p["input_tokens"] > embed_kb.BATCH_MAX_TOKENS):
+            out.append(cur)
+            cur, cur_tokens = [], 0
+        cur.append(p)
+        cur_tokens += p["input_tokens"]
+    if cur:
+        out.append(cur)
+    return out
+
+
+def body_kinds(bodies):
+    return [[type(p).__name__ for p in b["input"]] for b in bodies]
+
+
+class BatchKindTests(Base):
+    def prep(self, r):
+        return embed_kb.prepare_input(r, FakeEncoding(), {"max_tokens": MAX, "rule": "prefix-v1"})
+
+    def test_fake_transport_rejects_mixed_inputs_like_the_api(self):
+        t = FakeTransport()
+        body = {"model": "text-embedding-3-small", "dimensions": 1536,
+                "encoding_format": "base64"}
+        with self.assertRaises(embed_kb.TransportError) as ctx:
+            t(dict(body, input=["a string", [1, 2, 3]]))
+        self.assertEqual(ctx.exception.code, "OPENAI_HTTP_4XX")
+        self.assertEqual(t.rejected_mixed, 1)
+        self.assertEqual(len(t(dict(body, input=["a", "b"]))["data"]), 2)
+        self.assertEqual(len(t(dict(body, input=[[1], [2, 3]]))["data"]), 2)
+        self.assertEqual(t.rejected_mixed, 1)
+
+    def test_text_and_token_misses_go_in_separate_requests(self):
+        self.write_input(corpus("1", "7", "10", "2"))
+        t = FakeTransport()
+        code, out = self.embed(t)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(t.rejected_mixed, 0)
+        self.assertEqual(body_kinds(t.bodies), [["str", "str", "str"], ["list"]])
+        self.assertIn("tokens to embed", out)
+        self.assertIn(" in 2 requests", out)
+
+    def test_batches_never_mix_kinds_and_keep_limits(self):
+        records = [rec(str(i), title="L",
+                       full_text=LONG_TEXT if i % 3 == 0 else f"Body {i}.")
+                   for i in range(1, 31)]
+        preps = [self.prep(r) for r in records]
+        self.assertEqual({p["input_kind"] for p in preps}, {"text", "tokens"})
+        with mock.patch.object(embed_kb, "BATCH_MAX_INPUTS", 4), \
+                mock.patch.object(embed_kb, "BATCH_MAX_TOKENS", 150):
+            out = embed_kb.batches(preps)
+        for b in out:
+            self.assertEqual(len({p["input_kind"] for p in b}), 1)
+            self.assertLessEqual(len(b), 4)
+            if len(b) > 1:
+                self.assertLessEqual(sum(p["input_tokens"] for p in b), 150)
+        flat = [p for b in out for p in b]
+        self.assertEqual(len(flat), len(preps))
+        self.assertEqual({id(p) for p in flat}, {id(p) for p in preps})  # same objects
+        for kind in ("text", "tokens"):
+            self.assertEqual([p["source_article_id"] for p in flat if p["input_kind"] == kind],
+                             [p["source_article_id"] for p in preps if p["input_kind"] == kind])
+        kinds = [b[0]["input_kind"] for b in out]
+        self.assertEqual(kinds, sorted(kinds, key=embed_kb.INPUT_KINDS.index))
+
+    def test_old_batching_would_have_mixed_these_inputs(self):
+        preps = [self.prep(r) for r in corpus("1", "2", "3", "7", "8")]
+        with mock.patch.object(embed_kb, "BATCH_MAX_INPUTS", 2):
+            old = old_mixed_batches(preps)
+            new = embed_kb.batches(preps)
+        self.assertEqual([sorted({p["input_kind"] for p in b}) for b in old],
+                         [["text"], ["text", "tokens"], ["text"]])
+        self.assertEqual([[p["source_article_id"] for p in b] for b in new],
+                         [["1", "2"], ["3", "8"], ["7"]])
+
+    def test_unknown_input_kind_is_loud(self):
+        prep = dict(self.prep(rec("1")), input_kind="other")
+        with self.assertRaises(embed_kb.EmbedError):
+            embed_kb.batches([prep])
+
+    def test_per_article_inputs_and_hashes_unchanged(self):
+        records = corpus("1", "7", "10", "2")
+        self.write_input(records)
+        t = FakeTransport()
+        self.assertEqual(self.embed(t)[0], 0)
+        preps = {r["sourceArticleId"]: self.prep(r) for r in records}
+        sent = t.inputs()
+        for sid, p in preps.items():
+            self.assertEqual(sum(1 for x in sent if x == p["payload"]), 1, sid)
+        long_raw = embed_kb.article_v1_text(records[1]).encode("utf-8")
+        self.assertEqual(preps["7"]["payload"], list(long_raw[:MAX]))
+        self.assertEqual(preps["7"]["input_sha256"], hashlib.sha256(
+            b"tokens\n" + json.dumps(list(long_raw[:MAX]), separators=(",", ":")).encode()
+        ).hexdigest())
+        cached = embed_kb.read_cache(self.cache_path(), *self.cfg())
+        for sid, p in preps.items():
+            row = cached[sid]
+            self.assertEqual((row["input_kind"], row["input_sha256"], row["input_tokens"],
+                              row["truncated"], row["source_text_sha256"]),
+                             (p["input_kind"], p["input_sha256"], p["input_tokens"],
+                              p["truncated"], p["source_text_sha256"]))
+
+    def test_journal_from_a_mixed_batch_failure_stays_valid(self):
+        # Replays the paid run: 7 (the token-array input) sits between string inputs.
+        self.write_input(corpus("1", "2", "3", "7", "8"))
+        cfg_before = self.cfg()
+        t_old = FakeTransport()
+        with mock.patch.object(embed_kb, "batches", old_mixed_batches), \
+                mock.patch.object(embed_kb, "BATCH_MAX_INPUTS", 2):
+            code, out = self.embed(t_old)
+        self.assertEqual(code, 3, out)
+        self.assertIn("embedding request failed: OPENAI_HTTP_4XX", out)
+        self.assertEqual(t_old.rejected_mixed, 1)
+        self.assertEqual(list(embed_kb.read_journal(self.journal_path(), *self.cfg())),
+                         ["1", "2"])
+        self.assertFalse(self.cache_path().exists())
+        journal_bytes = self.journal_path().read_bytes()
+
+        code, out = self.run_main("preflight")
+        self.assertEqual(code, 0, out)
+        self.assertIn("journal rows=2", out)
+        self.assertIn("cache hits 2  misses 3 (no row 3, stale text 0, input changed 0)", out)
+        self.assertIn(" in 2 requests", out)
+        self.assertEqual(self.journal_path().read_bytes(), journal_bytes)
+        self.assertEqual(self.cfg(), cfg_before)  # config and its sha256 unchanged
+
+        t_new = FakeTransport()
+        with mock.patch.object(embed_kb, "BATCH_MAX_INPUTS", 2):
+            code, out = self.embed(t_new)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(t_new.rejected_mixed, 0)
+        self.assertEqual(body_kinds(t_new.bodies), [["str", "str"], ["list"]])
+        self.assertFalse(self.journal_path().exists())
+        resumed = self.cache_path().read_bytes()
+        self.assertEqual(list(embed_kb.read_cache(self.cache_path(), *self.cfg())),
+                         ["1", "2", "3", "7", "8"])
+
+        self.cache_dir = self.dir / "clean"
+        self.assertEqual(self.embed(FakeTransport())[0], 0)
+        self.assertEqual(self.cache_path().read_bytes(), resumed)
 
 
 # ------------------------------------------------------------------ cache integrity

@@ -459,17 +459,30 @@ def cost_usd(tokens: int) -> float:
     return tokens * PRICE_USD_PER_1M_TOKENS / 1_000_000
 
 
+INPUT_KINDS = ("text", "tokens")
+
+
 def batches(preps: list[dict]) -> list[list[dict]]:
-    out, cur, cur_tokens = [], [], 0
-    for p in preps:
-        if cur and (len(cur) >= BATCH_MAX_INPUTS
-                    or cur_tokens + p["input_tokens"] > BATCH_MAX_TOKENS):
+    """Requests in send order. A request holds one input kind only: the API takes an
+    array of strings or an array of token arrays, never a mixture. String inputs come
+    first, then token inputs, each in article order, each under the same limits.
+    Batching never changes an article's input, only which request carries it."""
+    out = []
+    for kind in INPUT_KINDS:
+        cur, cur_tokens = [], 0
+        for p in preps:
+            if p["input_kind"] != kind:
+                continue
+            if cur and (len(cur) >= BATCH_MAX_INPUTS
+                        or cur_tokens + p["input_tokens"] > BATCH_MAX_TOKENS):
+                out.append(cur)
+                cur, cur_tokens = [], 0
+            cur.append(p)
+            cur_tokens += p["input_tokens"]
+        if cur:
             out.append(cur)
-            cur, cur_tokens = [], 0
-        cur.append(p)
-        cur_tokens += p["input_tokens"]
-    if cur:
-        out.append(cur)
+    if sum(len(b) for b in out) != len(preps):
+        raise EmbedError("internal: an input has an unknown kind", EXIT_INVALID)
     return out
 
 
