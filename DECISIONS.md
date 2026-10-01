@@ -306,3 +306,42 @@ Loaded into the local database: 3,109 of 3,109 articles, with every
 KBF check passing inside the load transaction. The cache is gitignored
 and kept on the project owner's machine. A second paid run would not
 give bit-identical vectors, which is why this one is pinned.
+
+## 2026-10-01: First semantic eval result (semantic-v1, frozen config)
+
+One run, the scored run under the Phase 5 rule. Code at eec5d3c, the
+committed eval/cases.json (sha256
+9f2b2afc33d0fea9f0ee5855cee959dc53ec514966283b5056987fcd9e9e47cf),
+corpus and embedding cache as pinned above. Depth 50. No aborted real
+runs before it. A fake-case smoke run came first and is not an eval run.
+
+Before it, the lexical eval was rerun on the same code and compared
+case by case with the first lexical baseline: identical.
+
+Track A (customer_query), 21 positives: Top-1 12/21 (57%), Top-3
+16/21 (76%), MRR@50 0.690, no target in top 50: 0/21.
+Track B (technician_query), 21 positives: Top-1 6/21 (29%), Top-3
+16/21 (76%), MRR@50 0.542, no target in top 50: 0/21.
+
+**Decision.**
+The rule passes: Track A Top-3 16/21 >= 16 and Track B Top-3 16/21 >=
+11. Semantic becomes the default mode. Track A meets the threshold
+exactly; one case the other way would have failed it.
+
+**Observations, not actions.**
+Track A Top-3 gained 5 cases (007, 008, 019, 020, 021) and lost 2
+(006, 014). Track B Top-3 gained 6 (006, 007, 009, 011, 015, 023) and
+lost 1 (004). Track B Top-1 fell from 8 to 6: 001, 008, 010 and 016
+moved from rank 1 to rank 2 or 3, so short technician wording that
+matches a title still favors lexical. case_021 (the vocabulary gap) is
+fixed on both tracks (ranks 3 and 4). case_012 Track B regressed from
+rank 6 to 39 while its Track A improved from 29 to 5. Negatives get top
+scores of 0.33 to 0.62, overlapping real matches, so a score cutoff
+would not work as abstention. The two modes do not index identical
+fields (semantic has no tags or description), so the gap is not only
+the retrieval method.
+
+**No tuning.**
+Nothing in the semantic or lexical configuration, depth or labels
+changes because of these numbers. Hybrid retrieval, reranking or a new
+eval set are separate, logged experiments.
