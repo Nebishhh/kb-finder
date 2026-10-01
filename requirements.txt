@@ -1,3 +1,5 @@
 requests==2.34.2
 beautifulsoup4==4.15.0
 psycopg[binary]==3.3.6
+tiktoken==0.14.0
+regex==2026.8.31
