@@ -345,6 +345,22 @@ describe("query text never leaks", () => {
       fakeSearch().search,
       { DEFAULT_SEARCH_MODE: "bogus" },
     ],
+    [
+      "body over the byte cap (413, streamed)",
+      jsonRequest({ query: `${query} ${SENTINEL.repeat(2000)}`, mode: "lexical" }),
+      fakeSearch().search,
+      {},
+    ],
+    [
+      "Content-Length over the byte cap (413)",
+      new Request("http://localhost/api/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Content-Length": "40000" },
+        body: JSON.stringify({ query, mode: "lexical" }),
+      }),
+      fakeSearch().search,
+      {},
+    ],
   ];
 
   it.each(cases)("%s", async (_name, request, search, env) => {

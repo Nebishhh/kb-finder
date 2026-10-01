@@ -1,4 +1,5 @@
 import { errorSummary } from "@/lib/safe-error";
+import { readJsonBody } from "@/lib/search/body";
 import {
   SEARCH_DEPTH,
   SEARCH_MODES,
@@ -37,6 +38,7 @@ export type SearchResponse = { mode: string; results: SearchResult[] };
 
 const INVALID_BODY = { error: "Invalid request" };
 const FAILED_BODY = { error: "Search failed" };
+const TOO_LARGE_BODY = { error: "Request too large" };
 
 function json(body: unknown, status: number): Response {
   return Response.json(body, {
@@ -96,14 +98,15 @@ export async function handleSearch(
     return json(FAILED_BODY, 500);
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return json(INVALID_BODY, 400);
+  // Byte-capped read (lib/search/body.ts); the body is never logged.
+  const body = await readJsonBody(request);
+  if (!body.ok) {
+    return body.reason === "too_large"
+      ? json(TOO_LARGE_BODY, 413)
+      : json(INVALID_BODY, 400);
   }
 
-  const parsed = SearchRequestSchema.safeParse(body);
+  const parsed = SearchRequestSchema.safeParse(body.value);
   if (!parsed.success) return json(INVALID_BODY, 400);
 
   const { query, mode } = parsed.data;
