@@ -13,6 +13,7 @@ const CLEARED = [
   "ACCESS_GATE",
   "ACCESS_PASSWORD",
   "GATE_COOKIE_SECRET",
+  "DATABASE_CA_PEM",
 ] as const;
 
 export const blockedFetch = (): Promise<Response> =>
