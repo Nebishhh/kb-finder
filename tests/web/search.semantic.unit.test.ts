@@ -661,9 +661,11 @@ describe("credential isolation", () => {
     expect(settings.filter((l) => /openai/i.test(l))).toEqual([]);
   });
 
-  it("the client page imports nothing from the semantic or OpenAI modules", () => {
-    const page = readFileSync(join(ROOT, "app", "page.tsx"), "utf8");
-    expect(page).not.toMatch(/embeddings|semantic/);
+  it("the page and search client import nothing from the semantic or OpenAI modules", () => {
+    for (const file of ["page.tsx", "search-client.tsx"]) {
+      const source = readFileSync(join(ROOT, "app", file), "utf8");
+      expect(source, file).not.toMatch(/embeddings|semantic/);
+    }
   });
 
   it(".env.example documents the key without a value", () => {
