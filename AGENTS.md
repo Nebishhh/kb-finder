@@ -45,6 +45,10 @@ Planned later: query normalization (Phase 6), hosting (Phase 7).
 - .venv/Scripts/python -m unittest tests.test_semantic_sql
   (live DB; skipped unless $env:KB_FINDER_TEST_DATABASE_URL is set)
 - .venv/Scripts/python -m unittest tests.test_compare_eval_json
+- .venv/Scripts/python scripts/db_fingerprint.py [--per-article] [--settings] [--allow-remote]
+  (read-only; needs $env:DATABASE_URL; remote also needs sslmode=verify-full)
+- .venv/Scripts/python -m unittest tests.test_db_fingerprint
+  (live-DB part skipped unless $env:KB_FINDER_TEST_DATABASE_URL is set)
 - .venv/Scripts/python scripts/run_eval.py --mode lexical --cases <path> [--base-url URL] [--allow-remote] [--json-out PATH]
   (needs the app running; agents pass only tests/fixtures/fake_cases.json)
 - .venv/Scripts/python -m unittest tests.test_run_eval
