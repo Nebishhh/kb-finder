@@ -195,6 +195,18 @@ class PublicCatalogTests(unittest.TestCase):
                          "and proname like 'kb\\_%'")
         self.assertEqual(self.cur.fetchone()[0], 5)
 
+    def test_kb_functions_pin_search_path(self):
+        # Step 2 (*_pin_function_search_path.sql): every kb_ function in public.
+        self.cur.execute("select proname, proconfig from pg_proc "
+                         "where pronamespace = 'public'::regnamespace and proname like 'kb\\_%' "
+                         "order by 1")
+        got = self.cur.fetchall()
+        self.assertEqual([name for name, _ in got],
+                         ["kb_article_v1_sha256", "kb_join_tags", "kb_lexical_tsquery",
+                          "kb_search_lexical", "kb_search_semantic"])
+        for name, config in got:
+            self.assertEqual(config, ["search_path=public, extensions, pg_temp"], name)
+
 
 @unittest.skipUnless(URL, "KB_FINDER_TEST_DATABASE_URL not set")
 class LockdownMigrationTests(unittest.TestCase):
