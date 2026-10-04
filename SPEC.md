@@ -96,8 +96,13 @@ fullText rules:
 
 ## Storage
 
-Postgres, two migrations, both pinned by sha256 in DECISIONS.md.
-The first (articles, lexical) is never edited.
+Postgres. The two retrieval migrations are pinned by sha256 in
+DECISIONS.md and never edited. Three Phase 7 migrations follow them
+and change no function body or ranking: the Data API lockdown (no
+privileges for `anon`, `authenticated` or PUBLIC, RLS on every
+table), the `kb_app` role and `kb_rate_counters` table (RLS policies
+only for `kb_app`), and a pinned `search_path` on the five `kb_`
+functions.
 
 - `articles`: one row per article. `source_article_id` is unique and
   is the durable key. The internal `id` is an identity column that a
@@ -221,9 +226,73 @@ Semantic mode:
 
 Mode gating (server-side):
 - `DEFAULT_SEARCH_MODE` is always allowed. Unset means `lexical`.
+  The hosted app sets it to `semantic`. A value that names no known
+  mode is a config error (500 below).
 - `EVAL_MODES_ENABLED` exactly `"true"` unlocks the other modes.
   Any other value, including `"TRUE"` or `"1"`, does not.
 - Any other mode is rejected with 400.
+- The UI resolves `DEFAULT_SEARCH_MODE` the same way, on the server
+  per page request, and sends that mode.
+
+Request flow, in order (`lib/search/handler.ts`). The first step that
+fails answers the request; every body is fixed, sent with
+`Cache-Control: no-store`, and never echoes the request.
+
+1. Config checks. `DEFAULT_SEARCH_MODE` names no known mode, or
+   `RATE_LIMIT=off` while `VERCEL` is set: 500
+   `{"error":"Search failed"}`.
+2. Access gate, from the Cookie header only, before the body is read.
+   A misconfigured gate (`ACCESS_GATE=off` while `VERCEL` is set,
+   `ACCESS_PASSWORD` missing or under 20 characters,
+   `GATE_COOKIE_SECRET` missing or under 32 bytes) is 500
+   `{"error":"Search failed"}`. No valid `kbf_gate` cookie: 401
+   `{"error":"Unauthorized"}`. `ACCESS_GATE` exactly `off` with
+   `VERCEL` unset skips the gate (local dev and evals only).
+3. Body cap. At most 32,768 bytes are read; a larger
+   `Content-Length` or stream is 413 `{"error":"Request too large"}`.
+   A malformed `Content-Length`, invalid UTF-8 or invalid JSON is 400
+   `{"error":"Invalid request"}`.
+4. Schema, then mode gating: 400 `{"error":"Invalid request"}`.
+5. Daily cap, only for valid, allowed searches: one global counter,
+   200 per UTC day across both modes. Search 201 of a day is 429
+   `{"error":"Too many requests"}`. A limiter error is 500
+   `{"error":"Search failed"}` (fails closed). `RATE_LIMIT` exactly
+   `off` with `VERCEL` unset skips this step (local dev and evals
+   only). A search that passes this step counts even if retrieval
+   then fails.
+6. Semantic only: the KBF02 config check (below), before the query is
+   embedded. A mismatch is 500 `{"error":"Search failed"}`.
+7. Retrieval. Any failure is 500 `{"error":"Search failed"}`.
+
+Database connection (`lib/db.ts`): a pool of 5,
+`statement_timeout` 5000 ms. Locally (`VERCEL` unset) there is no
+TLS. Hosted (`VERCEL` set), `DATABASE_URL` must be a postgres URL
+with no query string, and TLS verifies the chain against
+`DATABASE_CA_PEM` (the Supabase database CA) and the hostname. A
+missing or invalid CA or URL is a 500 on every search. The hosted app
+connects as `kb_app` through the transaction pooler.
+
+Access gate login: `POST /api/gate` with `{"password": string}`
+(body capped at 1 KiB). A match is 204 with the cookie
+`kbf_gate=v1.<exp>.<mac>` (HttpOnly, Secure, SameSite=Lax, Path=/,
+7 days), where the MAC is HMAC-SHA256 keyed by `GATE_COOKIE_SECRET`
+over the expiry and sha256 of the password. Wrong password: 401
+`{"error":"Unauthorized"}`; oversized body: 413; invalid body: 400; a
+misconfigured gate: 500 `{"error":"Gate unavailable"}`. There is no
+login rate limit. Page requests without a valid cookie redirect to
+`/gate`; `/api/search` checks the cookie itself and is the real
+boundary.
+
+KBF02 server-side check (`lib/search/semantic.ts`):
+`kb_search_semantic` raises KBF02 only when no row exists for the
+config sha256. Before embedding, the server also reads that
+`embedding_configs` row and requires exactly one row whose `config`
+(compared in canonical JSON form), `model`, `dimensions` and
+`template_version` equal `config/embedding/article-v1.json`.
+Otherwise it throws `ConfigMismatchError` and logs
+`ConfigMismatchError KBF02_CONFIG_MISMATCH`. Only a pass is
+remembered, per server process, so a failed check is retried on the
+next request.
 
 ## Data handling
 - Public KB article content may be stored.
@@ -234,13 +303,32 @@ Mode gating (server-side):
 - No names, IDs, emails, phone numbers, or ticket data.
 - Semantic and normalized modes send query text to OpenAI.
   Issues are typed in manually with personal details removed.
-- `OPENAI_API_KEY` is set only in the shell that runs the app (or the
-  paid article embed), never in `.env.local` or any other file and
-  never under a `NEXT_PUBLIC_` name.
+- `OPENAI_API_KEY` is set locally only in the shell that runs the app
+  (or the paid article embed), never in `.env.local` or any other file
+  and never under a `NEXT_PUBLIC_` name.
+  - Vercel carve-out: the hosted app reads it from a server-side
+    Vercel environment variable, Production only, marked Sensitive,
+    never in a file. Only the project owner sets it; agents never set
+    or read it.
   - The server reads it only at request time, in one server-only
     module.
   - Supabase is never started from a shell that holds it, and
     `supabase/config.toml` does not reference it.
+- `ACCESS_PASSWORD` and `GATE_COOKIE_SECRET` are secrets: set only in
+  Vercel's environment settings, never in a file, and read only in
+  `lib/gate/cookie.ts`. The password is never logged, echoed or
+  stored; the cookie holds only an expiry and a MAC.
+- `kb_rate_counters` holds the daily cap: one row per
+  (kind, key, UTC day window) with a count. The app uses only the
+  global counter (kind `search_global_day`, key `all`), so no IP
+  address, IP hash or anything from the request is stored. Each cap
+  check deletes windows that started more than one day before the
+  request. The table's CHECK also allows per-IP kinds
+  (`search_ip_10m`, `search_ip_day`, `gate_ip_10m`, keyed by a 64-hex
+  HMAC), which the app does not use.
+- Error and limit logs are fixed strings plus an error class and
+  code. Request bodies, query text and the password never reach a
+  log.
 
 ## Evaluation
 

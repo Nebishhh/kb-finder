@@ -9,13 +9,22 @@ Retrieval quality comes before UI polish.
 - Python 3.12 (in .venv): KB collection, parsing, ingestion, offline
   article embedding, evaluation orchestration
 - Next.js, React, strict TypeScript: the app and POST /api/search
-- PostgreSQL via local Supabase; pgvector in the extensions schema
-- Search modes: lexical (default) and semantic (gated by
-  EVAL_MODES_ENABLED exactly "true")
+- PostgreSQL via local Supabase (database plus the local transaction
+  pooler); pgvector in the extensions schema; hosted app connects as
+  kb_app
+- Search modes: lexical and semantic. DEFAULT_SEARCH_MODE is always
+  allowed (unset means lexical; the hosted app sets semantic); other
+  modes need EVAL_MODES_ENABLED exactly "true"
+- Access gate: shared password, signed 7-day cookie; ACCESS_GATE=off
+  only off Vercel (local dev and evals)
+- Limits: 32 KiB search body cap; one global cap of 200 valid
+  searches per UTC day in kb_rate_counters; RATE_LIMIT=off only off
+  Vercel (local dev and evals)
 - OpenAI text-embedding-3-small for semantic mode only
 - next.config.ts must keep agentRules: false (next dev otherwise writes to AGENTS.md)
 
-Planned later: query normalization (Phase 6), hosting (Phase 7).
+Phase 7 code is complete; deploy is pending. Planned later: query
+normalization (Phase 6).
 
 ## Commands
 - py -3.12 -m venv .venv
@@ -45,6 +54,10 @@ Planned later: query normalization (Phase 6), hosting (Phase 7).
 - .venv/Scripts/python -m unittest tests.test_semantic_sql
   (live DB; skipped unless $env:KB_FINDER_TEST_DATABASE_URL is set)
 - .venv/Scripts/python -m unittest tests.test_compare_eval_json
+- .venv/Scripts/python -m unittest tests.test_db_privileges
+  (live-DB parts skipped unless $env:KB_FINDER_TEST_DATABASE_URL is set)
+- .venv/Scripts/python -m unittest tests.test_hardening_sql
+  (live-DB parts skipped unless $env:KB_FINDER_TEST_DATABASE_URL is set)
 - .venv/Scripts/python scripts/db_fingerprint.py [--per-article] [--settings] [--allow-remote]
   (read-only; needs $env:DATABASE_URL; remote also needs sslmode=verify-full)
 - .venv/Scripts/python -m unittest tests.test_db_fingerprint
@@ -54,7 +67,9 @@ Planned later: query normalization (Phase 6), hosting (Phase 7).
 - .venv/Scripts/python -m unittest tests.test_run_eval
 - npm install
 - npm run dev
-  (needs $env:DATABASE_URL and $env:NEXT_TELEMETRY_DISABLED = "1")
+  (needs $env:DATABASE_URL and $env:NEXT_TELEMETRY_DISABLED = "1";
+  local dev and evals also set $env:ACCESS_GATE = "off" and
+  $env:RATE_LIMIT = "off")
 - npm run lint
 - npm run build
 - npm run test:unit
@@ -100,6 +115,9 @@ Add commands only after they exist. Do not invent command names.
   OPENAI_API_KEY in any shell or file.
 - OPENAI_API_KEY is shell-only and server-side only: never in
   .env.local or any file, never under a NEXT_PUBLIC_ name.
+  Vercel carve-out: the hosted app reads it from a server-side Vercel
+  environment variable, Production only, marked Sensitive, never in a
+  file. Only the human sets it; agents never set or read it.
 - Start Supabase only from a shell without OPENAI_API_KEY.
 - All tests run offline with fakes; no test may build a real OpenAI
   client.

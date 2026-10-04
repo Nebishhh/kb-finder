@@ -4,96 +4,119 @@ Disposable. Rewritten by the agent at the end of every session.
 Anything that must survive across sessions goes in NOTES.md.
 
 ## State
-Phase 5 (semantic retrieval) is complete.
-- Both modes are built and evaluated.
-- Semantic met the pre-registered decision rule, so it becomes the
-  default when hosted. The switch has not been made yet:
-  `DEFAULT_SEARCH_MODE` is unset (lexical), and `app/page.tsx:24`
-  hard-codes `mode: "lexical"` in the UI's request.
+Phase 7 (clean UI and hosting): the code is complete, the deploy is
+pending.
+- The code steps are committed (f90ce1c..7a2b261, below). Step 13 is
+  this documentation pass (uncommitted).
+- Steps 14 to 16 remain: the Codex checkpoint 4 review, the deploy
+  and hosted checks, then the UI pass (D7).
+- Semantic is the hosted default through `DEFAULT_SEARCH_MODE`. The UI
+  no longer hard-codes a mode; it sends the server's default.
+- DECISIONS.md has the Phase 7 entries under "2026-10-04: Phase 7
+  hosting decisions" (D1 to D12 and the related rules). Code comments
+  cite D10.
 - DECISIONS.md is the source of truth for every number. Do not copy
   numbers from anywhere else.
 
-## Commits since ea38faf
-- 717851e refactor: per-mode retriever map and shared search row
-- 03d68c4 feat: pgvector embeddings schema and kb_search_semantic
-- 5295a0e feat: offline article embedding pipeline
-- 8772e3c feat: gated semantic search mode
-- da1640d fix: address phase 5 review findings (Codex)
-- dcbc846 docs: freeze phase 5 semantic configuration and decision rule
-- ffb0c7c fix: never mix text and token inputs in one embedding request
-- eec5d3c docs: record phase 5 article embed and pin cache hash
-- 840226e docs: record first semantic eval result
-- (this session, uncommitted) docs: SPEC, README, AGENTS and HANDOFF
-  updated for Phase 5
+## Phase 7 commits since f90ce1c
+- 8be52c0 db: lock down Data API grants and enable RLS
+- 12ba787 db: add least-privilege kb_app role and rate-limit table
+- 6c829f6 db: enable local transaction pooler for the hosted path
+- 6fd1882 api: cap search request bodies at 32 KiB
+- 86f4eb8 api: add global daily search cap
+- 7aa2570 app: add password access gate
+- 6c21d86 db: verify TLS against the Supabase CA when hosted
+- 872196b scripts: add read-only database fingerprint
+- 33cb624 ui: use the server default mode and show fixed error messages
+- d97e085 db: pin search_path on kb_ functions
+- 095b25d search: check the stored embedding config before embedding
+- 7a2b261 agents: deny bare python commands
+- (this session, uncommitted) docs: README, AGENTS, SPEC,
+  .env.example and HANDOFF updated for Phase 7
 
 ## What was built
-- **Migration** `20261001011735_add_semantic_embeddings.sql`.
-  - pgvector, `embedding_configs`, and `article_embeddings` keyed on
-    `source_article_id` (FK ON DELETE RESTRICT).
-  - `kb_article_v1_sha256`, and `kb_search_semantic` with exact
-    cosine search and KBF01-05 loud failures.
-  - The lexical migration is unchanged.
-- **`scripts/embed_kb.py`** with three commands:
-  - `preflight`: zero API.
-  - `embed --paid`: human only; cost ceiling, hard caps, journal.
-  - `load`: no API, one transaction.
-- **Config** `config/embedding/article-v1.json`. Both Python and the
-  server derive the config sha256 from it.
-- **Server:** `lib/embeddings/openai.ts` (key read at request time,
-  fixed error codes, little-endian decoding), `lib/search/semantic.ts`
-  and `lib/search/semantic-config.ts`. `/api/search` dispatches per
-  mode, and semantic is gated by `EVAL_MODES_ENABLED` exactly "true".
-- **`scripts/compare_eval_json.py`:** case-by-case report comparison.
-  The lexical rerun at eec5d3c was identical to the baseline.
-- **Credentials:** `supabase/config.toml` no longer passes
-  `OPENAI_API_KEY` to Studio.
+- **Migrations** (the two pinned retrieval migrations are untouched):
+  - `20261001182428_lock_down_data_api.sql`: `anon`, `authenticated`
+    and PUBLIC lose every privilege in the schema; postgres's default
+    privileges stop granting them; a global default-privilege revoke
+    of EXECUTE from PUBLIC for future postgres routines; RLS on every
+    table. `service_role` is left as Supabase sets it.
+  - `20261001190406_add_app_role.sql`: `kb_app` (NOLOGIN, no
+    password, `statement_timeout` 5000 ms and `search_path` on the
+    role), SELECT on the KB tables, EXECUTE on the two search functions
+    and two helpers, `kb_rate_counters`, and RLS policies only for
+    `kb_app` (D10).
+  - `20261003075008_pin_function_search_path.sql`: `ALTER FUNCTION ...
+    SET search_path FROM CURRENT` on the five `kb_` functions, using a
+    transaction-local set and restore. Function bodies are unchanged.
+- **Local pooler:** `supabase/config.toml` enables `[db.pooler]` on
+  54329, and the start command no longer excludes Supavisor.
+- **Request handling** (`lib/search/handler.ts`), in order: config
+  checks (500), gate (401), 32 KiB body cap (413), schema and mode
+  (400), daily cap of 200 valid searches per UTC day (429), KBF02
+  config check (semantic), retrieval. Every body is fixed.
+- **Gate:** `lib/gate/cookie.ts`, `lib/gate/login.ts`,
+  `app/api/gate/route.ts`, `app/gate/*`, `proxy.ts`. Shared password
+  of 20+ characters, `kbf_gate` cookie with sha256(password) in the
+  MAC, SameSite=Lax, 7 days, no login rate limit.
+- **Daily cap:** `lib/limits/*`. One upsert statement, pooler safe,
+  global counter only, no IP stored.
+- **TLS:** `lib/db.ts` verifies against `DATABASE_CA_PEM` when
+  `VERCEL` is set and refuses a `DATABASE_URL` with a query string.
+- **KBF02 server check:** `lib/search/semantic.ts` compares the stored
+  `embedding_configs` row with the config file before embedding.
+- **UI:** `app/page.tsx` resolves the default mode on the server;
+  `app/search-client.tsx` maps 401, 413, 429 and other failures to
+  fixed messages.
+- **`scripts/db_fingerprint.py`:** read-only fingerprint
+  (`db-fingerprint-v2`) for diffing local against hosted.
+- **Agent settings:** `.claude/settings.json` denies bare `python`,
+  `python3` and `py`.
 
-## Tests (as of ffb0c7c, the last code commit)
-- Python: 332, run with `KB_FINDER_TEST_DATABASE_URL` set (live-DB
-  tests included).
-  - `tests.test_embed_kb`: 72.
-  - `tests.test_semantic_sql`: 29.
-  - `tests.test_compare_eval_json`: 14.
-- Web unit tests (`npm run test:unit`): 90.
-- `npm run test:db`: 8.
+## Tests (this session, at 7a2b261 plus doc edits)
+- `npm run lint`: clean.
+- `npm run test:unit`: 316 passed, 7 files.
+- Python: the full suite last ran at d97e085 (step 2), 386 tests OK,
+  run by the project owner with `KB_FINDER_TEST_DATABASE_URL` set. No
+  Python file changed after that commit.
 - No test calls OpenAI. Web tests block real fetch. The embedding
   tests block the network and never build a real client.
+- Tests that read edited files: `tests/web/db.config.unit.test.ts`,
+  `tests/web/gate.unit.test.ts` and
+  `tests/web/search.semantic.unit.test.ts` read `.env.example`
+  (names present, no assignments, no `NEXT_PUBLIC_`). All pass.
 
 ## Known limitations
 - **Small set:** 21 positives, 4 negatives. One case moves a metric by
-  about 5 points.
-- **Thin margin:** Track A met the rule exactly (16/21 against 16).
-  Track B Top-1 fell from 8 to 6.
-- **Different fields:** the modes index different fields. Semantic
-  embeds title and full text only.
-- **Case movements:** case_021 is fixed by semantic. case_012 Track B
-  regressed from rank 6 to 39.
+  about 5 points. Track A met the rule exactly (16/21 against 16).
 - **No abstention:** semantic always returns up to 50 results.
-  Negatives score 0.33 to 0.62, overlapping real matches.
-- **Reruns can differ:** query embeddings are not cached, so semantic
-  eval reruns can differ slightly. The first complete run is the
-  scored one.
+- **Reruns can differ:** query embeddings are not cached.
 - **Local-only cache:** the article embedding cache lives only on the
-  project owner's machine, pinned by sha256 in DECISIONS.md. Losing it
-  means a new paid embed with different vectors and a new pin.
+  project owner's machine, pinned by sha256 in DECISIONS.md.
 - **KBF05 cost:** the per-request staleness check costs about 47 ms.
-  Revisit in Phase 7, per DECISIONS.md.
-- **Exact model check:** both embedding clients require the response
-  `model` to be exactly `text-embedding-3-small`.
-- **staffOnly:** not searchable in either mode.
+- **One shared password, no login rate limit:** fine for the owner
+  plus 2 or 3 testers; rotate the password or the cookie secret to
+  revoke every cookie.
+- **Global cap only:** one tester can use the whole day's 200
+  searches. A search that fails after the cap check still counts.
+- **Free-tier pause:** hosted Supabase pauses after 7 idle days; check
+  it by hand before demos (D9).
 - **Setup quirks:** `supabase start -x` still pulls some excluded
   images. There is no `seed.sql`. `next dev` needs
   `NEXT_TELEMETRY_DISABLED` set in the shell. Vite prints a
   configLoader warning.
 
 ## What remains
-- **Phase 7, clean UI and hosting:**
-  - Make semantic the default: `DEFAULT_SEARCH_MODE` plus the UI's
-    hard-coded mode.
-  - The pre-hosting items in NOTES.md: the "Phase 7 (before hosting)"
-    section, and the request body size limit under "Ideas".
-  - WORKFLOW.md's Codex checkpoint 4 (keys, access gate, rate
-    limiting, cost protection).
+- **Step 14:** the Codex checkpoint 4 review (read-only, human-run).
+- **Step 15, deploy and hosted checks (human-led):** hosted Supabase
+  migrations, ingest and `embed_kb.py load --allow-remote`; set
+  `kb_app` LOGIN and password by hand; Vercel env vars
+  (`DATABASE_URL` with no query string, `DATABASE_CA_PEM`,
+  `DEFAULT_SEARCH_MODE=semantic`, `ACCESS_PASSWORD`,
+  `GATE_COOKIE_SECRET`, `OPENAI_API_KEY` Production only and
+  Sensitive); compare `db_fingerprint.py` output against the local v2
+  reference in DECISIONS.md.
+- **Step 16:** the UI pass (D7).
 - **Phase 6, query normalization:** a stretch goal, only after Phase 7.
 - **Separate, logged experiments:** hybrid retrieval, reranking, and a
   new, separately versioned eval set.
