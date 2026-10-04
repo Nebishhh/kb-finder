@@ -402,8 +402,20 @@ class UrlRulesTest(unittest.TestCase):
 
 
 class SettingsTest(unittest.TestCase):
+    def test_sampled_logging_and_pgaudit_parameter_settings_listed(self):
+        for name in ("log_min_duration_sample", "log_statement_sample_rate",
+                     "log_transaction_sample_rate", "pgaudit.log_parameter"):
+            with self.subTest(name=name):
+                self.assertIn(name, db_fingerprint.SETTINGS)
+        self.assertEqual(len(set(db_fingerprint.SETTINGS)), len(db_fingerprint.SETTINGS))
+
     def test_missing_and_hidden_settings(self):
-        db = fake_db(hidden={"pgaudit.log"})
+        db = fake_db(hidden={"pgaudit.log", "pgaudit.log_parameter"},
+                     settings={"shared_preload_libraries": "pg_stat_statements",
+                               "statement_timeout": "5s", "log_statement": "none",
+                               "log_min_duration_sample": "-1",
+                               "log_statement_sample_rate": "1",
+                               "log_transaction_sample_rate": "0"})
         code, out, connect = run_main(["--settings"], db=db)
         self.assertEqual(code, 0)
         lines = [l for l in out.splitlines() if l.startswith("setting ")]
@@ -413,6 +425,10 @@ class SettingsTest(unittest.TestCase):
         self.assertIn("setting statement_timeout 5s", lines)
         self.assertIn("setting auto_explain.log_min_duration unset", lines)
         self.assertIn("setting pgaudit.log hidden", lines)
+        self.assertIn("setting pgaudit.log_parameter hidden", lines)
+        self.assertIn("setting log_min_duration_sample -1", lines)
+        self.assertIn("setting log_statement_sample_rate 1", lines)
+        self.assertIn("setting log_transaction_sample_rate 0", lines)
         self.assertIn("setting current_user postgres", lines)
         stmts = [q for q, _ in connect.conn.statements]
         self.assertIn("rollback to savepoint kb_setting", stmts)

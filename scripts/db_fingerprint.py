@@ -53,10 +53,14 @@ SETTINGS = (
     "auto_explain.log_parameter_max_length",
     "auto_explain.log_nested_statements",
     "log_min_duration_statement",
+    "log_min_duration_sample",
+    "log_statement_sample_rate",
+    "log_transaction_sample_rate",
     "log_statement",
     "log_parameter_max_length",
     "log_parameter_max_length_on_error",
     "pgaudit.log",
+    "pgaudit.log_parameter",
     "statement_timeout",
 )
 
