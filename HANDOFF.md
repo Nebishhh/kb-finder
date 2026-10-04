@@ -6,10 +6,10 @@ Anything that must survive across sessions goes in NOTES.md.
 ## State
 Phase 7 (clean UI and hosting): the code is complete, the deploy is
 pending.
-- The code steps are committed (f90ce1c..7a2b261, below). Step 13 is
-  this documentation pass (uncommitted).
-- Steps 14 to 16 remain: the Codex checkpoint 4 review, the deploy
-  and hosted checks, then the UI pass (D7).
+- The code steps, the step 13 documentation pass and the step 14
+  follow-up are committed (f90ce1c..7ce5908, below).
+- Steps 15 and 16 remain: the deploy and hosted checks, then the UI
+  pass (D7).
 - Semantic is the hosted default through `DEFAULT_SEARCH_MODE`. The UI
   no longer hard-codes a mode; it sends the server's default.
 - DECISIONS.md has the Phase 7 entries under "2026-10-04: Phase 7
@@ -31,8 +31,9 @@ pending.
 - d97e085 db: pin search_path on kb_ functions
 - 095b25d search: check the stored embedding config before embedding
 - 7a2b261 agents: deny bare python commands
-- (this session, uncommitted) docs: README, AGENTS, SPEC,
-  .env.example and HANDOFF updated for Phase 7
+- bb24232 docs: document Phase 7 hosting and security
+- 1069c6c docs: log Phase 7 hosting decisions
+- 7ce5908 scripts: add sampled-logging settings to the fingerprint
 
 ## What was built
 - **Migrations** (the two pinned retrieval migrations are untouched):
@@ -77,8 +78,9 @@ pending.
 - `npm run lint`: clean.
 - `npm run test:unit`: 316 passed, 7 files.
 - Python: the full suite last ran at d97e085 (step 2), 386 tests OK,
-  run by the project owner with `KB_FINDER_TEST_DATABASE_URL` set. No
-  Python file changed after that commit.
+  run by the project owner with `KB_FINDER_TEST_DATABASE_URL` set.
+  After that, only `tests/test_db_fingerprint.py` changed in Python;
+  it passes 31 tests offline and against local.
 - No test calls OpenAI. Web tests block real fetch. The embedding
   tests block the network and never build a real client.
 - Tests that read edited files: `tests/web/db.config.unit.test.ts`,
@@ -107,8 +109,12 @@ pending.
   configLoader warning.
 
 ## What remains
-- **Step 14:** the Codex checkpoint 4 review (read-only, human-run).
-- **Step 15, deploy and hosted checks (human-led):** hosted Supabase
+- **Step 14, DONE:** the Codex checkpoint 4 review. No critical, high,
+  medium or low findings; one informational finding (sampled-logging
+  settings), fixed in 7ce5908 "scripts: add sampled-logging settings
+  to the fingerprint".
+- **Step 15, deploy and hosted checks (human-led, following a runbook
+  kept outside the repo):** hosted Supabase
   migrations, ingest and `embed_kb.py load --allow-remote`; set
   `kb_app` LOGIN and password by hand; Vercel env vars
   (`DATABASE_URL` with no query string, `DATABASE_CA_PEM`,
