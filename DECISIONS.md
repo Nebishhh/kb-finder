@@ -345,3 +345,144 @@ the retrieval method.
 Nothing in the semantic or lexical configuration, depth or labels
 changes because of these numbers. Hybrid retrieval, reranking or a new
 eval set are separate, logged experiments.
+
+
+## 2026-10-04: Phase 7 hosting decisions
+
+**D1: No lexical fallback.**
+A semantic failure (OpenAI error, missing key, KBF error, config
+mismatch) returns 500 {"error":"Search failed"}. The daily cap returns
+429. The server never retries a request in lexical mode, so a result
+list always comes from the mode that was asked for.
+
+**D2 (revised): Shared password gate.**
+One shared password of at least 20 characters (ACCESS_PASSWORD), and a
+cookie secret of at least 32 bytes (GATE_COOKIE_SECRET). POST /api/gate
+sets kbf_gate=v1.<exp>.<mac>, where the MAC is
+HMAC-SHA256(secret, "kbf_gate|v1|" + exp + "|" + sha256hex(password)).
+Because the password hash is in the MAC, rotating either the secret or
+the password revokes every issued cookie. HttpOnly, Secure,
+SameSite=Lax (not Strict, so links from email or LinkedIn work), 7
+days. No login rate limit, so the hosted password is generated, not
+chosen. A missing or short password or secret fails closed.
+ACCESS_GATE=off works only when VERCEL is unset.
+
+**Proxy excludes /api/search.**
+In Next 16, a proxy that matches a request buffers its body (10 MB by
+default, silently truncated above that). proxy.ts therefore excludes
+/api/search and /api/gate, and /api/search checks the gate cookie
+itself before reading the body. The proxy only redirects page
+requests.
+
+**Scope change: one global daily cap (replaces D3, drops D4).**
+The hosted app is for the project owner plus at most 2-3 trusted
+testers. D3 (global cap of 1,000/day) is replaced by a cap of 200 valid,
+allowed searches per UTC day across both modes; search 201 gets 429.
+D4 (per-IP limits, revised to 60 per 10 min and 300/day) is dropped,
+along with the client IP header and its HMAC secret. Deviation from the
+approved plan, which counted every request before the body was read:
+now 401, 400 and 413 responses do not count, and a valid search that
+fails after the cap check does. RATE_LIMIT=off works only when VERCEL
+is unset.
+
+**D5: KBF02 server-side check.**
+kb_search_semantic raises KBF02 only when no embedding_configs row
+exists for the config sha256. Before embedding the query, the server
+also requires exactly one row whose config (canonical JSON), model,
+dimensions and template_version equal config/embedding/article-v1.json.
+A mismatch is 500 and spends no OpenAI call. Only a pass is cached, per
+server process. Chosen over a CHECK constraint, which would have broken
+the config '{}' test fixture. No database constraint binds
+config_sha256 to config.
+
+**D6: S1, search_path pinned with transaction-local set and restore.**
+ALTER FUNCTION ... SET search_path FROM CURRENT on the five kb_
+functions, with the path set transaction-locally to the session's
+existing schemas plus pg_temp, then restored. Bodies (prosrc) and
+ranking are unchanged, proven by before/after tests on exact score
+text as postgres and as kb_app. After db push, check on hosted that
+all five show search_path=public, extensions, pg_temp.
+
+**D7 (revised): UI pass moved to step 16.**
+After deploy and the hosted checks, time-boxed to 1-2 days. Visual
+only: no change to the API, ranking, gate, cap or privacy rules. Mobile
+first. Tailwind pinned to an exact version; shadcn only if a component
+needs it. Example queries, if any, are new and never taken from
+eval/cases.json. Phase 7 code only switched the UI to the server
+default mode and added fixed error messages.
+
+**App role kb_app and the statement timeout.**
+The app connects as kb_app (no superuser, createdb, createrole or
+bypassrls): SELECT on the three KB tables, EXECUTE on the four
+functions the searches call, write access only to kb_rate_counters.
+statement_timeout 5000 ms is set on the role, because the pool's
+startup option may not survive a transaction pooler. Verified by hand
+through the local pooler as kb_app: statement_timeout 5s, pg_sleep(6)
+fails with 57014. The login password is set by hand as a SCRAM
+verifier and is in no file.
+
+**D8: auto_explain invariant (A1 done, A2 not attempted).**
+Locally, auto_explain.log_min_duration is 10000 ms and
+log_parameter_max_length is -1, so a statement over 10 s would be
+logged with its bind parameters (query text). statement_timeout 5000 ms
+on kb_app keeps every app statement below that. Any change must keep
+statement_timeout below log_min_duration. A2 (setting
+log_parameter_max_length = 0 on kb_app) was planned as "try" and not
+attempted. Decide at deploy after reading the hosted values with
+db_fingerprint.py --settings; hosted values are unverified.
+
+**D9: Manual pause check.**
+The Supabase free tier pauses after 7 idle days. The project owner
+checks it by hand before demos; no keep-alive job.
+
+**D10: RLS policies for kb_app.**
+RLS stays on for every table. RLS with no policies would block kb_app
+too, so the only policies are for kb_app: SELECT on articles,
+embedding_configs and article_embeddings, and ALL on kb_rate_counters.
+anon, authenticated and PUBLIC have no privileges and no policies.
+
+**D11: Restricted, Vercel-only OpenAI key.**
+The hosted app uses its own restricted key in the dedicated KB Finder
+OpenAI project, set only as a server-side Vercel environment variable,
+Production only, marked Sensitive, never in a file. Agents never set or
+read it. OpenAI-side controls set by hand: embeddings-only key
+permissions, model allow-list text-embedding-3-small, project rate
+limits, low prepaid credit, auto-reload off, budget alert. It can be
+revoked without touching the eval key.
+
+**D12: Local transaction pooler.**
+supabase/config.toml enables [db.pooler] on 54329 so the hosted path
+(kb_app through a transaction pooler, unnamed statements) is tested
+locally. Scripts, tests and local dev stay on the direct port 54322.
+
+**service_role grants left as Supabase sets them.**
+The lockdown migration revokes from anon, authenticated and PUBLIC
+only. The app never uses the service key, and the Data API is disabled
+on hosted.
+
+**Global default-privilege revoke.**
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE EXECUTE ON ROUTINES
+FROM PUBLIC applies globally, not per schema, because per-schema
+defaults can only add to the global ones. Future functions created by
+postgres, in any schema, get no PUBLIC EXECUTE.
+
+**Unused per-IP kinds kept in the kb_rate_counters CHECK.**
+search_ip_10m, search_ip_day and gate_ip_10m (64-hex keys) stay allowed
+so per-IP limits can return without a table change. The app uses only
+search_global_day with key 'all'; no IP or IP hash is stored.
+
+**Hosted TLS rules.**
+When VERCEL is set, DATABASE_CA_PEM (the Supabase database CA, real
+multi-line PEM) is required and the server verifies the chain and the
+hostname. DATABASE_URL must have no query string, because in pg 8.23.1
+URL parameters replace the ssl object (sslmode=require would drop the
+CA, and statement_timeout=0 would disable the timeout). A certificate
+error at deploy is fixed by a reviewed CA change, never by sslmode or
+turning verification off.
+
+**Local fingerprint reference (db-fingerprint-v2).**
+articles_sha256 790877e6ae6ba5d46d39d31e70163a034544734f42a9b682905498543854dc28
+vectors_sha256 921b8f5659e8f09c3f458fe9722c44a8386ecbb9b857846c7b829163eb4aedd0
+Captured from the local database with scripts/db_fingerprint.py. The
+full --per-article output is kept outside the repo. The hosted database
+must match after ingest and load.
