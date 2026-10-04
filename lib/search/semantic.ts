@@ -8,6 +8,7 @@ import {
 } from "@/lib/embeddings/openai";
 import type { SearchFn } from "@/lib/search/handler";
 import {
+  canonicalJson,
   getSemanticConfig,
   type SemanticConfig,
 } from "@/lib/search/semantic-config";
@@ -20,6 +21,46 @@ import type { SearchRow } from "@/lib/search/types";
 export const SEMANTIC_SQL =
   "select rank, source_article_id, title, url, category, score " +
   "from kb_search_semantic($1::text::extensions.vector, $2::int, $3::text)";
+
+// The stored row for the server's config sha256. kb_search_semantic (KBF02) only
+// checks that it exists; checkConfigRow below checks what it holds.
+export const CONFIG_ROW_SQL =
+  "select config, model, dimensions, template_version " +
+  "from embedding_configs where config_sha256 = $1";
+
+// The message is fixed: nothing from the row or the file is ever put in it.
+// errorSummary() logs it as "ConfigMismatchError KBF02_CONFIG_MISMATCH".
+export class ConfigMismatchError extends Error {
+  readonly code = "KBF02_CONFIG_MISMATCH";
+  constructor() {
+    super("embedding config mismatch");
+    this.name = "ConfigMismatchError";
+  }
+}
+
+// Exactly one row whose config jsonb, compared as canonicalJson() (the form the
+// file is hashed in, so key order does not matter), and whose model, dimensions
+// and template_version columns equal the file's values.
+export function checkConfigRow(rows: readonly unknown[], config: SemanticConfig): void {
+  if (rows.length !== 1) throw new ConfigMismatchError();
+  const row = rows[0];
+  if (typeof row !== "object" || row === null) throw new ConfigMismatchError();
+  const r = row as Record<string, unknown>;
+  let stored: string;
+  try {
+    stored = canonicalJson(r.config);
+  } catch {
+    throw new ConfigMismatchError();
+  }
+  if (
+    stored !== config.canonical ||
+    r.model !== config.model ||
+    r.dimensions !== config.dimensions ||
+    r.template_version !== config.templateVersion
+  ) {
+    throw new ConfigMismatchError();
+  }
+}
 
 export class VectorError extends Error {
   readonly code = "VECTOR_INVALID";
@@ -47,17 +88,30 @@ export type QueryFn = (
   params: unknown[],
 ) => Promise<{ rows: SearchRow[] }>;
 
+// Rows of CONFIG_ROW_SQL for one config sha256.
+export type ConfigRowsFn = (sha256: string) => Promise<unknown[]>;
+
 export type SemanticDeps = {
   embed: (text: string, config: SemanticConfig) => Promise<number[]>;
   query: QueryFn;
+  configRows: ConfigRowsFn;
   config: () => SemanticConfig;
 };
 
 const KNOWN_CODES: readonly string[] = EMBEDDING_ERROR_CODES;
 
 export function makeSemanticSearch(deps: SemanticDeps): SearchFn {
+  // Config shas whose stored row passed the check. Only success is cached, so a
+  // failed check (or a failed read) is retried on the next request. The
+  // production retriever is a module singleton, so this is per process.
+  const verified = new Set<string>();
   return async (query, depth) => {
     const config = deps.config();
+    // Before the query is embedded: a mismatch never spends an OpenAI call.
+    if (!verified.has(config.sha256)) {
+      checkConfigRow(await deps.configRows(config.sha256), config);
+      verified.add(config.sha256);
+    }
     let vector: number[];
     try {
       vector = await deps.embed(query, config);
@@ -79,5 +133,6 @@ export function makeSemanticSearch(deps: SemanticDeps): SearchFn {
 export const searchSemantic: SearchFn = makeSemanticSearch({
   embed: (text, config) => embedQuery(text, config),
   query: (text, params) => getPool().query<SearchRow>(text, params),
+  configRows: async (sha256) => (await getPool().query(CONFIG_ROW_SQL, [sha256])).rows,
   config: getSemanticConfig,
 });

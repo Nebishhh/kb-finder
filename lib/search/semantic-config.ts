@@ -12,6 +12,9 @@ import articleV1 from "@/config/embedding/article-v1.json";
 export type SemanticConfig = {
   model: string;
   dimensions: number;
+  templateVersion: string;
+  // canonicalJson() of the whole file: the exact string sha256 is taken over.
+  canonical: string;
   sha256: string;
 };
 
@@ -59,10 +62,12 @@ export function loadSemanticConfig(raw: unknown): SemanticConfig {
     throw new SemanticConfigError();
   }
   const cfg = raw as Record<string, unknown>;
-  const { model, dimensions } = cfg;
+  const { model, dimensions, template_version: templateVersion } = cfg;
   if (
     typeof model !== "string" ||
     model.trim() === "" ||
+    typeof templateVersion !== "string" ||
+    templateVersion.trim() === "" ||
     typeof dimensions !== "number" ||
     !Number.isInteger(dimensions) ||
     dimensions <= 0 ||
@@ -71,8 +76,9 @@ export function loadSemanticConfig(raw: unknown): SemanticConfig {
   ) {
     throw new SemanticConfigError();
   }
-  const sha256 = createHash("sha256").update(canonicalJson(cfg), "utf8").digest("hex");
-  return { model, dimensions, sha256 };
+  const canonical = canonicalJson(cfg);
+  const sha256 = createHash("sha256").update(canonical, "utf8").digest("hex");
+  return { model, dimensions, templateVersion, canonical, sha256 };
 }
 
 let active: SemanticConfig | undefined;

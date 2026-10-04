@@ -22,9 +22,12 @@ import {
   type SearchFn,
 } from "@/lib/search/handler";
 import {
+  CONFIG_ROW_SQL,
+  ConfigMismatchError,
   makeSemanticSearch,
   SEMANTIC_SQL,
   toVectorLiteral,
+  type ConfigRowsFn,
   type QueryFn,
   type SemanticDeps,
 } from "@/lib/search/semantic";
@@ -109,6 +112,22 @@ function fakeQuery(rows: SearchRow[] = []) {
   return vi.fn<QueryFn>(async () => ({ rows }));
 }
 
+// The embedding_configs row embed_kb.py writes for this file: config is the
+// parsed file, the columns are its values.
+function storedRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    config: JSON.parse(cfg.canonical) as unknown,
+    model: cfg.model,
+    dimensions: cfg.dimensions,
+    template_version: cfg.templateVersion,
+    ...overrides,
+  };
+}
+
+function fakeConfigRows(rows: unknown[] = [storedRow()]) {
+  return vi.fn<ConfigRowsFn>(async () => rows);
+}
+
 function semanticWith(
   fetchFn: FetchFn,
   env: EmbedEnv = KEY_ENV,
@@ -117,6 +136,7 @@ function semanticWith(
   return makeSemanticSearch({
     embed: (text, config) => embedQuery(text, config, { env, fetchFn }),
     query,
+    configRows: fakeConfigRows(),
     config: getSemanticConfig,
   });
 }
@@ -203,6 +223,8 @@ describe("semantic config comes from config/embedding/article-v1.json", () => {
       { ...parsed, dimensions: "1536" },
       { ...parsed, model: "" },
       { ...parsed, model: undefined },
+      { ...parsed, template_version: "" },
+      { ...parsed, template_version: undefined },
     ];
     for (const raw of bad) {
       expect(() => loadSemanticConfig(raw)).toThrow(SemanticConfigError);
@@ -216,6 +238,7 @@ describe("semantic config comes from config/embedding/article-v1.json", () => {
     const semantic = makeSemanticSearch({
       embed: (text, config) => embedQuery(text, config, { env: KEY_ENV, fetchFn }),
       query: fakeQuery(),
+      configRows: fakeConfigRows(),
       config: () => loadSemanticConfig({ ...parsed, response_encoding: "float" }),
     });
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -477,6 +500,7 @@ describe("query text never reaches logs or responses on any OpenAI error path", 
     const semantic = makeSemanticSearch({
       embed: async () => { throw err; },
       query,
+      configRows: fakeConfigRows(),
       config: getSemanticConfig,
     });
     const result = await runSemantic(semantic);
@@ -519,6 +543,7 @@ describe("query text never reaches logs or responses on any OpenAI error path", 
     const semantic = makeSemanticSearch({
       embed: async () => unitVector(0, DIMS - 1),
       query,
+      configRows: fakeConfigRows(),
       config: getSemanticConfig,
     });
     const result = await runSemantic(semantic);
@@ -526,6 +551,177 @@ describe("query text never reaches logs or responses on any OpenAI error path", 
     expect(result.status).toBe(500);
     expect(captured).toEqual(["search failed: VectorError VECTOR_INVALID"]);
     expect(query).not.toHaveBeenCalled();
+  });
+});
+
+// ------------------------------------------------------------------ stored config check
+
+describe("the stored embedding_configs row is checked against the file", () => {
+  const LINE = "search failed: ConfigMismatchError KBF02_CONFIG_MISMATCH";
+
+  function withRows(configRows: ConfigRowsFn) {
+    const embed = vi.fn<SemanticDeps["embed"]>(async () => unitVector(4));
+    const query = fakeQuery([row(1, "9", 0.9)]);
+    const semantic = makeSemanticSearch({ embed, query, configRows, config: getSemanticConfig });
+    return { embed, query, semantic };
+  }
+
+  it("the file's canonical form is what sha256 is taken over", () => {
+    expect(cfg.canonical).toBe(readFileSync(CONFIG_FILE, "ascii"));
+    expect(createHash("sha256").update(cfg.canonical, "utf8").digest("hex")).toBe(cfg.sha256);
+    expect(cfg.templateVersion).toBe("article-v1");
+  });
+
+  it("a matching row passes, read once with the config sha, then the query is embedded", async () => {
+    const configRows = fakeConfigRows();
+    const { embed, query, semantic } = withRows(configRows);
+    await expect(semantic(QUERY, SEARCH_DEPTH)).resolves.toHaveLength(1);
+    expect(configRows).toHaveBeenCalledTimes(1);
+    expect(configRows).toHaveBeenCalledWith(cfg.sha256);
+    expect(embed).toHaveBeenCalledTimes(1);
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(configRows.mock.invocationCallOrder[0]).toBeLessThan(
+      embed.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("key order in the stored jsonb does not matter", async () => {
+    const reversed = Object.fromEntries(
+      Object.entries(JSON.parse(cfg.canonical) as Record<string, unknown>).reverse(),
+    );
+    expect(Object.keys(reversed)[0]).not.toBe(Object.keys(JSON.parse(cfg.canonical))[0]);
+    const { embed, semantic } = withRows(fakeConfigRows([storedRow({ config: reversed })]));
+    await expect(semantic(QUERY, SEARCH_DEPTH)).resolves.toHaveLength(1);
+    expect(embed).toHaveBeenCalledTimes(1);
+  });
+
+  const parsedFile = () => JSON.parse(cfg.canonical) as Record<string, unknown>;
+  const withoutKey = (o: Record<string, unknown>, key: string) =>
+    Object.fromEntries(Object.entries(o).filter(([k]) => k !== key));
+  const bad: [string, unknown[]][] = [
+    ["no row", []],
+    ["two rows", [storedRow(), storedRow()]],
+    ["config {}", [storedRow({ config: {} })]],
+    ["config with another template", [storedRow({ config: { ...parsedFile(), template: "x" } })]],
+    ["config with an extra key", [storedRow({ config: { ...parsedFile(), extra: 1 } })]],
+    ["config missing a key", [storedRow({ config: withoutKey(parsedFile(), "staff_only") })]],
+    ["config with a nested change",
+      [storedRow({ config: { ...parsedFile(), truncation: { max_tokens: 8001, rule: "prefix-v1" } } })]],
+    ["config dimensions as a string",
+      [storedRow({ config: { ...parsedFile(), dimensions: "1536" } })]],
+    ["config null", [storedRow({ config: null })]],
+    ["config a JSON string of the file", [storedRow({ config: cfg.canonical })]],
+    ["another model", [storedRow({ model: "text-embedding-3-large" })]],
+    ["dimensions 1535", [storedRow({ dimensions: 1535 })]],
+    ["dimensions as a string", [storedRow({ dimensions: "1536" })]],
+    ["another template_version", [storedRow({ template_version: "article-v2" })]],
+    ["a null row", [null]],
+  ];
+
+  it.each(bad)("%s: KBF02_CONFIG_MISMATCH, embed never called", async (_name, rows) => {
+    const captured = captureOutput();
+    const { embed, query, semantic } = withRows(fakeConfigRows(rows));
+    const result = await runSemantic(semantic);
+    vi.restoreAllMocks();
+    expect(result).toEqual({ status: 500, text: JSON.stringify(FAILED) });
+    expect(captured).toEqual([LINE]);
+    expect(embed).not.toHaveBeenCalled();
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it("throws the fixed class and code", async () => {
+    const { semantic } = withRows(fakeConfigRows([]));
+    const err = await semantic(QUERY, SEARCH_DEPTH).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ConfigMismatchError);
+    expect(err).toMatchObject({ name: "ConfigMismatchError", code: "KBF02_CONFIG_MISMATCH" });
+    expect(errorSummary(err)).toBe("ConfigMismatchError KBF02_CONFIG_MISMATCH");
+  });
+
+  it("success is cached: two searches read the row once", async () => {
+    const configRows = fakeConfigRows();
+    const { embed, semantic } = withRows(configRows);
+    await semantic(QUERY, SEARCH_DEPTH);
+    await semantic(QUERY, SEARCH_DEPTH);
+    expect(configRows).toHaveBeenCalledTimes(1);
+    expect(embed).toHaveBeenCalledTimes(2);
+  });
+
+  it("failure is not cached: the row is read again, and a fixed row then passes", async () => {
+    const configRows = vi.fn<ConfigRowsFn>()
+      .mockResolvedValueOnce([storedRow({ model: "other" })])
+      .mockResolvedValueOnce([storedRow({ template_version: "other" })])
+      .mockResolvedValue([storedRow()]);
+    const { embed, semantic } = withRows(configRows);
+    await expect(semantic(QUERY, SEARCH_DEPTH)).rejects.toBeInstanceOf(ConfigMismatchError);
+    await expect(semantic(QUERY, SEARCH_DEPTH)).rejects.toBeInstanceOf(ConfigMismatchError);
+    expect(embed).not.toHaveBeenCalled();
+    await expect(semantic(QUERY, SEARCH_DEPTH)).resolves.toHaveLength(1);
+    await expect(semantic(QUERY, SEARCH_DEPTH)).resolves.toHaveLength(1);
+    expect(configRows).toHaveBeenCalledTimes(3);
+    expect(embed).toHaveBeenCalledTimes(2);
+  });
+
+  it("a failed read is not cached and logs only class and code", async () => {
+    class DatabaseError extends Error {
+      constructor(message: string, readonly code: string) {
+        super(message);
+      }
+    }
+    const configRows = vi.fn<ConfigRowsFn>()
+      .mockRejectedValueOnce(new DatabaseError(`down ${SENTINEL}`, "08006"))
+      .mockResolvedValue([storedRow()]);
+    const { embed, semantic } = withRows(configRows);
+    const captured = captureOutput();
+    const first = await runSemantic(semantic);
+    vi.restoreAllMocks();
+    expect(first.status).toBe(500);
+    expect(captured).toEqual(["search failed: DatabaseError 08006"]);
+    expect(embed).not.toHaveBeenCalled();
+    expect((await runSemantic(semantic)).status).toBe(200);
+    expect(configRows).toHaveBeenCalledTimes(2);
+  });
+
+  it("nothing from the row, the file or the query reaches the log or response", async () => {
+    const captured = captureOutput();
+    const { semantic } = withRows(fakeConfigRows([
+      storedRow({ model: SENTINEL, config: { ...parsedFile(), template: SENTINEL } }),
+    ]));
+    const result = await runSemantic(semantic);
+    vi.restoreAllMocks();
+    expect(captured).toEqual([LINE]);
+    for (const text of [result.text, ...captured]) {
+      expect(text).not.toContain(SENTINEL);
+      expect(text).not.toContain(cfg.sha256);
+      expect(text).not.toContain(cfg.model);
+      expect(text).not.toContain("article-v1");
+    }
+  });
+
+  it("reads exactly the four columns for one sha", () => {
+    expect(CONFIG_ROW_SQL).toBe(
+      "select config, model, dimensions, template_version " +
+        "from embedding_configs where config_sha256 = $1",
+    );
+  });
+
+  it("lexical search never reads the config row", async () => {
+    const configRows = fakeConfigRows();
+    const semantic = makeSemanticSearch({
+      embed: async () => unitVector(4),
+      query: fakeQuery(),
+      configRows,
+      config: getSemanticConfig,
+    });
+    const lexical = vi.fn<SearchFn>(async () => [row(1, "11", 0.5)]);
+    const response = await handleSearch(jsonRequest({ query: "wifi", mode: "lexical" }), {
+      retrievers: { lexical, semantic },
+      gate: () => "open" as const,
+      limit: async () => "ok" as const,
+      env: EVAL_ON,
+    });
+    expect(response.status).toBe(200);
+    expect(lexical).toHaveBeenCalledTimes(1);
+    expect(configRows).not.toHaveBeenCalled();
   });
 });
 
@@ -578,6 +774,7 @@ describe("vector literal and SQL parameters", () => {
     const deps: SemanticDeps = {
       embed: async () => unitVector(4),
       query,
+      configRows: fakeConfigRows(),
       config: getSemanticConfig,
     };
     const rows = await makeSemanticSearch(deps)(QUERY, SEARCH_DEPTH);

@@ -4,6 +4,9 @@ import { join } from "node:path";
 import { Client } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { SearchFn } from "@/lib/search/handler";
+import type { ConfigRowsFn } from "@/lib/search/semantic";
+
 // Live DB checks through the real route. Skipped unless
 // KB_FINDER_TEST_DATABASE_URL is set. Only inputs that must return no
 // results or a 400 are used: no ranking is inspected on the real corpus.
@@ -89,8 +92,16 @@ describe.skipIf(!databaseUrl)("kb_search_semantic through SEMANTIC_SQL", () => {
     return v;
   }
 
-  it("returns ranked rows with finite numeric scores, then leaves no trace", async () => {
-    const { makeSemanticSearch, toVectorLiteral } = await import("@/lib/search/semantic");
+  // The embedding_configs row holds the real file config, as embed_kb.py load
+  // writes it, so the server-side check (checkConfigRow) passes. tamper runs
+  // against that row before the search.
+  async function withSemanticSchema(
+    body: (search: SearchFn, configRows: ConfigRowsFn, embed: () => void) => Promise<void>,
+    tamper?: string,
+  ) {
+    const { CONFIG_ROW_SQL, makeSemanticSearch, toVectorLiteral } = await import(
+      "@/lib/search/semantic"
+    );
     const { getSemanticConfig } = await import("@/lib/search/semantic-config");
     const cfg = getSemanticConfig();
     const schema = `kbtest_${crypto.randomUUID().replaceAll("-", "")}`;
@@ -108,8 +119,8 @@ describe.skipIf(!databaseUrl)("kb_search_semantic through SEMANTIC_SQL", () => {
           "from unnest(array['9', '10', '100']) as id",
       );
       await client.query(
-        "insert into embedding_configs values ($1, '{}', $2, $3, 'article-v1')",
-        [cfg.sha256, cfg.model, cfg.dimensions],
+        "insert into embedding_configs values ($1, $2::jsonb, $3, $4, $5)",
+        [cfg.sha256, cfg.canonical, cfg.model, cfg.dimensions, cfg.templateVersion],
       );
       // 10 matches the query exactly; 9 and 100 are orthogonal and tie at 0.
       const vectors: [string, number][] = [["9", 1], ["10", 0], ["100", 2]];
@@ -123,11 +134,30 @@ describe.skipIf(!databaseUrl)("kb_search_semantic through SEMANTIC_SQL", () => {
           [cfg.sha256, id, toVectorLiteral(unit(index, cfg.dimensions), cfg.dimensions)],
         );
       }
+      if (tamper !== undefined) await client.query(tamper, [cfg.sha256]);
+      const embed = vi.fn(async () => unit(0, cfg.dimensions));
+      const configRows: ConfigRowsFn = async (sha256) =>
+        (await client.query(CONFIG_ROW_SQL, [sha256])).rows;
       const search = makeSemanticSearch({
-        embed: async () => unit(0, cfg.dimensions),
+        embed,
         query: (text, params) => client.query(text, params),
+        configRows,
         config: getSemanticConfig,
       });
+      await body(search, configRows, () => expect(embed).not.toHaveBeenCalled());
+    } finally {
+      await client.query("rollback");
+      const left = await client.query(
+        "select count(*)::int as n from pg_namespace where nspname = $1",
+        [schema],
+      );
+      await client.end();
+      expect(left.rows[0].n).toBe(0);
+    }
+  }
+
+  it("returns ranked rows with finite numeric scores, then leaves no trace", async () => {
+    await withSemanticSchema(async (search) => {
       const rows = await search("wifi", 50);
       expect(rows.map((r) => [r.rank, r.source_article_id])).toEqual([
         [1, "10"],
@@ -141,15 +171,36 @@ describe.skipIf(!databaseUrl)("kb_search_semantic through SEMANTIC_SQL", () => {
       expect(rows[0].score).toBe(1);
       expect(rows[1].score).toBe(0);
       expect(rows[0].title).toBe("Heading 10");
-    } finally {
-      await client.query("rollback");
-      const left = await client.query(
-        "select count(*)::int as n from pg_namespace where nspname = $1",
-        [schema],
-      );
-      await client.end();
-      expect(left.rows[0].n).toBe(0);
-    }
+    });
+  });
+
+  it("the stored row equals the file: jsonb round-trips to the file's canonical form", async () => {
+    const { checkConfigRow } = await import("@/lib/search/semantic");
+    const { getSemanticConfig } = await import("@/lib/search/semantic-config");
+    await withSemanticSchema(async (_search, configRows) => {
+      const rows = await configRows(getSemanticConfig().sha256);
+      expect(rows).toHaveLength(1);
+      expect(() => checkConfigRow(rows, getSemanticConfig())).not.toThrow();
+    });
+  });
+
+  it.each([
+    ["config jsonb {}", "update embedding_configs set config = '{}' where config_sha256 = $1"],
+    ["one config key changed",
+      "update embedding_configs set config = jsonb_set(config, '{template}', '\"x\"') " +
+        "where config_sha256 = $1"],
+    ["model column", "update embedding_configs set model = 'text-embedding-3-large' " +
+      "where config_sha256 = $1"],
+    ["template_version column",
+      "update embedding_configs set template_version = 'article-v2' where config_sha256 = $1"],
+  ])("tampered %s: KBF02_CONFIG_MISMATCH before any embed", async (_name, tamper) => {
+    await withSemanticSchema(async (search, _configRows, embedNotCalled) => {
+      await expect(search("wifi", 50)).rejects.toMatchObject({
+        name: "ConfigMismatchError",
+        code: "KBF02_CONFIG_MISMATCH",
+      });
+      embedNotCalled();
+    }, tamper);
   });
 });
 
