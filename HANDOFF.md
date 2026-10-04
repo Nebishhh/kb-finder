@@ -79,7 +79,7 @@ pending.
 - `npm run test:unit`: 316 passed, 7 files.
 - Python: the full suite last ran at d97e085 (step 2), 386 tests OK,
   run by the project owner with `KB_FINDER_TEST_DATABASE_URL` set.
-  After that, only `tests/test_db_fingerprint.py` changed in Python;
+  After that, only `scripts/db_fingerprint.py` and `tests/test_db_fingerprint.py` changed in Python;
   it passes 31 tests offline and against local.
 - No test calls OpenAI. Web tests block real fetch. The embedding
   tests block the network and never build a real client.
