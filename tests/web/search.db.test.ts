@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { Client } from "pg";
@@ -303,6 +303,215 @@ describe.skipIf(!databaseUrl)("the daily cap through DAILY_CAP_SQL as kb_app", (
       expect(await rows(client)).toEqual([
         { kind: "search_ip_10m", key, w: "2026-10-02 14:00:00+00", count: 5 },
         { kind: "search_global_day", key: "all", w: "2026-10-03 00:00:00+00", count: 1 },
+      ]);
+    });
+  });
+});
+
+// The failed-login cap as kb_app, against every migration in order (so the gate
+// kind migration is included), in a throwaway schema on a dedicated client,
+// inside one transaction that is always rolled back. The request time is a
+// parameter, so the clock is moved without waiting.
+describe.skipIf(!databaseUrl)("the failed-login cap and the gate kind as kb_app", () => {
+  const MIGRATION_DIR = join(process.cwd(), "supabase", "migrations");
+  const NAMES = readdirSync(MIGRATION_DIR).filter((n) => n.endsWith(".sql")).sort();
+  const GATE_KIND = NAMES.filter((n) => n.endsWith("_add_gate_fail_kind.sql"));
+  const MIGRATIONS = NAMES.map((name) => readFileSync(join(MIGRATION_DIR, name), "utf8"));
+  const PIN = "8264";
+  const GATE_ENV = {
+    ACCESS_PASSWORD: PIN,
+    GATE_COOKIE_SECRET: "test-cookie-secret-0123456789abcdef",
+  };
+
+  async function inThrowawaySchema(body: (client: Client) => Promise<void>, rerunLast = false) {
+    const schema = `kbtest_${crypto.randomUUID().replaceAll("-", "")}`;
+    const client = new Client({ connectionString: databaseUrl });
+    await client.connect();
+    try {
+      await client.query("begin");
+      await client.query(`create schema ${schema}`);
+      await client.query(`set local search_path to ${schema}`);
+      await client.query("set local timezone to 'UTC'"); // stable window_start::text
+      for (const sql of MIGRATIONS) await client.query(sql);
+      if (rerunLast) await client.query(MIGRATIONS[MIGRATIONS.length - 1]);
+      // postgres holds ADMIN on kb_app but not SET; this grant is rolled back.
+      await client.query("grant kb_app to current_user with inherit false, set true");
+      await client.query("set local role kb_app");
+      const who = await client.query("select current_user as u");
+      expect(who.rows[0].u).toBe("kb_app");
+      await body(client);
+    } finally {
+      await client.query("rollback");
+      const left = await client.query(
+        "select count(*)::int as n from pg_namespace where nspname = $1",
+        [schema],
+      );
+      await client.end();
+      expect(left.rows[0].n).toBe(0);
+    }
+  }
+
+  async function rows(client: Client) {
+    const result = await client.query(
+      "select kind, key, window_start::text as w, count from kb_rate_counters " +
+        "order by window_start, kind",
+    );
+    return result.rows;
+  }
+
+  async function failCap(client: Client) {
+    const { makeGateFailCap } = await import("@/lib/limits/gate-fail-cap");
+    return makeGateFailCap((text, params) => client.query(text, params));
+  }
+
+  // "ok", or the SQLSTATE; a rejected insert rolls back only its savepoint.
+  async function insertCode(client: Client, kind: string, key: string, count = 1) {
+    await client.query("savepoint s");
+    try {
+      await client.query(
+        "insert into kb_rate_counters values ($1, $2, '2026-10-01T00:00Z', $3)",
+        [kind, key, count],
+      );
+      await client.query("release savepoint s");
+      return "ok";
+    } catch (err) {
+      await client.query("rollback to savepoint s");
+      return (err as { code?: string }).code;
+    }
+  }
+
+  it("the gate kind migration is the latest, changes only the two CHECKs, and is idempotent", async () => {
+    expect(GATE_KIND).toHaveLength(1);
+    expect(NAMES.at(-1)).toBe(GATE_KIND[0]);
+    await inThrowawaySchema(async (client) => {
+      const defs = await client.query(
+        "select conname, pg_get_constraintdef(oid) as def from pg_constraint " +
+          "where conrelid = 'kb_rate_counters'::regclass order by conname",
+      );
+      expect(defs.rows).toEqual([
+        {
+          conname: "kb_rate_counters_check",
+          def:
+            "CHECK (((key = 'all'::text) = (kind = ANY (ARRAY['search_global_day'::text, " +
+            "'gate_fail_global_day'::text]))))",
+        },
+        { conname: "kb_rate_counters_count_check", def: "CHECK ((count >= 1))" },
+        {
+          conname: "kb_rate_counters_key_check",
+          def: "CHECK (((key ~ '^[0-9a-f]{64}$'::text) OR (key = 'all'::text)))",
+        },
+        {
+          conname: "kb_rate_counters_kind_check",
+          def:
+            "CHECK ((kind = ANY (ARRAY['search_ip_10m'::text, 'search_ip_day'::text, " +
+            "'search_global_day'::text, 'gate_ip_10m'::text, 'gate_fail_global_day'::text])))",
+        },
+        { conname: "kb_rate_counters_pkey", def: "PRIMARY KEY (kind, key, window_start)" },
+      ]);
+    }, true);
+  });
+
+  it("accepts the new kind with 'all' only; existing kinds and rules are unchanged", async () => {
+    await inThrowawaySchema(async (client) => {
+      const hex = "c".repeat(64);
+      expect(await insertCode(client, "gate_fail_global_day", "all")).toBe("ok");
+      expect(await insertCode(client, "gate_fail_global_day", hex)).toBe("23514");
+      expect(await insertCode(client, "search_global_day", "all")).toBe("ok");
+      for (const kind of ["search_ip_10m", "search_ip_day", "gate_ip_10m"]) {
+        expect(await insertCode(client, kind, hex), kind).toBe("ok");
+        expect(await insertCode(client, kind, "all"), kind).toBe("23514");
+      }
+      expect(await insertCode(client, "search_global_day", hex)).toBe("23514");
+      expect(await insertCode(client, "search_ip_10m", "C".repeat(64))).toBe("23514");
+      expect(await insertCode(client, "search_ip_10m", "c".repeat(63))).toBe("23514");
+      expect(await insertCode(client, "raw_ip", hex)).toBe("23514");
+      expect(await insertCode(client, "gate_fail_10m", "all")).toBe("23514");
+      expect(await insertCode(client, "search_ip_10m", "d".repeat(64), 0)).toBe("23514");
+      expect(await insertCode(client, "gate_fail_global_day", "all")).toBe("23505"); // pkey
+    });
+  });
+
+  it("reserve and release count right, on a row separate from the search cap", async () => {
+    await inThrowawaySchema(async (client) => {
+      const { makeDailyCap } = await import("@/lib/limits/daily-cap");
+      const at = Date.parse("2026-10-01T09:00:00Z");
+      const search = makeDailyCap({
+        query: (text, params) => client.query(text, params),
+        now: () => new Date(at),
+      });
+      const cap = await failCap(client);
+      expect(await search()).toBe("ok");
+      expect(await cap.reserve(at)).toBe(1);
+      expect(await cap.reserve(at)).toBe(2);
+      expect(await cap.reserve(at)).toBe(3);
+      expect(await search()).toBe("ok");
+      await cap.release(at);
+      expect(await rows(client)).toEqual([
+        { kind: "gate_fail_global_day", key: "all", w: "2026-10-01 00:00:00+00", count: 2 },
+        { kind: "search_global_day", key: "all", w: "2026-10-01 00:00:00+00", count: 2 },
+      ]);
+      await cap.release(at);
+      await cap.release(at); // count 1: the row is deleted, never set to 0
+      expect(await rows(client)).toEqual([
+        { kind: "search_global_day", key: "all", w: "2026-10-01 00:00:00+00", count: 2 },
+      ]);
+      // With no reservation left, a release finds no row and throws.
+      await expect(cap.release(at)).rejects.toMatchObject({ code: "LIMIT_BAD_RESULT" });
+      expect(await cap.reserve(at)).toBe(1);
+    });
+  });
+
+  it("the 11th reservation of a day trips, even for the right PIN; the next UTC day starts over", async () => {
+    await inThrowawaySchema(async (client) => {
+      const { handleGateLogin } = await import("@/lib/gate/login");
+      const { GATE_FAIL_CAP } = await import("@/lib/limits/config");
+      expect(GATE_FAIL_CAP).toBe(10);
+      const cap = await failCap(client);
+      const login = async (pin: string, iso: string) => {
+        const response = await handleGateLogin(
+          new Request("http://localhost/api/gate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password: pin }),
+          }),
+          GATE_ENV,
+          Date.parse(iso),
+          cap,
+        );
+        return response.status;
+      };
+
+      const day1 = "2026-10-01T23:59:59Z";
+      expect(await login(PIN, day1)).toBe(204); // reserved, then released: net zero
+      for (let i = 1; i <= 10; i++) expect(await login("0000", day1), `attempt ${i}`).toBe(401);
+      expect(await rows(client)).toEqual([
+        { kind: "gate_fail_global_day", key: "all", w: "2026-10-01 00:00:00+00", count: 10 },
+      ]);
+      expect(await login(PIN, day1)).toBe(429);
+      expect(await login("0000", day1)).toBe(429);
+
+      const day2 = "2026-10-02T00:00:00Z";
+      expect(await login(PIN, day2)).toBe(204);
+      expect(await login("0000", day2)).toBe(401);
+      expect(await rows(client)).toEqual([
+        { kind: "gate_fail_global_day", key: "all", w: "2026-10-01 00:00:00+00", count: 12 },
+        { kind: "gate_fail_global_day", key: "all", w: "2026-10-02 00:00:00+00", count: 1 },
+      ]);
+    });
+  });
+
+  it("reserve purges windows that started more than one day before the request", async () => {
+    await inThrowawaySchema(async (client) => {
+      await client.query(
+        "insert into kb_rate_counters values " +
+          "('gate_fail_global_day', 'all', '2026-10-01T00:00:00Z', 9), " + // 2 days before: purged
+          "('search_global_day', 'all', '2026-10-02T00:00:00Z', 7)", // exactly 1 day: kept
+      );
+      const cap = await failCap(client);
+      expect(await cap.reserve(Date.parse("2026-10-03T00:00:00Z"))).toBe(1);
+      expect(await rows(client)).toEqual([
+        { kind: "search_global_day", key: "all", w: "2026-10-02 00:00:00+00", count: 7 },
+        { kind: "gate_fail_global_day", key: "all", w: "2026-10-03 00:00:00+00", count: 1 },
       ]);
     });
   });

@@ -6,6 +6,15 @@
 // gets 429.
 export const DAILY_SEARCH_CAP = 200;
 
-// The kb_rate_counters row the cap uses (CHECK: key 'all' exactly for this kind).
+// The kb_rate_counters row the cap uses (CHECK: key 'all' exactly for the
+// global kinds).
 export const GLOBAL_DAY_KIND = "search_global_day";
 export const GLOBAL_KEY = "all";
+
+// Failed /api/gate logins per UTC day, across all clients. This, not the
+// password's length, bounds brute force against a 4-digit PIN: attempt 11 of a
+// day gets 429 without the PIN being compared.
+export const GATE_FAIL_CAP = 10;
+
+// The kb_rate_counters row the failed-login cap uses (key GLOBAL_KEY).
+export const GATE_FAIL_DAY_KIND = "gate_fail_global_day";

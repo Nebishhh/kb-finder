@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
-type Status = "idle" | "loading" | "wrong" | "error";
+type Status = "idle" | "loading" | "wrong" | "capped" | "error";
 
 // The password lives only in component state and the POST body: never in the
 // URL, storage or logs. method="post" means that even without JavaScript the
@@ -29,7 +29,9 @@ export default function GateForm() {
         router.push("/");
         return;
       }
-      setStatus(response.status === 401 ? "wrong" : "error");
+      if (response.status === 401) setStatus("wrong");
+      else if (response.status === 429) setStatus("capped");
+      else setStatus("error");
     } catch {
       setStatus("error");
     }
@@ -51,6 +53,7 @@ export default function GateForm() {
         Enter
       </button>
       {status === "wrong" && <p>Wrong password.</p>}
+      {status === "capped" && <p>Too many failed attempts today. Try again tomorrow.</p>}
       {status === "error" && <p>Sign-in failed. Please try again.</p>}
     </form>
   );

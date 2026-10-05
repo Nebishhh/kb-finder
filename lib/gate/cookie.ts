@@ -4,8 +4,10 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 import type { GateResult } from "@/lib/search/handler";
 
-// Access gate for the hosted app: one shared password (the owner plus 2-3
-// trusted testers), exchanged at /api/gate for a signed cookie. This is the only
+// Access gate for the hosted app: one shared password or 4-digit PIN (the owner
+// plus 2-3 trusted testers), exchanged at /api/gate for a signed cookie.
+// Brute force against a PIN is bounded by the global failed-login cap
+// (lib/gate/login.ts), not by the password's length. This is the only
 // module that reads ACCESS_PASSWORD or GATE_COOKIE_SECRET; nothing here logs.
 //
 // Cookie: kbf_gate=v1.<exp>.<mac>
@@ -18,12 +20,16 @@ import type { GateResult } from "@/lib/search/handler";
 export const GATE_COOKIE = "kbf_gate";
 export const GATE_LIFETIME_S = 7 * 24 * 60 * 60;
 export const MIN_PASSWORD_LENGTH = 20;
+// A PIN: exactly four ASCII digits, nothing around them.
+const PIN_SHAPE = /^[0-9]{4}$/;
 export const MIN_SECRET_BYTES = 32;
 
 export type GateEnv = {
   ACCESS_GATE?: string;
   ACCESS_PASSWORD?: string;
   GATE_COOKIE_SECRET?: string;
+  // Exactly "off" skips the failed-login cap, only when VERCEL is unset.
+  RATE_LIMIT?: string;
   VERCEL?: string;
 };
 
@@ -37,32 +43,40 @@ export type GateConfig =
   | { mode: "on"; password: string; secret: string }
   | { mode: "invalid"; code: GateConfigError };
 
-// The four names, picked out of a process.env-like object at request time.
+// The five names, picked out of a process.env-like object at request time.
 export function gateEnvFrom(env: Record<string, string | undefined>): GateEnv {
   return {
     ACCESS_GATE: env.ACCESS_GATE,
     ACCESS_PASSWORD: env.ACCESS_PASSWORD,
     GATE_COOKIE_SECRET: env.GATE_COOKIE_SECRET,
+    RATE_LIMIT: env.RATE_LIMIT,
     VERCEL: env.VERCEL,
   };
 }
 
 // ACCESS_GATE exactly "off" disables the gate, only when VERCEL is unset (local
-// dev and evals). Anything else needs a long enough password and secret; a
-// missing or short one fails closed.
+// dev and evals). Anything else needs a valid password and a long enough
+// secret; anything else fails closed. A valid password is exactly 4 ASCII digits
+// (a PIN) or at least 20 characters (a passphrase), so either can be used without
+// a code change.
 export function resolveGateConfig(env: GateEnv): GateConfig {
   if (env.ACCESS_GATE === "off") {
     return env.VERCEL ? { mode: "invalid", code: "GATE_OFF_ON_VERCEL" } : { mode: "off" };
   }
   const password = env.ACCESS_PASSWORD;
   const secret = env.GATE_COOKIE_SECRET;
-  if (!password || password.length < MIN_PASSWORD_LENGTH) {
+  if (!isValidPassword(password)) {
     return { mode: "invalid", code: "GATE_PASSWORD_INVALID" };
   }
   if (!secret || Buffer.byteLength(secret, "utf8") < MIN_SECRET_BYTES) {
     return { mode: "invalid", code: "GATE_SECRET_INVALID" };
   }
   return { mode: "on", password, secret };
+}
+
+export function isValidPassword(password: string | undefined): password is string {
+  if (!password) return false;
+  return PIN_SHAPE.test(password) || password.length >= MIN_PASSWORD_LENGTH;
 }
 
 type OnConfig = Extract<GateConfig, { mode: "on" }>;

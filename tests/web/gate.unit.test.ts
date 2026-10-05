@@ -23,6 +23,7 @@ import {
   type GateEnv,
 } from "@/lib/gate/cookie";
 import { GATE_MAX_BODY_BYTES, handleGateLogin } from "@/lib/gate/login";
+import type { GateFailCap } from "@/lib/limits/gate-fail-cap";
 import {
   handleSearch,
   type GateFn,
@@ -43,6 +44,9 @@ const T = Date.UTC(2026, 9, 1, 12, 0, 0); // ms
 const T_S = Math.floor(T / 1000);
 
 type OnConfig = Extract<GateConfig, { mode: "on" }>;
+
+// The failed-login cap never trips here; gate.cap.unit.test.ts covers it.
+const OPEN_CAP: GateFailCap = { reserve: async () => 1, release: async () => {} };
 
 function onConfig(env: GateEnv = ON_ENV): OnConfig {
   const config = resolveGateConfig(env);
@@ -305,7 +309,7 @@ describe("handleSearch with the gate", () => {
 
 describe("POST /api/gate", () => {
   async function login(body: BodyInit, env: GateEnv = ON_ENV, headers: HeadersInit = {}) {
-    const response = await handleGateLogin(post("/api/gate", body, headers), env, T);
+    const response = await handleGateLogin(post("/api/gate", body, headers), env, T, OPEN_CAP);
     return {
       status: response.status,
       cache: response.headers.get("Cache-Control"),
@@ -367,7 +371,12 @@ describe("POST /api/gate", () => {
   ])("config %s: 500 before the body is read", async (_name, env) => {
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
     const probe = { pulls: 0 };
-    const response = await handleGateLogin(post("/api/gate", untouchable(probe)), env, T);
+    const response = await handleGateLogin(
+      post("/api/gate", untouchable(probe)),
+      env,
+      T,
+      OPEN_CAP,
+    );
     expect(response.status).toBe(500);
     expect(await response.text()).toBe(JSON.stringify({ error: "Gate unavailable" }));
     expect(probe.pulls).toBe(0);
@@ -388,6 +397,7 @@ describe("POST /api/gate", () => {
 
     process.env.ACCESS_PASSWORD = PASSWORD; // cleared again by setup.ts
     process.env.GATE_COOKIE_SECRET = SECRET;
+    process.env.RATE_LIMIT = "off"; // no database here; VERCEL is unset
     const ok = await gateRoute(post("/api/gate", JSON.stringify({ password: PASSWORD })));
     expect(ok.status).toBe(204);
     expect(ok.headers.get("Set-Cookie")).toMatch(/^kbf_gate=v1\.\d+\.[A-Za-z0-9_-]{43}; /);
@@ -495,7 +505,7 @@ describe("the password and query never leak", () => {
     ["misconfigured", JSON.stringify({ password: SENTINEL }), { ...SENTINEL_ENV, ACCESS_PASSWORD: SENTINEL }],
   ])("/api/gate: %s", async (_name, body, env) => {
     const captured = captureOutput();
-    const response = await handleGateLogin(post("/api/gate", body), env, T);
+    const response = await handleGateLogin(post("/api/gate", body), env, T, OPEN_CAP);
     await expectNoLeak(response, captured);
   });
 
