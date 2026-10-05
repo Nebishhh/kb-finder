@@ -20,6 +20,7 @@ import type { SearchResult } from "@/lib/search/handler";
 
 const ROOT = join(__dirname, "..", "..");
 const QUERY = "wifi keeps dropping in the library";
+const NBSP = String.fromCharCode(0xa0);
 
 function result(n: number): SearchResult {
   return {
@@ -75,6 +76,7 @@ describe("server page", () => {
     expect(page.type).not.toBe(SearchClient);
     const html = renderToStaticMarkup(page);
     expect(html).toContain("Configuration error: the default search mode is not valid.");
+    expect(html).toContain("<h1>From a messy issue to the closest article.</h1>");
     expect(html).not.toContain("hybrid");
     expect(html).not.toContain("<textarea");
   });
@@ -162,11 +164,11 @@ describe("SearchOutput", () => {
       data: { mode: "lexical", results: [{ ...result(1), category: "Wireless" }, result(2)] },
     });
     expect(html).toContain(
-      '<a href="https://example.test/kb/1001" target="_blank" rel="noopener noreferrer">Article 1<svg',
+      `<a href="https://example.test/kb/1001" target="_blank" rel="noopener noreferrer">Article 1<span class="nowrap">${NBSP}<svg`,
     );
     expect(html.match(/<svg class="arrow" aria-hidden="true"/g)).toHaveLength(2);
     expect(
-      html.match(/<span class="visually-hidden"> \(opens in a new tab\)<\/span><\/a>/g),
+      html.match(/<span class="visually-hidden"> \(opens in a new tab\)<\/span><\/span><\/a>/g),
     ).toHaveLength(2);
     expect(html.match(/class="category"/g)).toHaveLength(1);
     expect(html).toContain('<p class="category">Wireless</p>');
@@ -240,17 +242,17 @@ describe("search page", () => {
   it("shows the approved copy and a disabled Find articles button, with no form", () => {
     const html = renderClient("lexical");
     expect(html).toContain('<span class="brand">KB Finder</span>');
-    expect(html).toContain("<h1>Find an answer.</h1>");
-    expect(html).toContain(
-      ">Describe an IT problem in your own words. Get the most relevant help articles.<",
-    );
+    expect(html).toContain("<h1>From a messy issue to the closest article.</h1>");
+    expect(html).toContain(">Help articles are written in IT terms. You don&#x27;t have to be.<");
     expect(html).toContain(
       ">Searches 3,109 public articles from the Coyote OneStop Knowledge Base.<",
     );
-    expect(html).toContain('<label class="field-label" for="issue">Describe the issue</label>');
-    expect(html).toContain('placeholder="Type it the way you would say it to the help desk."');
+    expect(html).toContain('<label class="field-label" for="issue">What&#x27;s going wrong?</label>');
+    expect(html).not.toContain("placeholder");
     expect(html).toContain('aria-describedby="issue-help"');
-    expect(html).toContain('<p id="issue-help" class="helper">Leave out names, IDs and contact details.</p>');
+    expect(html).toContain(
+      '<p id="issue-help" class="helper">Leave out names, IDs, emails and phone numbers.</p>',
+    );
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Find articles<\/button>/);
     expect(html).not.toContain("<form");
   });

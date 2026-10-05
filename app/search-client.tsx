@@ -79,8 +79,9 @@ function modeLabel(mode: string): string {
 }
 
 // Fixed colors and shape come from globals.css; the text beside it carries
-// the meaning, so the mark is hidden from assistive technology.
-function WarnMark() {
+// the meaning, so the mark is hidden from assistive technology. The gate form
+// uses the same mark.
+export function WarnMark() {
   return (
     <svg className="warn-mark" aria-hidden="true" focusable="false" viewBox="0 0 18 16" width="18" height="16">
       <path className="warn-mark-shape" d="M9 1 17 15H1Z" />
@@ -115,6 +116,7 @@ function Loading() {
   return (
     <div className="route loading">
       <div className="rail" aria-hidden="true">
+        <span className="seg seg--to-node" />
         <span className="node node--hollow" />
         <span className="seg seg--dashed" />
       </div>
@@ -191,8 +193,12 @@ export function SearchOutput({ outcome }: { outcome: SearchOutcome }) {
           <li key={result.sourceArticleId}>
             <a href={result.url} target="_blank" rel="noopener noreferrer">
               {result.title}
-              <ArrowIcon />
-              <span className="visually-hidden"> (opens in a new tab)</span>
+              {/* The arrow stays on the line of the title's last word. */}
+              <span className="nowrap">
+                &nbsp;
+                <ArrowIcon />
+                <span className="visually-hidden"> (opens in a new tab)</span>
+              </span>
             </a>
             {result.category !== undefined && <p className="category">{result.category}</p>}
           </li>
@@ -224,10 +230,8 @@ export default function SearchClient({ mode }: { mode: string }) {
       </header>
       <main className="page">
         <div className="intro">
-          <h1>Find an answer.</h1>
-          <p className="lede">
-            Describe an IT problem in your own words. Get the most relevant help articles.
-          </p>
+          <h1>From a messy issue to the closest article.</h1>
+          <p className="lede">Help articles are written in IT terms. You don&apos;t have to be.</p>
           <p className="helper">
             {`Searches ${ARTICLE_COUNT} public articles from the Coyote OneStop Knowledge Base.`}
           </p>
@@ -235,13 +239,12 @@ export default function SearchClient({ mode }: { mode: string }) {
 
         <div className="field">
           <label className="field-label" htmlFor="issue">
-            Describe the issue
+            What&apos;s going wrong?
           </label>
           <textarea
             id="issue"
             className="input"
             rows={5}
-            placeholder="Type it the way you would say it to the help desk."
             aria-describedby="issue-help"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -249,7 +252,7 @@ export default function SearchClient({ mode }: { mode: string }) {
             spellCheck={false}
           />
           <p id="issue-help" className="helper">
-            Leave out names, IDs and contact details.
+            Leave out names, IDs, emails and phone numbers.
           </p>
         </div>
         <div className="actions">

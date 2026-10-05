@@ -3,7 +3,16 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+import { WarnMark } from "../search-client";
+
 type Status = "idle" | "loading" | "wrong" | "capped" | "error";
+
+// Every error message is fixed: no response text is ever shown.
+const ERROR_TEXT: Partial<Record<Status, string>> = {
+  wrong: "Wrong access code.",
+  capped: "Too many failed attempts today. Try again tomorrow.",
+  error: "Sign-in failed. Please try again.",
+};
 
 // The password lives only in component state and the POST body: never in the
 // URL, storage or logs. method="post" means that even without JavaScript the
@@ -37,24 +46,45 @@ export default function GateForm() {
     }
   }
 
+  const error = ERROR_TEXT[status];
+
   return (
-    <form method="post" action="/api/gate" onSubmit={submit}>
-      <label>
-        Password{" "}
+    <form className="gate-form" method="post" action="/api/gate" onSubmit={submit}>
+      <div className="field">
+        <label className="field-label" htmlFor="access-code">
+          Access code
+        </label>
         <input
+          id="access-code"
+          className="input"
           type="password"
           name="password"
           autoComplete="current-password"
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? "access-code-error" : undefined}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
-      </label>{" "}
-      <button type="submit" disabled={status === "loading" || password.length === 0}>
-        Enter
-      </button>
-      {status === "wrong" && <p>Wrong password.</p>}
-      {status === "capped" && <p>Too many failed attempts today. Try again tomorrow.</p>}
-      {status === "error" && <p>Sign-in failed. Please try again.</p>}
+      </div>
+      {/* One persistent status region, empty when there is no error. */}
+      <div className="gate-status" role="status">
+        {error && (
+          <p id="access-code-error" className="field-error">
+            <WarnMark />
+            <span>{error}</span>
+          </p>
+        )}
+      </div>
+      <div className="actions">
+        <button
+          type="submit"
+          className="button"
+          disabled={status === "loading" || password.length === 0}
+        >
+          Enter
+        </button>
+        <p className="helper">This demo is private. Ask me for the code.</p>
+      </div>
     </form>
   );
 }

@@ -18,7 +18,13 @@ export default function Home() {
           <span className="brand">KB Finder</span>
         </header>
         <main className="page">
-          <h1>Find an answer.</h1>
+          <div className="intro">
+            <h1>From a messy issue to the closest article.</h1>
+            <p className="lede">Help articles are written in IT terms. You don&apos;t have to be.</p>
+            <p className="helper">
+              Searches 3,109 public articles from the Coyote OneStop Knowledge Base.
+            </p>
+          </div>
           <p className="config-error">
             Configuration error: the default search mode is not valid.
           </p>

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Atkinson_Hyperlegible_Next } from "next/font/google";
 
 import "./globals.css";
@@ -19,6 +19,12 @@ const sans = Atkinson_Hyperlegible_Next({
 export const metadata: Metadata = {
   title: "KB Finder",
   description: "Find public Knowledge Base articles for an IT issue.",
+};
+
+// Emits <meta name="color-scheme" content="light dark">, so the browser uses
+// the matching canvas and form controls before the stylesheet loads.
+export const viewport: Viewport = {
+  colorScheme: "light dark",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

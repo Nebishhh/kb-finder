@@ -352,11 +352,17 @@ textarea.input {
   text-decoration-line: underline;
 }
 
+/* Holds a non-breaking space, the arrow and the hidden text, so the arrow
+   never wraps onto a line by itself. */
+.nowrap {
+  white-space: nowrap;
+}
+
 .arrow {
   display: inline-block;
   width: 0.65em;
   height: 0.65em;
-  margin-left: 0.3em;
+  margin-left: 0.05em;
   vertical-align: 0;
   fill: none;
   stroke: currentColor;
@@ -423,10 +429,15 @@ textarea.input {
   flex: none;
 }
 
+/* A solid segment from the button down to the hollow node, which sits
+   centered on the label's first line. */
+.seg--to-node {
+  flex: 0 0 calc(16px + 0.75em - 5px);
+}
+
 .node--hollow {
   width: 10px;
   height: 10px;
-  margin-top: calc(16px + 0.75em - 5px);
   border: var(--line) solid var(--link);
   border-radius: 50%;
 }
@@ -468,6 +479,11 @@ textarea.input {
   display: flex;
   align-items: flex-start;
   gap: 8px;
+}
+
+/* The status region stays in place when empty; only an error adds space. */
+.gate-status .field-error {
+  margin-top: 8px;
 }
 
 .field-error .warn-mark {
