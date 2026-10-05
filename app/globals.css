@@ -1,0 +1,479 @@
+/* KB Finder: plain CSS with custom properties. Light is the default; dark
+   follows the system setting. There is no theme toggle. */
+
+:root {
+  color-scheme: light dark;
+
+  --canvas: #f4f6f5;
+  --ink: #1f2326;
+  --muted: #61686a;
+  --rule: #d9dedb;
+  --link: #1f5fd1;
+  --link-hover: #1747a6;
+  --input-border: #7e8684;
+  --field: #ffffff;
+  --signal: #e2a13b;
+  --button-disabled: #c9cfcc;
+  --button-disabled-ink: #4a5053;
+  /* The warning triangle's outline and "!" stay dark in both themes. */
+  --warn-ink: #1f2326;
+
+  --gutter: 20px;
+  --content: 640px;
+  --rail: 24px;
+  --rail-gap: 12px;
+  --line: 2px;
+  --seg-short: 20px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #161a1c;
+    --ink: #e4e8e6;
+    --muted: #9ba3a1;
+    --rule: #2e3437;
+    --link: #8aaeff;
+    --link-hover: #b3caff;
+    --input-border: #737c7f;
+    --field: #1d2225;
+    --button-disabled: #2a3033;
+    --button-disabled-ink: #9ba3a1;
+  }
+}
+
+/* Base */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+p,
+ol {
+  margin: 0;
+}
+
+h1 {
+  font-size: 36px;
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+a {
+  color: var(--link);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+a:hover {
+  color: var(--link-hover);
+  text-decoration-thickness: 2px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}
+
+.helper {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Page frame: one column, mobile first, about 640px of content on desktop. */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  max-width: calc(var(--content) + 2 * var(--gutter));
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+.site-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0 15px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.brand {
+  font-weight: 600;
+}
+
+.mode-label {
+  color: var(--muted);
+  font-size: 14px;
+  text-align: right;
+}
+
+.page {
+  flex: 1 0 auto;
+  padding: 32px 0 48px;
+}
+
+.site-footer {
+  padding: 16px 0 24px;
+  border-top: 1px solid var(--rule);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (min-width: 640px) {
+  .page {
+    padding-top: 56px;
+  }
+}
+
+.intro {
+  margin-bottom: 32px;
+}
+
+.intro .lede {
+  margin-top: 12px;
+}
+
+.intro .helper {
+  margin-top: 8px;
+}
+
+.config-error {
+  margin-top: 16px;
+}
+
+/* Fields and the button */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-label {
+  font-weight: 600;
+}
+
+.input {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  padding: 11px 12px;
+  font: inherit;
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--field);
+  border: 1px solid var(--input-border);
+  border-radius: 3px;
+}
+
+textarea.input {
+  resize: vertical;
+}
+
+.input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.actions {
+  margin-top: 20px;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  margin: 0;
+  padding: 0 24px;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--canvas);
+  background: var(--ink);
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+@media (max-width: 639.98px) {
+  .button {
+    width: 100%;
+  }
+}
+
+.button:disabled {
+  color: var(--button-disabled-ink);
+  background: var(--button-disabled);
+  cursor: not-allowed;
+}
+
+/* The routing line: a 2px line in the link color, in a 24px left rail. It
+   hangs from the bottom of the button into whatever the search produced. */
+
+.route {
+  display: grid;
+  grid-template-columns: var(--rail) minmax(0, 1fr);
+  column-gap: var(--rail-gap);
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.seg {
+  flex: 1 1 auto;
+  width: var(--line);
+  background: var(--link);
+}
+
+.seg--short {
+  flex: 0 0 var(--seg-short);
+}
+
+.seg--dashed {
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--link) 0 5px,
+    transparent 5px 9px
+  );
+}
+
+/* Results: the line runs through the heading row and stops at the list. */
+
+.results-head .route-text {
+  padding: 20px 0;
+}
+
+.results-head .helper {
+  margin-top: 4px;
+}
+
+@keyframes route-draw {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .seg--draw {
+    transform-origin: top;
+    animation: route-draw 400ms ease-out both;
+  }
+}
+
+.result-list {
+  padding: 0;
+  list-style: none;
+  counter-reset: rank;
+  border-bottom: 1px solid var(--rule);
+}
+
+.result-list > li {
+  position: relative;
+  padding: 14px 0 14px calc(var(--rail) + var(--rail-gap));
+  border-top: 1px solid var(--rule);
+  line-height: 1.4;
+  counter-increment: rank;
+}
+
+/* Rank numbers sit muted in the rail; rank 1 looks like the rest. */
+.result-list > li::before {
+  content: counter(rank);
+  position: absolute;
+  top: 14px;
+  left: 0;
+  width: var(--rail);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: calc(17px * 1.4);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.result-list a {
+  font-weight: 400;
+  text-decoration-line: none;
+}
+
+.result-list a:hover,
+.result-list a:focus-visible {
+  text-decoration-line: underline;
+}
+
+.arrow {
+  display: inline-block;
+  width: 0.65em;
+  height: 0.65em;
+  margin-left: 0.3em;
+  vertical-align: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.category {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* Errors: a short line ending in the warning triangle, beside the text. */
+
+.warn-mark {
+  display: block;
+  flex: none;
+  width: 18px;
+  height: 16px;
+}
+
+.warn-mark-shape {
+  fill: var(--signal);
+  stroke: var(--warn-ink);
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+}
+
+.warn-mark-glyph {
+  fill: none;
+  stroke: var(--warn-ink);
+  stroke-width: 1.75;
+  stroke-linecap: round;
+}
+
+.warn-mark-dot {
+  fill: var(--warn-ink);
+}
+
+/* The text's first line is centered on the triangle (16px tall). */
+.notice .route-text {
+  padding: calc(var(--seg-short) + 8px - 0.75em) 0 8px;
+}
+
+/* Empty: a short line ending in a 12px horizontal tick, no triangle. */
+
+.tick {
+  flex: none;
+  width: 12px;
+  height: var(--line);
+  background: var(--link);
+}
+
+.empty .route-text {
+  padding: calc(var(--seg-short) + var(--line) / 2 - 0.75em) 0 8px;
+}
+
+/* Loading: a hollow node, a dashed line, then a small square node. */
+
+.node {
+  flex: none;
+}
+
+.node--hollow {
+  width: 10px;
+  height: 10px;
+  margin-top: calc(16px + 0.75em - 5px);
+  border: var(--line) solid var(--link);
+  border-radius: 50%;
+}
+
+.node--square {
+  width: 8px;
+  height: 8px;
+  background: var(--link);
+}
+
+.seg--lead {
+  flex: 0 0 calc(0.75em - 4px);
+}
+
+.node-label {
+  font-weight: 600;
+}
+
+.loading .route-text {
+  padding-bottom: 16px;
+}
+
+.loading > .route-text:nth-child(2) {
+  padding-top: 16px;
+}
+
+.loading > .route-text:last-child {
+  padding-bottom: 8px;
+}
+
+/* Gate: the form, and errors under the field with the triangle beside them. */
+
+.gate-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.field-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.field-error .warn-mark {
+  margin-top: calc(0.75em - 8px);
+}
+
+.actions .helper {
+  margin-top: 12px;
+}

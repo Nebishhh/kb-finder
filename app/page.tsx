@@ -11,11 +11,19 @@ export default function Home() {
     DEFAULT_SEARCH_MODE: process.env.DEFAULT_SEARCH_MODE,
   });
   if (mode === null) {
+    // No mode label here: the configured value is never shown.
     return (
-      <main>
-        <h1>KB Finder</h1>
-        <p>Configuration error: the default search mode is not valid.</p>
-      </main>
+      <>
+        <header className="site-header">
+          <span className="brand">KB Finder</span>
+        </header>
+        <main className="page">
+          <h1>Find an answer.</h1>
+          <p className="config-error">
+            Configuration error: the default search mode is not valid.
+          </p>
+        </main>
+      </>
     );
   }
   return <SearchClient mode={mode} />;
