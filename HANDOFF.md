@@ -4,18 +4,16 @@ Disposable. Rewritten by the agent at the end of every session.
 Anything that must survive across sessions goes in NOTES.md.
 
 ## State
-Phase 7 (clean UI and hosting): the code is complete, the deploy is
-pending.
-- The code steps, the step 13 documentation pass and the step 14
-  follow-up are committed (f90ce1c..7ce5908, below).
-- Gate change (D2 revised again, DECISIONS.md 2026-10-04): committed
-  in 99eab6a. `ACCESS_PASSWORD` may now be a 4-digit PIN, bounded by
-  a global cap of 10 failed logins per UTC day. Its migration must be
-  pushed to hosted Supabase before the Vercel deploy (step 15).
-- Steps 15 and 16 remain: the deploy and hosted checks, then the UI
-  pass (D7).
+Phase 7 (clean UI and hosting) is complete. The app is live at
+https://kb-finder-drab.vercel.app (Vercel Hobby, iad1; Supabase free
+tier, us-east-1).
+- It sits behind a 4-digit PIN gate with a global cap of 10 failed
+  logins per UTC day (D2 revised again, DECISIONS.md 2026-10-04,
+  committed in 99eab6a).
 - Semantic is the hosted default through `DEFAULT_SEARCH_MODE`. The UI
   no longer hard-codes a mode; it sends the server's default.
+- Step 15 (deploy and hosted checks) is done; step 16, the UI pass
+  (D7), remains.
 - DECISIONS.md has the Phase 7 entries under "2026-10-04: Phase 7
   hosting decisions" (D1 to D12 and the related rules). Code comments
   cite D10.
@@ -39,9 +37,12 @@ pending.
 - 1069c6c docs: log Phase 7 hosting decisions
 - 7ce5908 scripts: add sampled-logging settings to the fingerprint
 - 99eab6a gate: allow a 4-digit PIN with a global failed-login cap
+- 15d21a7 docs: record the PIN gate and failed-login cap
+- e2d37a3 docs: record the verified hosted deploy
 
 ## What was built
-- **Migrations** (the two pinned retrieval migrations are untouched):
+- **Migrations** (the two pinned retrieval migrations are untouched;
+  all six are applied on hosted):
   - `20261001182428_lock_down_data_api.sql`: `anon`, `authenticated`
     and PUBLIC lose every privilege in the schema; postgres's default
     privileges stop granting them; a global default-privilege revoke
@@ -58,7 +59,6 @@ pending.
   - `20261004232626_add_gate_fail_kind.sql`: drops and re-adds the two
     `kb_rate_counters` CHECKs by name to allow kind
     `gate_fail_global_day` (key `all`). Idempotent, no grant changes.
-    Not yet on hosted.
 - **Local pooler:** `supabase/config.toml` enables `[db.pooler]` on
   54329, and the start command no longer excludes Supavisor.
 - **Request handling** (`lib/search/handler.ts`), in order: config
@@ -90,13 +90,12 @@ pending.
 - **Agent settings:** `.claude/settings.json` denies bare `python`,
   `python3` and `py`.
 
-## Tests (this session, at 7a2b261 plus doc edits)
-- `npm run lint`: clean.
-- `npm run test:unit`: 316 passed, 7 files.
-- Python: the full suite last ran at d97e085 (step 2), 386 tests OK,
-  run by the project owner with `KB_FINDER_TEST_DATABASE_URL` set.
-  After that, only `scripts/db_fingerprint.py` and `tests/test_db_fingerprint.py` changed in Python;
-  it passes 31 tests offline and against local.
+## Tests (last run on the PIN-gate code, 99eab6a)
+- Python: the full suite, 387 tests OK.
+- `npm run test:unit`: 361 passed.
+- `npm run test:db`: 21 passed, with `KB_FINDER_TEST_DATABASE_URL` set
+  to local.
+- No code changed after 99eab6a; later commits are docs only.
 - No test calls OpenAI. Web tests block real fetch. The embedding
   tests block the network and never build a real client.
 - Tests that read edited files: `tests/web/db.config.unit.test.ts`,
@@ -131,21 +130,30 @@ pending.
   medium or low findings; one informational finding (sampled-logging
   settings), fixed in 7ce5908 "scripts: add sampled-logging settings
   to the fingerprint".
-- **Step 15, deploy and hosted checks (human-led, following a runbook
-  kept outside the repo):** hosted Supabase
-  migrations (including `20261004232626_add_gate_fail_kind.sql`,
-  pushed before the Vercel deploy, or every login is a 500), ingest
-  and `embed_kb.py load --allow-remote`; set
-  `kb_app` LOGIN and password by hand; Vercel env vars
-  (`DATABASE_URL` with no query string, `DATABASE_CA_PEM`,
-  `DEFAULT_SEARCH_MODE=semantic`, `ACCESS_PASSWORD`,
-  `GATE_COOKIE_SECRET`, `OPENAI_API_KEY` Production only and
-  Sensitive); compare `db_fingerprint.py` output against the local v2
-  reference in DECISIONS.md.
-- **Step 16:** the UI pass (D7).
+- **Step 15, DONE:** deploy and hosted checks. Detail is in
+  DECISIONS.md "2026-10-04: Phase 7 step 15, hosted deploy verified".
+  In short: the hosted fingerprint is identical to the local v2
+  reference; `kb_app` passes 19/19 checks with the 5s
+  `statement_timeout`; hosted logging settings pass, so D8 A2 is not
+  needed; TLS verify-full works for the app; the sentinel search is
+  absent from the logs; `kb_rate_counters` holds no IP; the Data API
+  is disabled.
+- **Step 16, next:** the UI pass (D7). Visual only, mobile first,
+  time-boxed to 1 to 2 days, no eval queries as examples.
+- **Follow-ups:** rotate the PIN after AfroTech; check the Supabase
+  project is not paused before demos (D9).
 - **Phase 6, query normalization:** a stretch goal, only after Phase 7.
 - **Separate, logged experiments:** hybrid retrieval, reranking, and a
   new, separately versioned eval set.
+
+## Deploy rules
+- Hosted env vars are Production only and set in Vercel.
+- `RATE_LIMIT`, `ACCESS_GATE` and `EVAL_MODES_ENABLED` must never be
+  set there.
+- Keep "System Environment Variables" exposed: `VERCEL` drives the
+  fail-closed rules.
+- `DATABASE_URL` has no query string.
+- Any env change needs a redeploy.
 
 ## Unresolved human decisions
 - Whether staffOnly text is searchable (currently excluded in both
