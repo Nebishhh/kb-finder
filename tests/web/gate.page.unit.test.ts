@@ -76,7 +76,7 @@ describe("gate page", () => {
     expect(html).toContain('<span class="brand">KB Finder</span>');
     expect(html).not.toContain("mode-label");
     expect(html).toContain("<h1>From a messy issue to the closest article.</h1>");
-    expect(html).toContain(">Help articles are written in IT terms. You don&#x27;t have to be.<");
+    expect(html).toContain(">Help articles use IT terms. You don&#x27;t have to.<");
     expect(html).toContain(
       ">Searches 3,109 public articles from the Coyote OneStop Knowledge Base.<",
     );

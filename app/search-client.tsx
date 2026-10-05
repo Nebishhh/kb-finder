@@ -72,6 +72,16 @@ export async function runSearch(
   }
 }
 
+export type SearchKey = { key: string; shiftKey: boolean; isComposing: boolean };
+
+// Enter searches under the same condition as the button; Shift+Enter keeps its
+// newline, and nothing happens while an IME composition is active.
+export function shouldSearchOnKey(key: SearchKey, loading: boolean, query: string): boolean {
+  if (key.isComposing || key.key === "Process") return false;
+  if (key.key !== "Enter" || key.shiftKey) return false;
+  return !loading && query.length > 0;
+}
+
 // lexical reads as keyword search; any other mode is shown under its own name.
 function modeLabel(mode: string): string {
   if (mode === "lexical") return "Keyword search";
@@ -231,7 +241,7 @@ export default function SearchClient({ mode }: { mode: string }) {
       <main className="page">
         <div className="intro">
           <h1>From a messy issue to the closest article.</h1>
-          <p className="lede">Help articles are written in IT terms. You don&apos;t have to be.</p>
+          <p className="lede">Help articles use IT terms. You don&apos;t have to.</p>
           <p className="helper">
             {`Searches ${ARTICLE_COUNT} public articles from the Coyote OneStop Knowledge Base.`}
           </p>
@@ -248,6 +258,17 @@ export default function SearchClient({ mode }: { mode: string }) {
             aria-describedby="issue-help"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              const key = {
+                key: event.key,
+                shiftKey: event.shiftKey,
+                isComposing: event.nativeEvent.isComposing,
+              };
+              if (!shouldSearchOnKey(key, loading, query)) return;
+              event.preventDefault();
+              void search();
+            }}
+            enterKeyHint="search"
             autoComplete="off"
             spellCheck={false}
           />

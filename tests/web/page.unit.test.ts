@@ -9,6 +9,7 @@ import Home, { dynamic } from "@/app/page";
 import SearchClient, {
   runSearch,
   SearchOutput,
+  shouldSearchOnKey,
   statusText,
   type FetchFn,
   type SearchOutcome,
@@ -243,7 +244,7 @@ describe("search page", () => {
     const html = renderClient("lexical");
     expect(html).toContain('<span class="brand">KB Finder</span>');
     expect(html).toContain("<h1>From a messy issue to the closest article.</h1>");
-    expect(html).toContain(">Help articles are written in IT terms. You don&#x27;t have to be.<");
+    expect(html).toContain(">Help articles use IT terms. You don&#x27;t have to.<");
     expect(html).toContain(
       ">Searches 3,109 public articles from the Coyote OneStop Knowledge Base.<",
     );
@@ -255,6 +256,36 @@ describe("search page", () => {
     );
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Find articles<\/button>/);
     expect(html).not.toContain("<form");
+  });
+
+  it("the textarea hints search on the Enter key", () => {
+    expect(renderClient("lexical")).toMatch(/<textarea[^>]*enterKeyHint="search"/);
+  });
+});
+
+describe("shouldSearchOnKey", () => {
+  const enter = { key: "Enter", shiftKey: false, isComposing: false };
+
+  it("Enter searches", () => {
+    expect(shouldSearchOnKey(enter, false, "vpn drops")).toBe(true);
+  });
+
+  it("Shift+Enter does not (it inserts a newline)", () => {
+    expect(shouldSearchOnKey({ ...enter, shiftKey: true }, false, "vpn drops")).toBe(false);
+  });
+
+  it("nothing happens during an IME composition", () => {
+    expect(shouldSearchOnKey({ ...enter, isComposing: true }, false, "vpn drops")).toBe(false);
+    expect(shouldSearchOnKey({ ...enter, key: "Process" }, false, "vpn drops")).toBe(false);
+  });
+
+  it("not while loading, and not with an empty query (the button's condition)", () => {
+    expect(shouldSearchOnKey(enter, true, "vpn drops")).toBe(false);
+    expect(shouldSearchOnKey(enter, false, "")).toBe(false);
+  });
+
+  it("other keys do not search", () => {
+    expect(shouldSearchOnKey({ ...enter, key: "a" }, false, "vpn drops")).toBe(false);
   });
 });
 

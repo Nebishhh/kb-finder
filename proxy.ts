@@ -17,10 +17,13 @@ export function proxy(request: NextRequest): NextResponse {
 
 // Must stay a constant (Next reads it at build time). /api/search is excluded so
 // proxy never buffers a search body; /api/gate and /gate so login can happen;
-// _next/static, _next/image and favicon.ico so assets load. Each exclusion is a
-// whole path segment, so e.g. /gateway is still gated.
+// _next/static and _next/image so assets load; favicon.ico and icon.svg so the
+// static icons load, including on /gate. Each exclusion is a whole path
+// segment, so e.g. /gateway and /icon.svgx are still gated. Paths under an
+// exclusion (e.g. /icon.svg/x, like /favicon.ico/x) are excluded on purpose;
+// no route serves them, so they 404.
 export const config = {
   matcher: [
-    "/((?!(?:api/search|api/gate|gate|_next/static|_next/image|favicon\\.ico)(?:/|$)).*)",
+    "/((?!(?:api/search|api/gate|gate|_next/static|_next/image|favicon\\.ico|icon\\.svg)(?:/|$)).*)",
   ],
 };

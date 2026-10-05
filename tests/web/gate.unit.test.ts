@@ -408,11 +408,13 @@ describe("proxy", () => {
   it("has a constant matcher", () => {
     expect(proxyConfig).toEqual({
       matcher: [
-        "/((?!(?:api/search|api/gate|gate|_next/static|_next/image|favicon\\.ico)(?:/|$)).*)",
+        "/((?!(?:api/search|api/gate|gate|_next/static|_next/image|favicon\\.ico|icon\\.svg)(?:/|$)).*)",
       ],
     });
   });
 
+  // /icon.svg/x is excluded like /gate/x and /favicon.ico/x: each exclusion
+  // covers its whole segment, and no route serves such a path (404).
   it.each([
     "/api/search",
     "/api/gate",
@@ -420,11 +422,25 @@ describe("proxy", () => {
     "/_next/static/chunks/app.js",
     "/_next/image?url=%2Fx.png&w=64&q=75",
     "/favicon.ico",
+    "/icon.svg",
+    "/icon.svg?3f2a9c1e7b4d5a60",
+    "/icon.svg/x",
   ])("does not run on %s", (url) => {
     expect(unstable_doesMiddlewareMatch({ config: proxyConfig, nextConfig, url })).toBe(false);
   });
 
-  it.each(["/", "/about", "/gateway", "/gate-x", "/api/searchx", "/api/other", "/favicon.icon"])(
+  it.each([
+    "/",
+    "/about",
+    "/gateway",
+    "/gate-x",
+    "/api/searchx",
+    "/api/other",
+    "/favicon.icon",
+    "/icon.svgx",
+    "/icons.svg",
+    "/x/icon.svg",
+  ])(
     "runs on %s",
     (url) => {
       expect(unstable_doesMiddlewareMatch({ config: proxyConfig, nextConfig, url })).toBe(true);
