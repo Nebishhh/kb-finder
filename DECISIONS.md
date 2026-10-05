@@ -580,3 +580,24 @@ Incidents during setup:
 
 Follow-ups: rotate the PIN after AfroTech; check the Supabase project is
 not paused before demos (D9); step 16 UI pass.
+
+
+
+## 2026-10-05: D7 revised again: UI pass gets a design phase
+
+Step 16 gets up to 5 days instead of 1-2, starting with a design phase
+before any code: 2-3 direction boards, one chosen, then a small token
+system, then the build (search page first, then the gate).
+
+Unchanged: visual only. No change to the API, ranking, gate, caps or
+privacy rules. No new product features and no change to information
+architecture beyond presenting existing information more clearly. No
+analytics, tracking or third-party scripts. No USD colors, logos or
+mascot. Example queries, if any, are new and never taken from
+eval/cases.json, and are logged in NOTES.md so eval v2 excludes them.
+New dependencies only with a stated reason; Tailwind only if pinned
+exactly.
+
+Why: the UI is the first thing a recruiter sees at AfroTech, and the
+current markup is unstyled. Retrieval work stays frozen until after
+AfroTech, so the extra days come from no other step.
