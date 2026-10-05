@@ -601,3 +601,38 @@ exactly.
 Why: the UI is the first thing a recruiter sees at AfroTech, and the
 current markup is unstyled. Retrieval work stays frozen until after
 AfroTech, so the extra days come from no other step.
+
+## 2026-10-05: Phase 7 step 16, UI pass done
+
+Step 16 (D7, revised 2026-10-05) is complete and deployed. Commits:
+1b06a70 (search page), 8e6ce76 (gate and final copy), eec203e (Enter to
+search, favicon, lede fix).
+
+Design: a design phase came first. One direction ("Routing index") was
+chosen and frozen: cool near-white canvas, graphite text, hairline rules,
+square shapes, no shadows. Blue is only for links and the routing line;
+amber is only for warnings. Atkinson Hyperlegible Next, served from this
+site by next/font (downloaded at build time; browsers never call Google).
+Dark mode follows the system setting through CSS and a color-scheme meta
+tag; there is no toggle. Plain CSS with custom properties; no new
+dependencies.
+
+What changed for users: the score, "Mode:" and the "Showing X of 50" line
+are gone. The mode shows as a quiet header label ("Semantic search",
+"Keyword search" for lexical). Results show "Top N matches" with the line
+"Ranked by closeness. Results always appear, so check that the top few
+fit." because there is no abstention. Approved copy changes: the new
+intro, "What's going wrong?", the privacy helper, "Access code" and
+"Wrong access code.", and a fixed empty state for lexical. All other error
+texts are unchanged. Enter searches (Shift+Enter is a newline), with no
+<form> around the textarea, so the query still never reaches a URL.
+
+Proxy: the matcher now also excludes icon.svg so the favicon loads on
+/gate before sign-in. Same whole-segment rule as favicon.ico: /icon.svg/x
+is excluded on purpose (it 404s); /icon.svgx, /icons.svg and /x/icon.svg
+stay gated. Covered by matcher tests that use the real config.
+
+Unchanged: the API, ranking, gate logic, caps and privacy rules. The
+runSearch, privacy, gate URL and semantic-scan tests were not edited.
+Unit tests: 400 passing. test:db was not run this step (no DB or SQL
+changes). Hosted: header shows "Semantic search".

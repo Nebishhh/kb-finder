@@ -82,3 +82,7 @@ Persistent notes for later phases and new ideas go here.
   ## Dev notes
 - If next dev returns 404 on /api/search, stop it, delete .next and
   restart. A stale dev cache after npm run build caused this once.
+- UI copy hardcodes "3,109" in app/search-client.tsx (ARTICLE_COUNT), app/page.tsx and app/gate/page.tsx. Update all three if the KB is re-collected.
+- No example queries were added in step 16. Any future examples go here so eval v2 excludes them.
+- Samsung Internet and some in-app browsers force their own dark mode over the site. Demo in regular Chrome.
+- Browsers cache favicons hard; check a new icon in an incognito tab.
