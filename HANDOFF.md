@@ -8,6 +8,10 @@ Phase 7 (clean UI and hosting): the code is complete, the deploy is
 pending.
 - The code steps, the step 13 documentation pass and the step 14
   follow-up are committed (f90ce1c..7ce5908, below).
+- Gate change (D2 revised again, DECISIONS.md 2026-10-04): committed
+  in 99eab6a. `ACCESS_PASSWORD` may now be a 4-digit PIN, bounded by
+  a global cap of 10 failed logins per UTC day. Its migration must be
+  pushed to hosted Supabase before the Vercel deploy (step 15).
 - Steps 15 and 16 remain: the deploy and hosted checks, then the UI
   pass (D7).
 - Semantic is the hosted default through `DEFAULT_SEARCH_MODE`. The UI
@@ -34,6 +38,7 @@ pending.
 - bb24232 docs: document Phase 7 hosting and security
 - 1069c6c docs: log Phase 7 hosting decisions
 - 7ce5908 scripts: add sampled-logging settings to the fingerprint
+- 99eab6a gate: allow a 4-digit PIN with a global failed-login cap
 
 ## What was built
 - **Migrations** (the two pinned retrieval migrations are untouched):
@@ -50,6 +55,10 @@ pending.
   - `20261003075008_pin_function_search_path.sql`: `ALTER FUNCTION ...
     SET search_path FROM CURRENT` on the five `kb_` functions, using a
     transaction-local set and restore. Function bodies are unchanged.
+  - `20261004232626_add_gate_fail_kind.sql`: drops and re-adds the two
+    `kb_rate_counters` CHECKs by name to allow kind
+    `gate_fail_global_day` (key `all`). Idempotent, no grant changes.
+    Not yet on hosted.
 - **Local pooler:** `supabase/config.toml` enables `[db.pooler]` on
   54329, and the start command no longer excludes Supavisor.
 - **Request handling** (`lib/search/handler.ts`), in order: config
@@ -58,10 +67,17 @@ pending.
   config check (semantic), retrieval. Every body is fixed.
 - **Gate:** `lib/gate/cookie.ts`, `lib/gate/login.ts`,
   `app/api/gate/route.ts`, `app/gate/*`, `proxy.ts`. Shared password
-  of 20+ characters, `kbf_gate` cookie with sha256(password) in the
-  MAC, SameSite=Lax, 7 days, no login rate limit.
+  of exactly 4 ASCII digits or 20+ characters, `kbf_gate` cookie with
+  sha256(password) in the MAC, SameSite=Lax, 7 days.
+- **Failed-login cap:** `lib/limits/gate-fail-cap.ts`, used by
+  `lib/gate/login.ts`. 10 per UTC day (`GATE_FAIL_CAP`). Reserve
+  (the daily cap's upsert) before the compare, release (one MERGE) on
+  success; attempt 11 is 429 `{"error":"Too many attempts"}` and is
+  never compared. A reserve error is 500; a release error is logged
+  and the login still succeeds. The gate form shows a fixed message on
+  429.
 - **Daily cap:** `lib/limits/*`. One upsert statement, pooler safe,
-  global counter only, no IP stored.
+  global counters only, no IP stored.
 - **TLS:** `lib/db.ts` verifies against `DATABASE_CA_PEM` when
   `VERCEL` is set and refuses a `DATABASE_URL` with a query string.
 - **KBF02 server check:** `lib/search/semantic.ts` compares the stored
@@ -96,9 +112,11 @@ pending.
 - **Local-only cache:** the article embedding cache lives only on the
   project owner's machine, pinned by sha256 in DECISIONS.md.
 - **KBF05 cost:** the per-request staleness check costs about 47 ms.
-- **One shared password, no login rate limit:** fine for the owner
-  plus 2 or 3 testers; rotate the password or the cookie secret to
-  revoke every cookie.
+- **One shared password or PIN, global failed-login cap:** fine for
+  the owner plus 2 or 3 testers. Anyone can lock out new logins until
+  the next UTC day by failing 10 times; existing cookies keep working.
+  Rotate the password or the cookie secret to revoke every cookie;
+  rotate the PIN after AfroTech (D2).
 - **Global cap only:** one tester can use the whole day's 200
   searches. A search that fails after the cap check still counts.
 - **Free-tier pause:** hosted Supabase pauses after 7 idle days; check
@@ -115,7 +133,9 @@ pending.
   to the fingerprint".
 - **Step 15, deploy and hosted checks (human-led, following a runbook
   kept outside the repo):** hosted Supabase
-  migrations, ingest and `embed_kb.py load --allow-remote`; set
+  migrations (including `20261004232626_add_gate_fail_kind.sql`,
+  pushed before the Vercel deploy, or every login is a 500), ingest
+  and `embed_kb.py load --allow-remote`; set
   `kb_app` LOGIN and password by hand; Vercel env vars
   (`DATABASE_URL` with no query string, `DATABASE_CA_PEM`,
   `DEFAULT_SEARCH_MODE=semantic`, `ACCESS_PASSWORD`,

@@ -165,15 +165,21 @@ without `EVAL_MODES_ENABLED`, only lexical works.
 The hosted app is private: the project owner plus at most 2 or 3
 trusted testers. In brief:
 
-- **Password gate.** One shared password (`ACCESS_PASSWORD`, at least
-  20 characters). `POST /api/gate` checks it and sets a signed,
-  HttpOnly, Secure, SameSite=Lax cookie that lasts 7 days. The MAC
+- **Password gate.** One shared password (`ACCESS_PASSWORD`: exactly
+  4 ASCII digits, or at least 20 characters). `POST /api/gate` checks
+  it and sets a signed, HttpOnly, Secure, SameSite=Lax cookie that
+  lasts 7 days. The MAC
   covers the expiry and sha256 of the password, keyed by
   `GATE_COOKIE_SECRET` (at least 32 bytes), so rotating either one
   revokes every cookie. Pages without a valid cookie redirect to
   `/gate`; `/api/search` checks the cookie itself and answers 401. A
-  missing or short password or secret fails closed. There is no
-  login rate limit.
+  missing or invalid password or secret fails closed.
+- **Failed-login cap.** At most 10 failed logins per UTC day across
+  all clients, in `kb_rate_counters` (kind `gate_fail_global_day`,
+  key `all`, no IP stored). Each attempt reserves a slot before the
+  password is compared, and a correct one gives it back. Attempt 11
+  of a day is a 429 and is never compared. Failing 10 times locks out
+  new logins until the next UTC day; existing cookies keep working.
 - **Body cap.** `/api/search` reads at most 32 KiB (32,768 bytes)
   before parsing; a larger body is a 413. `/api/gate` reads at most
   1 KiB.

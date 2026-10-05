@@ -486,3 +486,32 @@ vectors_sha256 921b8f5659e8f09c3f458fe9722c44a8386ecbb9b857846c7b829163eb4aedd0
 Captured from the local database with scripts/db_fingerprint.py. The
 full --per-article output is kept outside the repo. The hosted database
 must match after ingest and load.
+
+
+## 2026-10-04: D2 revised again: 4-digit PIN with a failed-login cap
+
+The hosted app is a low-value private tool: all KB content is public, the
+only spend is bounded by the 200/day search cap and a small prepaid OpenAI
+balance, and no secret or write access sits behind the gate. A 4-digit PIN
+is easy to share in person and type on any device, so ACCESS_PASSWORD may
+now be exactly 4 ASCII digits, or still a passphrase of at least 20
+characters. Anything else fails closed. Cookie format, MAC (with
+sha256 of the password), flags and the 7-day lifetime are unchanged.
+
+Brute force is bounded by a global cap of 10 failed logins per UTC day
+(GATE_FAIL_CAP), not by password length. Each attempt atomically reserves
+a slot in kb_rate_counters (kind gate_fail_global_day, key 'all') BEFORE
+the PIN is compared; a correct PIN releases its slot. Attempt 11 of a day
+gets 429 and the PIN is never compared. Check-then-count was rejected
+because concurrent guesses could bypass it. A release error after a
+correct PIN still logs the user in; the attempt stays counted.
+
+Expected time to guess a 4-digit PIN at 10 tries a day is about 1.4
+years (about a 3% chance within a month). Accepted tradeoff: anyone can
+lock out NEW logins until the next UTC day by failing 10 times; devices
+already logged in keep working. Per-device or per-IP limits were rejected
+as the primary control, because a client controls its cookie and IP.
+Rotate the PIN after AfroTech.
+
+Migration 20261004232626_add_gate_fail_kind.sql replaces the two CHECK
+constraints on kb_rate_counters to allow the new kind; no grant changes.
