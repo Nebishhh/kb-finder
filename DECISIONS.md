@@ -515,3 +515,68 @@ Rotate the PIN after AfroTech.
 
 Migration 20261004232626_add_gate_fail_kind.sql replaces the two CHECK
 constraints on kb_rate_counters to allow the new kind; no grant changes.
+
+
+## 2026-10-04: Phase 7 step 15, hosted deploy verified
+
+Live at https://kb-finder-drab.vercel.app (Vercel Hobby, functions in
+iad1) with Supabase free tier in us-east-1. Production env vars only:
+DATABASE_URL (kb_app via the transaction pooler, no query string),
+DATABASE_CA_PEM, DEFAULT_SEARCH_MODE=semantic, ACCESS_PASSWORD (4-digit
+PIN), GATE_COOKIE_SECRET, OPENAI_API_KEY (restricted, Vercel only),
+NEXT_TELEMETRY_DISABLED. EVAL_MODES_ENABLED, RATE_LIMIT and ACCESS_GATE
+are not set. System environment variables stay exposed (VERCEL drives
+the fail-closed rules).
+
+Hosted database:
+- All six migrations applied (supabase db push); local and remote match.
+- db_fingerprint.py (session pooler, sslmode=verify-full against the
+  Supabase CA): counts 3109 / 3109 / 1, config row equals the file,
+  articles_sha256 790877e6... and vectors_sha256 921b8f56... identical to
+  the local v2 reference. Per-article compare: all 3,109 lines identical;
+  only server_version differs (hosted 17.11, local 17.6). pgvector 0.8.2
+  on both.
+- kb_app through the transaction pooler (verify-full): 19/19 checks pass.
+  statement_timeout 5s, pg_sleep(6) canceled with 57014, all five kb_
+  functions pinned to search_path=public, extensions, pg_temp, anon and
+  authenticated have no access to any table.
+- kb_rate_counters constraints replaced by the gate migration (no
+  duplicates); both kind-naming CHECKs include gate_fail_global_day.
+
+D8 outcome: hosted logging settings pass every rule
+(log_transaction_sample_rate 0, log_min_duration_sample -1,
+log_min_duration_statement -1, log_statement ddl, auto_explain
+log_min_duration 10s, pgaudit.log none, pgaudit.log_parameter off).
+A1 (statement_timeout 5s below auto_explain 10s) is sufficient; A2 is
+not needed. The postgres login's hosted statement_timeout is 2min, which
+is not the app's role.
+
+TLS: verify-full with hostname checking works against the Supabase CA
+for the session pooler, the transaction pooler, and the deployed app
+(node-postgres, rejectUnauthorized true).
+
+Post-deploy checks:
+- POST /api/search with no cookie: 401 {"error":"Unauthorized"}.
+- GET / redirects to /gate; wrong PIN rejected; right PIN logs in.
+- A real search returned Mode: semantic and relevant results.
+- Sentinel search: absent from Vercel runtime logs and from the full
+  hosted Postgres log for the hour. The app's statements are not logged.
+- kb_rate_counters held only search_global_day 2 and
+  gate_fail_global_day 1, key 'all'; no IP stored.
+- Data API disabled: PostgREST reports no exposed schema and its ready
+  check returns 503.
+
+Incidents during setup:
+- An OpenAI key and the first kb_app password were exposed in a chat
+  transcript and in .env.local while setting up with a browser AI
+  assistant. The key was revoked; the kb_app password was rotated
+  (generated, SCRAM verifier only); .env.local was reset to the local
+  flags; git history has no key. Rule going forward: no AI assistant
+  open on screens that show secrets, and secrets go only into the
+  password manager and Vercel.
+- The first DATABASE_URL value was not a URL (DB_URL_INVALID). The app
+  failed closed (500, no attempt counted against the PIN cap); fixed by
+  re-entering the URL and redeploying.
+
+Follow-ups: rotate the PIN after AfroTech; check the Supabase project is
+not paused before demos (D9); step 16 UI pass.
