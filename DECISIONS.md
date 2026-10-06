@@ -636,3 +636,19 @@ Unchanged: the API, ranking, gate logic, caps and privacy rules. The
 runSearch, privacy, gate URL and semantic-scan tests were not edited.
 Unit tests: 400 passing. test:db was not run this step (no DB or SQL
 changes). Hosted: header shows "Semantic search".
+
+## 2026-10-06: Custom domain
+
+The hosted app is now at https://kb-finder.nebanebish.com (a Vercel custom
+domain on the Production deployment). DNS is one CNAME record, kb-finder,
+pointing to the target Vercel gave. It was added in the cPanel Zone Editor
+of the Namecheap web hosting, because nebanebish.com uses Namecheap Web
+Hosting DNS. The root and www records were not touched. Vercel handles
+HTTPS.
+
+The old address, https://kb-finder-drab.vercel.app, still works. No code or
+env changes. The gate cookie belongs to the exact host, so everyone signs in
+once on the new domain.
+
+Verified: the gate in an incognito window, sign-in, and one semantic search
+on the new domain.

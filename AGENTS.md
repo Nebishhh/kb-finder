@@ -23,7 +23,7 @@ Retrieval quality comes before UI polish.
 - OpenAI text-embedding-3-small for semantic mode only
 - next.config.ts must keep agentRules: false (next dev otherwise writes to AGENTS.md)
 
-Phase 7 code is complete; deploy is pending. Planned later: query
+Phase 7 is complete and deployed. Planned later: query
 normalization (Phase 6).
 
 ## Commands

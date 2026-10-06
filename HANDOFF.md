@@ -5,8 +5,9 @@ Anything that must survive across sessions goes in NOTES.md.
 
 ## State
 Phase 7 (clean UI and hosting) is complete. The app is live at
-https://kb-finder-drab.vercel.app (Vercel Hobby, iad1; Supabase free
+https://kb-finder.nebanebish.com (Vercel Hobby, iad1; Supabase free
 tier, us-east-1).
+The old https://kb-finder-drab.vercel.app still works.
 - It sits behind a 4-digit PIN gate with a global cap of 10 failed
   logins per UTC day (D2 revised again, DECISIONS.md 2026-10-04,
   committed in 99eab6a).
