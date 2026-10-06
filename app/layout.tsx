@@ -33,7 +33,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body suppressHydrationWarning>
         <div className="shell">
           {children}
-          <footer className="site-footer">A personal project. Not an official USD tool.</footer>
+          <footer className="site-footer">
+            <span>A personal project. Not an official USD tool.</span>
+            <a className="footer-link" href="https://github.com/Nebishhh">
+              Neba
+            </a>
+          </footer>
         </div>
       </body>
     </html>

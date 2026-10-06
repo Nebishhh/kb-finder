@@ -155,11 +155,27 @@ a:hover {
   padding: 32px 0 48px;
 }
 
+/* Disclaimer left, credit right; on a narrow screen the link wraps under the
+   disclaimer and, alone on its line, sits at the left. */
 .site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
   padding: 16px 0 24px;
   border-top: 1px solid var(--rule);
   color: var(--muted);
   font-size: 13px;
+}
+
+.footer-link {
+  color: var(--muted);
+}
+
+.footer-link:hover,
+.footer-link:focus-visible {
+  color: var(--link);
 }
 
 @media (min-width: 640px) {
@@ -473,6 +489,13 @@ textarea.input {
 .gate-form {
   display: flex;
   flex-direction: column;
+}
+
+/* Only the access-code control is capped; the search textarea stays full. */
+@media (min-width: 640px) {
+  .gate-form .input {
+    max-width: 360px;
+  }
 }
 
 .field-error {
