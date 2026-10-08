@@ -652,3 +652,28 @@ once on the new domain.
 
 Verified: the gate in an incognito window, sign-in, and one semantic search
 on the new domain.
+
+
+
+
+
+## 2026-10-07: article-v2 experiment (staff-only text searchable)
+
+Experiment: make staff_only.text searchable, never displayed, as a new
+versioned configuration beside v1. Lexical: a second generated column,
+search_vector_v2, with staff text at weight D, and kb_search_lexical_v2.
+Semantic: config article-v2 (v1 text, then "\n\nStaff only:\n{text}" when
+non-empty), kb_article_v2_sha256 and kb_search_semantic_v2. All v1 objects,
+configs and embeddings stay unchanged. New modes lexical-v2 and semantic-v2
+are reachable only with EVAL_MODES_ENABLED.
+
+Why: the staff-only sections are visible to anonymous visitors on the
+public KB (checked in incognito on several articles and a second device).
+They add 25,056 tokens (+4.6%) across 1,255 articles; no new article
+crosses the 8,000-token cap.
+
+Not scored on eval v1: its results have been seen, and case_013 is labeled
+negative partly because its fix is staff-only. article-v2 is scored on eval
+v2, with the decision rule written before that run. Production stays on v1
+until then. Build is local only; nothing changes on the hosted database
+until a later, logged decision.
