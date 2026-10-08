@@ -2,7 +2,11 @@ import { format } from "node:util";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { SEARCH_DEPTH } from "@/lib/search/config";
+import {
+  DEFAULT_SEARCH_MODES,
+  SEARCH_DEPTH,
+  SEARCH_MODES,
+} from "@/lib/search/config";
 import {
   handleSearch,
   isModeAllowed,
@@ -68,6 +72,10 @@ const semanticNeverCalled = vi.fn<SearchFn>(async () => {
   throw new Error("semantic retriever called");
 });
 
+const lexicalV2NeverCalled = vi.fn<SearchFn>(async () => {
+  throw new Error("lexical-v2 retriever called");
+});
+
 const allow: LimitFn = async () => "ok";
 const open: GateFn = () => "open";
 
@@ -77,7 +85,16 @@ function deps(
   limit: LimitFn = allow,
   gate: GateFn = open,
 ) {
-  return { retrievers: { lexical: search, semantic: semanticNeverCalled }, gate, limit, env };
+  return {
+    retrievers: {
+      lexical: search,
+      semantic: semanticNeverCalled,
+      "lexical-v2": lexicalV2NeverCalled,
+    },
+    gate,
+    limit,
+    env,
+  };
 }
 
 async function run(request: Request, search: SearchFn, env: SearchEnv = {}) {
@@ -87,6 +104,7 @@ async function run(request: Request, search: SearchFn, env: SearchEnv = {}) {
 
 afterEach(() => {
   expect(semanticNeverCalled).not.toHaveBeenCalled();
+  expect(lexicalV2NeverCalled).not.toHaveBeenCalled();
   vi.restoreAllMocks();
 });
 
@@ -169,6 +187,87 @@ describe("mode gating", () => {
     expect(errors).toHaveBeenCalledWith(
       "search config error: invalid DEFAULT_SEARCH_MODE",
     );
+  });
+});
+
+// article-v2 experiment: lexical-v2 is an eval-only mode. It is reachable only
+// with EVAL_MODES_ENABLED exactly "true" and is never a valid default.
+describe("lexical-v2 gating", () => {
+  function v2Deps(env: SearchEnv) {
+    const lexical = vi.fn<SearchFn>(async () => [row(1, "11", 0.5, null)]);
+    const semantic = vi.fn<SearchFn>(async () => [row(1, "22", 0.75, null)]);
+    const lexicalV2 = vi.fn<SearchFn>(async () => [row(1, "33", 0.25, null)]);
+    return {
+      f: { lexical, semantic, "lexical-v2": lexicalV2 },
+      deps: {
+        retrievers: { lexical, semantic, "lexical-v2": lexicalV2 },
+        gate: open,
+        limit: allow,
+        env,
+      },
+    };
+  }
+
+  async function post(mode: string, env: SearchEnv) {
+    const { f, deps: d } = v2Deps(env);
+    const response = await handleSearch(jsonRequest({ query: "wifi", mode }), d);
+    return { f, status: response.status, body: await response.json() };
+  }
+
+  it("is a known mode but not a possible default", () => {
+    expect(SEARCH_MODES).toContain("lexical-v2");
+    expect(DEFAULT_SEARCH_MODES).toEqual(["lexical", "semantic"]);
+  });
+
+  it("is blocked unless EVAL_MODES_ENABLED is exactly true", async () => {
+    expect(isModeAllowed("lexical-v2", "lexical", {})).toBe(false);
+    expect(isModeAllowed("lexical-v2", "semantic", {})).toBe(false);
+    for (const value of [undefined, "false", "1", "TRUE", "yes", "", " true"]) {
+      const env: SearchEnv = value === undefined ? {} : { EVAL_MODES_ENABLED: value };
+      const { f, status, body } = await post("lexical-v2", env);
+      expect({ value, status, body }).toEqual({ value, status: 400, body: INVALID });
+      expect(f["lexical-v2"]).not.toHaveBeenCalled();
+      expect(f.lexical).not.toHaveBeenCalled();
+      expect(f.semantic).not.toHaveBeenCalled();
+    }
+  });
+
+  it("with EVAL_MODES_ENABLED=true calls only the lexical-v2 retriever", async () => {
+    expect(isModeAllowed("lexical-v2", "lexical", { EVAL_MODES_ENABLED: "true" })).toBe(true);
+    const { f, status, body } = await post("lexical-v2", { EVAL_MODES_ENABLED: "true" });
+    expect(status).toBe(200);
+    expect(body).toEqual({
+      mode: "lexical-v2",
+      results: [{ rank: 1, sourceArticleId: "33", title: "Title 33",
+        url: "https://example.test/kb/33", score: 0.25 }],
+    });
+    expect(f["lexical-v2"]).toHaveBeenCalledTimes(1);
+    expect(f["lexical-v2"]).toHaveBeenCalledWith("wifi", SEARCH_DEPTH);
+    expect(f.lexical).not.toHaveBeenCalled();
+    expect(f.semantic).not.toHaveBeenCalled();
+  });
+
+  it("DEFAULT_SEARCH_MODE=lexical-v2 is a config error, with or without eval modes", async () => {
+    expect(resolveDefaultMode({ DEFAULT_SEARCH_MODE: "lexical-v2" })).toBeNull();
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    for (const env of [
+      { DEFAULT_SEARCH_MODE: "lexical-v2" },
+      { DEFAULT_SEARCH_MODE: "lexical-v2", EVAL_MODES_ENABLED: "true" },
+    ]) {
+      for (const mode of ["lexical-v2", "lexical"]) {
+        const { f, status, body } = await post(mode, env);
+        expect({ mode, status, body }).toEqual({ mode, status: 500, body: FAILED });
+        expect(f["lexical-v2"]).not.toHaveBeenCalled();
+        expect(f.lexical).not.toHaveBeenCalled();
+      }
+    }
+    expect(errors).toHaveBeenCalledWith("search config error: invalid DEFAULT_SEARCH_MODE");
+  });
+
+  it("existing defaults still resolve the same way", () => {
+    expect(resolveDefaultMode({})).toBe("lexical");
+    expect(resolveDefaultMode({ DEFAULT_SEARCH_MODE: "lexical" })).toBe("lexical");
+    expect(resolveDefaultMode({ DEFAULT_SEARCH_MODE: "semantic" })).toBe("semantic");
   });
 });
 

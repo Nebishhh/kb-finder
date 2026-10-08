@@ -1,6 +1,7 @@
 import { errorSummary } from "@/lib/safe-error";
 import { readJsonBody } from "@/lib/search/body";
 import {
+  DEFAULT_SEARCH_MODES,
   SEARCH_DEPTH,
   SEARCH_MODES,
   type SearchMode,
@@ -72,10 +73,11 @@ function isKnownMode(
   return knownModes.includes(mode);
 }
 
-// null when DEFAULT_SEARCH_MODE names a mode that does not exist.
+// null when DEFAULT_SEARCH_MODE names a mode that does not exist or may not be
+// a default (DEFAULT_SEARCH_MODES).
 export function resolveDefaultMode(
   env: SearchEnv,
-  knownModes: readonly string[] = SEARCH_MODES,
+  knownModes: readonly string[] = DEFAULT_SEARCH_MODES,
 ): string | null {
   const mode = env.DEFAULT_SEARCH_MODE || "lexical";
   return isKnownMode(mode, knownModes) ? mode : null;

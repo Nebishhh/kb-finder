@@ -145,6 +145,10 @@ const lexicalNeverCalled = vi.fn<SearchFn>(async () => {
   throw new Error("lexical retriever called");
 });
 
+const lexicalV2NeverCalled = vi.fn<SearchFn>(async () => {
+  throw new Error("lexical-v2 retriever called");
+});
+
 function jsonRequest(body: unknown): Request {
   return new Request("http://localhost/api/search", {
     method: "POST",
@@ -155,7 +159,7 @@ function jsonRequest(body: unknown): Request {
 
 async function runSemantic(semantic: SearchFn, env: SearchEnv = EVAL_ON, query = QUERY) {
   const response = await handleSearch(jsonRequest({ query, mode: "semantic" }), {
-    retrievers: { lexical: lexicalNeverCalled, semantic },
+    retrievers: { lexical: lexicalNeverCalled, semantic, "lexical-v2": lexicalV2NeverCalled },
     gate: () => "open" as const,
     limit: async () => "ok" as const,
     env,
@@ -258,6 +262,7 @@ describe("dispatch and gating", () => {
     return {
       lexical: vi.fn<SearchFn>(async () => [row(1, "11", 0.5)]),
       semantic: vi.fn<SearchFn>(async () => [row(1, "22", 0.75)]),
+      "lexical-v2": vi.fn<SearchFn>(async () => [row(1, "33", 0.25)]),
     };
   }
 
@@ -714,7 +719,7 @@ describe("the stored embedding_configs row is checked against the file", () => {
     });
     const lexical = vi.fn<SearchFn>(async () => [row(1, "11", 0.5)]);
     const response = await handleSearch(jsonRequest({ query: "wifi", mode: "lexical" }), {
-      retrievers: { lexical, semantic },
+      retrievers: { lexical, semantic, "lexical-v2": lexicalV2NeverCalled },
       gate: () => "open" as const,
       limit: async () => "ok" as const,
       env: EVAL_ON,

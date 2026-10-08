@@ -14,7 +14,7 @@ import {
 import { dailyCap } from "@/lib/limits/daily-cap";
 import { errorSummary } from "@/lib/safe-error";
 import { handleSearch } from "@/lib/search/handler";
-import { searchLexical } from "@/lib/search/lexical";
+import { searchLexical, searchLexicalV2 } from "@/lib/search/lexical";
 import { searchSemantic } from "@/lib/search/semantic";
 
 // Offline. pg's Pool is replaced by a recorder, so nothing connects. The
@@ -248,7 +248,11 @@ describe("getPool and /api/search on a hosted misconfiguration", () => {
         body: JSON.stringify({ query: "wifi password reset", mode: "lexical" }),
       }),
       {
-        retrievers: { lexical: searchLexical, semantic: searchSemantic },
+        retrievers: {
+          lexical: searchLexical,
+          semantic: searchSemantic,
+          "lexical-v2": searchLexicalV2,
+        },
         gate: () => "open",
         limit: dailyCap,
         env: { VERCEL: "1" },

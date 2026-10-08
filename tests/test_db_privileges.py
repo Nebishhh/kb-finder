@@ -193,17 +193,19 @@ class PublicCatalogTests(unittest.TestCase):
             self.assertIn(name, tables)
         self.cur.execute("select count(*) from pg_proc where pronamespace = 'public'::regnamespace "
                          "and proname like 'kb\\_%'")
-        self.assertEqual(self.cur.fetchone()[0], 5)
+        self.assertEqual(self.cur.fetchone()[0], 8)  # 5 v1 + 3 from *_add_article_v2.sql
 
     def test_kb_functions_pin_search_path(self):
-        # Step 2 (*_pin_function_search_path.sql): every kb_ function in public.
+        # Step 2 (*_pin_function_search_path.sql) and *_add_article_v2.sql: every kb_
+        # function in public.
         self.cur.execute("select proname, proconfig from pg_proc "
                          "where pronamespace = 'public'::regnamespace and proname like 'kb\\_%' "
                          "order by 1")
         got = self.cur.fetchall()
         self.assertEqual([name for name, _ in got],
-                         ["kb_article_v1_sha256", "kb_join_tags", "kb_lexical_tsquery",
-                          "kb_search_lexical", "kb_search_semantic"])
+                         ["kb_article_v1_sha256", "kb_article_v2_sha256", "kb_join_tags",
+                          "kb_lexical_tsquery", "kb_search_lexical", "kb_search_lexical_v2",
+                          "kb_search_semantic", "kb_search_semantic_v2"])
         for name, config in got:
             self.assertEqual(config, ["search_path=public, extensions, pg_temp"], name)
 
@@ -303,6 +305,10 @@ APP_FUNCTION_GRANTS = {
     "kb_lexical_tsquery(pg_catalog.text)",
     "kb_search_lexical(pg_catalog.text,pg_catalog.int4)",
     "kb_search_semantic(extensions.vector,pg_catalog.int4,pg_catalog.text)",
+    # *_add_article_v2.sql
+    "kb_article_v2_sha256(pg_catalog.text,pg_catalog.text,pg_catalog.jsonb)",
+    "kb_search_lexical_v2(pg_catalog.text,pg_catalog.int4)",
+    "kb_search_semantic_v2(extensions.vector,pg_catalog.int4,pg_catalog.text)",
 }
 APP_SCHEMA_GRANTS = {("extensions", "USAGE"), ("public", "USAGE")}
 APP_POLICIES = {

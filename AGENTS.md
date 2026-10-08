@@ -58,6 +58,8 @@ normalization (Phase 6).
   (live-DB parts skipped unless $env:KB_FINDER_TEST_DATABASE_URL is set)
 - .venv/Scripts/python -m unittest tests.test_hardening_sql
   (live-DB parts skipped unless $env:KB_FINDER_TEST_DATABASE_URL is set)
+- .venv/Scripts/python -m unittest tests.test_article_v2_sql
+  (live-DB parts skipped unless $env:KB_FINDER_TEST_DATABASE_URL is set)
 - .venv/Scripts/python scripts/db_fingerprint.py [--per-article] [--settings] [--allow-remote]
   (read-only; needs $env:DATABASE_URL; remote also needs sslmode=verify-full)
 - .venv/Scripts/python -m unittest tests.test_db_fingerprint

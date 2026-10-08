@@ -316,14 +316,17 @@ describe.skipIf(!databaseUrl)("the failed-login cap and the gate kind as kb_app"
   const MIGRATION_DIR = join(process.cwd(), "supabase", "migrations");
   const NAMES = readdirSync(MIGRATION_DIR).filter((n) => n.endsWith(".sql")).sort();
   const GATE_KIND = NAMES.filter((n) => n.endsWith("_add_gate_fail_kind.sql"));
+  const ARTICLE_V2 = NAMES.filter((n) => n.endsWith("_add_article_v2.sql"));
   const MIGRATIONS = NAMES.map((name) => readFileSync(join(MIGRATION_DIR, name), "utf8"));
+  // The gate kind migration, rerun by name: it is idempotent; article-v2 is not.
+  const GATE_KIND_SQL = readFileSync(join(MIGRATION_DIR, GATE_KIND[0]), "utf8");
   const PIN = "8264";
   const GATE_ENV = {
     ACCESS_PASSWORD: PIN,
     GATE_COOKIE_SECRET: "test-cookie-secret-0123456789abcdef",
   };
 
-  async function inThrowawaySchema(body: (client: Client) => Promise<void>, rerunLast = false) {
+  async function inThrowawaySchema(body: (client: Client) => Promise<void>, rerunGateKind = false) {
     const schema = `kbtest_${crypto.randomUUID().replaceAll("-", "")}`;
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
@@ -333,7 +336,7 @@ describe.skipIf(!databaseUrl)("the failed-login cap and the gate kind as kb_app"
       await client.query(`set local search_path to ${schema}`);
       await client.query("set local timezone to 'UTC'"); // stable window_start::text
       for (const sql of MIGRATIONS) await client.query(sql);
-      if (rerunLast) await client.query(MIGRATIONS[MIGRATIONS.length - 1]);
+      if (rerunGateKind) await client.query(GATE_KIND_SQL);
       // postgres holds ADMIN on kb_app but not SET; this grant is rolled back.
       await client.query("grant kb_app to current_user with inherit false, set true");
       await client.query("set local role kb_app");
@@ -380,9 +383,11 @@ describe.skipIf(!databaseUrl)("the failed-login cap and the gate kind as kb_app"
     }
   }
 
-  it("the gate kind migration is the latest, changes only the two CHECKs, and is idempotent", async () => {
+  it("the gate kind migration is the latest before article-v2, changes only the two CHECKs, and is idempotent", async () => {
     expect(GATE_KIND).toHaveLength(1);
-    expect(NAMES.at(-1)).toBe(GATE_KIND[0]);
+    expect(ARTICLE_V2).toHaveLength(1);
+    expect(NAMES.at(-1)).toBe(ARTICLE_V2[0]);
+    expect(NAMES.at(-2)).toBe(GATE_KIND[0]);
     await inThrowawaySchema(async (client) => {
       const defs = await client.query(
         "select conname, pg_get_constraintdef(oid) as def from pg_constraint " +
@@ -514,5 +519,61 @@ describe.skipIf(!databaseUrl)("the failed-login cap and the gate kind as kb_app"
         { kind: "gate_fail_global_day", key: "all", w: "2026-10-03 00:00:00+00", count: 1 },
       ]);
     });
+  });
+});
+
+// The real LEXICAL_SQL and LEXICAL_V2_SQL as kb_app, against every migration in
+// order, in a throwaway schema on a dedicated client, inside one transaction that
+// is always rolled back. Rows are synthetic placeholders.
+describe.skipIf(!databaseUrl)("LEXICAL_V2_SQL beside LEXICAL_SQL as kb_app", () => {
+  const MIGRATION_DIR = join(process.cwd(), "supabase", "migrations");
+  const MIGRATIONS = readdirSync(MIGRATION_DIR)
+    .filter((n) => n.endsWith(".sql"))
+    .sort()
+    .map((name) => readFileSync(join(MIGRATION_DIR, name), "utf8"));
+
+  it("lexical-v2 finds a staff-only term that v1 does not; other rows match v1", async () => {
+    const { LEXICAL_SQL, LEXICAL_V2_SQL } = await import("@/lib/search/lexical");
+    const schema = `kbtest_${crypto.randomUUID().replaceAll("-", "")}`;
+    const client = new Client({ connectionString: databaseUrl });
+    await client.connect();
+    try {
+      await client.query("begin");
+      await client.query(`create schema ${schema}`);
+      await client.query(`set local search_path to ${schema}`);
+      for (const sql of MIGRATIONS) await client.query(sql);
+      // 1 has the term only in its staff-only text; 2 has it in the body.
+      await client.query(
+        "insert into articles (source_article_id, title, url, full_text, sections, " +
+          "staff_only, parser_version) values " +
+          "('1', 'Printer setup', 'https://td.usd.edu/TDClient/33/Portal/KB/Article/1/x', " +
+          "'Add a campus printer.', '[]', " +
+          "'{\"text\": \"Escalate to zebrafinch queue.\", \"links\": []}', '2'), " +
+          "('2', 'Queue help', 'https://td.usd.edu/TDClient/33/Portal/KB/Article/2/x', " +
+          "'The zebrafinch queue handles printers.', '[]', null, '2')",
+      );
+      await client.query("grant kb_app to current_user with inherit false, set true");
+      await client.query("set local role kb_app");
+
+      const ids = async (sql: string, q: string) =>
+        (await client.query(sql, [q, 50])).rows.map((r) => r.source_article_id);
+      expect(await ids(LEXICAL_SQL, "zebrafinch")).toEqual(["2"]);
+      expect(await ids(LEXICAL_V2_SQL, "zebrafinch")).toEqual(["2", "1"]);
+      expect(await ids(LEXICAL_SQL, "escalate")).toEqual([]);
+      expect(await ids(LEXICAL_V2_SQL, "escalate")).toEqual(["1"]);
+      // No staff text involved: same rows, ranks and scores.
+      const v1 = (await client.query(LEXICAL_SQL, ["campus printer", 50])).rows;
+      const v2 = (await client.query(LEXICAL_V2_SQL, ["campus printer", 50])).rows;
+      expect(v1.length).toBeGreaterThan(0);
+      expect(v2).toEqual(v1);
+    } finally {
+      await client.query("rollback");
+      const left = await client.query(
+        "select count(*)::int as n from pg_namespace where nspname = $1",
+        [schema],
+      );
+      await client.end();
+      expect(left.rows[0].n).toBe(0);
+    }
   });
 });
