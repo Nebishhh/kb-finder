@@ -694,7 +694,7 @@ Semantic: config config/embedding/article-v2.json, sha256
 Cache file cache/article_embeddings/5cb0d08b0547a1ab.jsonl, 3,109 rows,
 sha256 112a8f1275b35a306e75efea8c8674bbabada843cb24ef28119257ac356fa6c9.
 Input: 577,380 tokens before truncation, 569,605 sent, 1 article truncated
-(9431, as in v1). Projected cost $0.011392. Actual cost: [FROM OPENAI USAGE].
+(9431, as in v1). Projected cost $0.011392. Actual cost: not separately visible on the OpenAI usage page; projected above.
 One paid run; a later run had 3,109 cache hits and sent nothing. The Python
 text builder matches kb_article_v2_sha256 byte for byte on all 3,109
 articles.
