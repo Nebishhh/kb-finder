@@ -30,6 +30,7 @@ sys.path.insert(0, str(ROOT / "tests"))
 import embed_kb  # noqa: E402
 import ingest_kb  # noqa: E402
 import test_search_sql as base  # noqa: E402  (helpers only)
+import test_article_v2_sql as v2sql  # noqa: E402  (SQL contract reference and edge cases)
 
 REAL_MAKE_TRANSPORT = embed_kb.make_transport
 URL = os.environ.get("KB_FINDER_TEST_DATABASE_URL")
@@ -38,6 +39,16 @@ BODY_SENTINEL = "BODYSENTINEL_q7x"
 DIMS = 1536
 MAX = 60  # test truncation limit; short fixture articles stay below it
 PINNED_ENCODING = "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7"
+V1_CONFIG_SHA256 = "051e13da32f484a11e0e87188a71de984563e93a5b3e1495db6da4cd0cb99940"
+V2_CONFIG_PATH = ROOT / "config" / "embedding" / "article-v2.json"
+V2_CONFIG_SHA256 = "5cb0d08b0547a1ab611854c919d0f694eb3eb59314118775d265023c7fb12f33"
+# The v1 load SQL exactly as it was before article-v2 (commit 0153549).
+V1_HASH_SQL = "select source_article_id, kb_article_v1_sha256(title, full_text) from articles"
+V1_PROBE_SQL = "select count(*) from kb_search_semantic(%s::text::extensions.vector, 1, %s)"
+V2_HASH_SQL = ("select source_article_id, kb_article_v2_sha256(title, full_text, staff_only) "
+               "from articles")
+V2_PROBE_SQL = "select count(*) from kb_search_semantic_v2(%s::text::extensions.vector, 1, %s)"
+NON_STRING_TEXTS = (0, 1, -2, 1.5, True, False, [], ["x"], {}, {"a": 1})
 
 if URL:
     import psycopg
@@ -106,8 +117,8 @@ class FakeTransport:
         return [p for b in self.bodies for p in b["input"]]
 
 
-def config_bytes(max_tokens=MAX, rule="prefix-v1", **overrides):
-    cfg = dict(embed_kb.FIXED_CONFIG, encoding_file_sha256=PINNED_ENCODING,
+def config_bytes(max_tokens=MAX, rule="prefix-v1", version="article-v1", **overrides):
+    cfg = dict(embed_kb.ALLOWED_CONFIGS[version], encoding_file_sha256=PINNED_ENCODING,
                truncation={"max_tokens": max_tokens, "rule": rule})
     cfg.update(overrides)
     return embed_kb.canonical_json(cfg)
@@ -1110,6 +1121,258 @@ class LoadCommandTests(Base):
         self.assertEqual(seen["sha"], self.cfg()[1])
 
 
+# ------------------------------------------------------------------ article-v2 (offline)
+
+
+def v2_rec(staff_only, title="Wi-Fi help", full_text="Line one.\nLine two.", sid="5"):
+    r = rec(sid, title=title, full_text=full_text)
+    r["staffOnly"] = staff_only
+    return r
+
+
+class ArticleV2InputTests(unittest.TestCase):
+    def test_builder_equals_the_sql_contract_reference_on_every_edge_case(self):
+        self.assertEqual(len(v2sql.STAFF_CASES), 14)
+        for staff_json, has_suffix in v2sql.STAFF_CASES:
+            with self.subTest(staff=staff_json):
+                staff = None if staff_json is None else json.loads(staff_json)
+                r = v2_rec(staff)
+                got = embed_kb.article_v2_text(r)
+                self.assertEqual(got, v2sql.article_v2_text(r["title"], r["fullText"], staff))
+                self.assertEqual(got.encode("utf-8"), v2sql.article_v2_text(
+                    r["title"], r["fullText"], staff).encode("utf-8"))
+                self.assertEqual(got != embed_kb.article_v1_text(r), has_suffix)
+                self.assertTrue(got.startswith(embed_kb.article_v1_text(r)))
+
+    def test_exact_bytes(self):
+        self.assertEqual(embed_kb.article_v2_text(v2_rec(None, "T", "B")), "Title: T\n\nB")
+        self.assertEqual(embed_kb.article_v2_text(v2_rec({"text": " x \r\n", "links": []},
+                                                         "T", "B")),
+                         "Title: T\n\nB\n\nStaff only:\n x \r\n")  # untrimmed
+        self.assertEqual(embed_kb.article_v2_text(v2_rec({"text": v2sql.TRIM}, "T", "B")),
+                         "Title: T\n\nB")
+        self.assertEqual(embed_kb.STAFF_TRIM, v2sql.TRIM)
+        decomposed = "é"
+        got = embed_kb.article_v2_text(v2_rec({"text": decomposed}, "T", "B"))
+        self.assertEqual(got.encode("utf-8"), b"Title: T\n\nB\n\nStaff only:\ne\xcc\x81")
+
+    def test_non_string_text_raises(self):
+        for value in NON_STRING_TEXTS:
+            with self.subTest(text=value):
+                with self.assertRaises(embed_kb.EmbedError) as ctx:
+                    embed_kb.article_v2_text(v2_rec({"text": value, "links": []}))
+                self.assertEqual(ctx.exception.code, embed_kb.EXIT_INVALID)
+                self.assertIn("article 5", str(ctx.exception))
+
+    def test_non_object_staff_only_raises(self):
+        for value in ("", "text", "STAFFSENTINEL", 0, True, [], [{"text": "x"}]):
+            with self.subTest(staff_only=value):
+                with self.assertRaises(embed_kb.EmbedError) as ctx:
+                    embed_kb.article_v2_text(v2_rec(value))
+                self.assertEqual(ctx.exception.code, embed_kb.EXIT_INVALID)
+                self.assertNotIn("STAFFSENTINEL", str(ctx.exception))
+        r = v2_rec(None)
+        del r["staffOnly"]
+        with self.assertRaises(embed_kb.EmbedError):
+            embed_kb.article_v2_text(r)
+
+    def test_v1_builder_never_sees_staff_text(self):
+        r = v2_rec({"text": "STAFFSENTINEL", "links": []})
+        self.assertNotIn("STAFFSENTINEL", embed_kb.article_v1_text(r))
+        self.assertIn("\n\nStaff only:\nSTAFFSENTINEL", embed_kb.article_v2_text(r))
+        self.assertIs(embed_kb.TEXT_BUILDERS["article-v1"], embed_kb.article_v1_text)
+        self.assertIs(embed_kb.TEXT_BUILDERS["article-v2"], embed_kb.article_v2_text)
+        self.assertEqual(sorted(embed_kb.TEXT_BUILDERS), sorted(embed_kb.ALLOWED_CONFIGS))
+        self.assertEqual(sorted(embed_kb.LOAD_SQL), sorted(embed_kb.ALLOWED_CONFIGS))
+
+    def test_prepare_input_uses_the_builder_it_is_given(self):
+        trunc = {"max_tokens": 10_000, "rule": "prefix-v1"}
+        r = v2_rec({"text": "Escalate.", "links": []})
+        default = embed_kb.prepare_input(r, FakeEncoding(), trunc)
+        v1 = embed_kb.prepare_input(r, FakeEncoding(), trunc, embed_kb.article_v1_text)
+        v2 = embed_kb.prepare_input(r, FakeEncoding(), trunc, embed_kb.article_v2_text)
+        self.assertEqual(default, v1)
+        self.assertEqual(v2["payload"], embed_kb.article_v2_text(r))
+        self.assertEqual(v2["source_text_sha256"],
+                         hashlib.sha256(embed_kb.article_v2_text(r).encode()).hexdigest())
+        self.assertEqual(v2["source_text_sha256"], v2sql.article_v2_sha256(
+            r["title"], r["fullText"], r["staffOnly"]))
+        self.assertNotEqual(v1["source_text_sha256"], v2["source_text_sha256"])
+
+
+class ArticleV2ConfigTests(Base):
+    def test_repo_v2_config_is_canonical_and_pinned(self):
+        cfg, sha = embed_kb.load_config(V2_CONFIG_PATH)
+        raw = V2_CONFIG_PATH.read_bytes()
+        self.assertEqual(embed_kb.canonical_json(cfg), raw)  # byte for byte
+        self.assertFalse(raw.endswith(b"\n"))
+        self.assertEqual(sha, hashlib.sha256(raw).hexdigest())
+        self.assertEqual(sha, V2_CONFIG_SHA256)
+        v1, v1_sha = embed_kb.load_config(embed_kb.CONFIG_PATH)
+        self.assertEqual(v1_sha, V1_CONFIG_SHA256)
+        self.assertEqual(sorted(k for k in set(cfg) | set(v1) if cfg.get(k) != v1.get(k)),
+                         ["staff_only", "template", "template_version"])
+        self.assertEqual(cfg["template_version"], "article-v2")
+        self.assertEqual(cfg["staff_only"], "suffix-if-text-nonblank-v1")
+        self.assertEqual(cfg["template"],
+                         "Title: {title}\n\n{fullText}\n\nStaff only:\n{staffOnly.text}")
+        self.assertEqual(v1["staff_only"], "excluded")
+        self.assertEqual(v1["template"], "Title: {title}\n\n{fullText}")
+
+    def test_mixed_or_unknown_versions_are_rejected(self):
+        no_version = json.loads(config_bytes())
+        del no_version["template_version"]
+        bad = {
+            "v1 with the v2 template": config_bytes(template=embed_kb.TEMPLATE_V2),
+            "v1 with the v2 staff rule": config_bytes(staff_only="suffix-if-text-nonblank-v1"),
+            "v2 with the v1 template": config_bytes(version="article-v2",
+                                                    template=embed_kb.TEMPLATE),
+            "v2 with staff excluded": config_bytes(version="article-v2", staff_only="excluded"),
+            "unknown version": config_bytes(template_version="article-v3"),
+            "version not a string": config_bytes(template_version=2),
+            "version missing": embed_kb.canonical_json(no_version),
+        }
+        for name, raw in bad.items():
+            with self.subTest(name):
+                self.config.write_bytes(raw)
+                self.write_input(corpus("1"))
+                code, out = self.run_main("preflight")
+                self.assertEqual(code, 2, out)
+                self.assertTrue(out.startswith("error: config:"), out)
+        self.config.write_bytes(config_bytes(version="article-v2"))
+        self.assertEqual(self.cfg()[0]["template_version"], "article-v2")
+
+    def test_each_config_has_its_own_cache_path(self):
+        # Computed only: the real cache directory is never opened.
+        v1 = embed_kb.cache_path_for(embed_kb.CACHE_DIR, V1_CONFIG_SHA256)
+        v2 = embed_kb.cache_path_for(embed_kb.CACHE_DIR, V2_CONFIG_SHA256)
+        self.assertEqual(v1, ROOT / "cache" / "article_embeddings" / "051e13da32f484a1.jsonl")
+        self.assertEqual(v2, ROOT / "cache" / "article_embeddings" / "5cb0d08b0547a1ab.jsonl")
+        self.assertNotEqual(v1, v2)
+        self.assertEqual(embed_kb.CONFIG_PATH, ROOT / "config" / "embedding" / "article-v1.json")
+
+
+class ArticleV2FlowTests(Base):
+    def use(self, version, max_tokens=MAX):
+        self.config.write_bytes(config_bytes(max_tokens=max_tokens, version=version))
+
+    def test_preflight_counts_the_suffix_and_labels_the_version(self):
+        records = corpus("1", "2")
+        self.write_input(records)
+        self.use("article-v2")
+        code, out = self.run_main("preflight")  # also asserts STAFFSENTINEL is never printed
+        self.assertEqual(code, 0, out)
+        total = sum(len(embed_kb.article_v2_text(r).encode()) for r in records)
+        self.assertIn(f"article-v2 tokens before truncation: max", out)
+        self.assertIn(f" total {total} ", out)
+        self.assertIn("template article-v2", out)
+        self.use("article-v1")
+        code, out = self.run_main("preflight")
+        total_v1 = sum(len(embed_kb.article_v1_text(r).encode()) for r in records)
+        self.assertIn("article-v1 tokens before truncation: max", out)
+        self.assertIn(f" total {total_v1} ", out)
+        self.assertGreater(total, total_v1)
+
+    def test_v2_embed_sends_the_suffix_into_its_own_cache_and_leaves_v1_alone(self):
+        records = corpus("1", "2")
+        self.write_input(records)
+        self.use("article-v1", max_tokens=8000)  # every text fits: sent as strings
+        self.assertEqual(self.embed(FakeTransport())[0], 0)
+        v1_path = self.cache_path()
+        v1_bytes = v1_path.read_bytes()
+        self.use("article-v2", max_tokens=8000)
+        t = FakeTransport()
+        code, out = self.embed(t)
+        self.assertEqual(code, 0, out)
+        v2_path = self.cache_path()
+        self.assertEqual(v2_path.name, f"{self.cfg()[1][:16]}.jsonl")
+        self.assertNotEqual(v2_path, v1_path)
+        self.assertEqual(v1_path.read_bytes(), v1_bytes)  # never touched
+        self.assertEqual(t.inputs(), [embed_kb.article_v2_text(r) for r in records])
+        for payload in t.inputs():
+            self.assertIn("\n\nStaff only:\nSTAFFSENTINEL", payload)
+        cfg, sha = self.cfg()
+        cached = embed_kb.read_cache(v2_path, cfg, sha)
+        self.assertEqual({s: r["source_text_sha256"] for s, r in cached.items()},
+                         {r["sourceArticleId"]: v2sql.article_v2_sha256(
+                             r["title"], r["fullText"], r["staffOnly"]) for r in records})
+        header = json.loads(v2_path.read_bytes().split(b"\n", 1)[0])
+        self.assertEqual(header["config"]["template_version"], "article-v2")
+
+    def test_v1_cache_is_never_read_as_v2(self):
+        records = corpus("1")
+        self.write_input(records)
+        self.use("article-v1")
+        self.assertEqual(self.embed(FakeTransport())[0], 0)
+        v1_path = self.cache_path()
+        self.use("article-v2")
+        cfg, sha = self.cfg()
+        with self.assertRaises(embed_kb.EmbedError):
+            embed_kb.read_cache(v1_path, cfg, sha)  # header names the v1 config
+
+
+class RecordingCursor:
+    def __init__(self, log, cfg, db):
+        self.log, self.cfg, self.db, self.rowcount, self.last = log, cfg, db, 0, ""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def execute(self, q, params=None):
+        self.log.append(q)
+        self.last = q
+
+    def executemany(self, q, seq):
+        self.log.append(q)
+        list(seq)
+
+    def fetchone(self):
+        return (self.cfg,) if "from embedding_configs" in self.last else (1,)
+
+    def fetchall(self):
+        return list(self.db.items())
+
+
+class RecordingConn:
+    def __init__(self, cfg, db):
+        self.log, self.cfg, self.db = [], cfg, db
+
+    def cursor(self):
+        return RecordingCursor(self.log, self.cfg, self.db)
+
+
+class LoadRowsSqlTests(unittest.TestCase):
+    """load_rows with a recording connection: which SQL each version runs."""
+
+    def run_load(self, path, build):
+        cfg, sha = embed_kb.load_config(path)
+        r = v2_rec({"text": "Escalate.", "links": []})
+        h = hashlib.sha256(build(r).encode()).hexdigest()
+        cached = {"5": {"source_text_sha256": h, "input_kind": "text", "input_sha256": "0" * 64,
+                        "input_tokens": 1, "truncated": False, "embedding_b64": unit_b64(0)}}
+        conn = RecordingConn(cfg, {"5": h})
+        counts = embed_kb.load_rows(conn, cfg, sha, cached)
+        self.assertEqual(counts, {"articles": 1, "loaded": 1, "replaced": 0})
+        return conn.log
+
+    def test_v1_runs_exactly_the_v1_sql(self):
+        log = self.run_load(embed_kb.CONFIG_PATH, embed_kb.article_v1_text)
+        self.assertEqual(log[1], V1_HASH_SQL)
+        self.assertEqual(log[-1], V1_PROBE_SQL)
+        self.assertFalse(any("_v2" in q for q in log), log)
+        self.assertEqual(embed_kb.LOAD_SQL["article-v1"], (V1_HASH_SQL, V1_PROBE_SQL))
+
+    def test_v2_runs_the_v2_hash_and_search(self):
+        log = self.run_load(V2_CONFIG_PATH, embed_kb.article_v2_text)
+        self.assertEqual(log[1], V2_HASH_SQL)
+        self.assertEqual(log[-1], V2_PROBE_SQL)
+        self.assertFalse(any("kb_article_v1_sha256" in q or "kb_search_semantic(" in q
+                             for q in log), log)
+
+
 # ------------------------------------------------------------------ live DB
 
 
@@ -1240,6 +1503,169 @@ class LiveDbTests(Base):
             embed_kb.load_rows(self.conn, cfg, sha,
                                embed_kb.read_cache(self.cache_path(), cfg, sha))
         self.assertIn("different config", str(ctx.exception))
+
+
+@unittest.skipUnless(URL, "KB_FINDER_TEST_DATABASE_URL not set")
+class LiveDbV2Tests(Base):
+    """article-v2 against every migration in order. Same isolation as LiveDbTests: a
+    uniquely named throwaway schema, search_path set to only that schema, one
+    transaction that is always rolled back, public checked unchanged afterwards."""
+
+    def setUp(self):
+        super().setUp()
+        self.schema = f"kbtest_{uuid.uuid4().hex}"
+        self.conn = psycopg.connect(URL)
+        self.addCleanup(self.rollback_and_verify)
+        with psycopg.connect(URL, autocommit=True) as c:
+            self.public_before = base.public_snapshot(c), base.public_article_count(c)
+        cur = self.conn.cursor()
+        cur.execute("select exists (select 1 from pg_namespace where nspname = %s)", [self.schema])
+        if cur.fetchone()[0]:
+            self.fail(f"schema {self.schema} already exists; refusing to run")
+        cur.execute(sql.SQL("create schema {}").format(sql.Identifier(self.schema)))
+        cur.execute(sql.SQL("set local search_path to {}").format(sql.Identifier(self.schema)))
+        for name in ("articles", "article_embeddings", "embedding_configs"):
+            try:
+                with self.conn.transaction():
+                    cur.execute(sql.SQL("select 1 from {} limit 1").format(sql.Identifier(name)))
+                self.fail(f"unqualified '{name}' resolved outside the throwaway schema")
+            except psycopg.errors.UndefinedTable:
+                pass
+        for path in sorted((ROOT / "supabase" / "migrations").glob("*.sql")):
+            cur.execute(path.read_text(encoding="utf-8"))
+        cur.close()
+
+    def rollback_and_verify(self):
+        self.conn.rollback()
+        self.conn.close()
+        with psycopg.connect(URL, autocommit=True) as c:
+            exists = c.execute("select exists (select 1 from pg_namespace where nspname = %s)",
+                               [self.schema]).fetchone()[0]
+            self.assertFalse(exists)
+            self.assertEqual((base.public_snapshot(c), base.public_article_count(c)),
+                             self.public_before)
+
+    def use(self, version):
+        self.config.write_bytes(config_bytes(version=version))
+        return self.cfg()
+
+    def sqlstate(self, query, args):
+        with self.assertRaises(psycopg.Error) as ctx:
+            with self.conn.transaction():  # savepoint: only this statement rolls back
+                self.conn.execute(query, args)
+        return ctx.exception.sqlstate
+
+    def test_v2_sql_hash_equals_python_on_every_real_article(self):
+        raw = embed_kb.DEFAULT_INPUT.read_text(encoding="utf-8").splitlines()
+        records, errors = ingest_kb.load_records(raw)
+        self.assertEqual(errors, [])
+        ingest_kb.sync(self.conn, [ingest_kb.to_row(r) for r in records], False)
+        with self.conn.cursor() as cur:
+            cur.execute("select source_article_id, kb_article_v2_sha256(title, full_text, "
+                        "staff_only), kb_article_v1_sha256(title, full_text) from articles")
+            got = {sid: (v2, v1) for sid, v2, v1 in cur.fetchall()}
+        py = {r["sourceArticleId"]: hashlib.sha256(
+            embed_kb.article_v2_text(r).encode("utf-8")).hexdigest() for r in records}
+        with_suffix = [r["sourceArticleId"] for r in records
+                       if embed_kb.article_v2_text(r) != embed_kb.article_v1_text(r)]
+        self.assertEqual(len(got), len(records))
+        self.assertEqual(sorted(s for s in py if got[s][0] != py[s]), [])
+        self.assertEqual(sorted(s for s in got if (got[s][0] != got[s][1]) != (s in with_suffix)),
+                         [])
+        self.assertGreater(len(with_suffix), 1000)
+        print(f"\n  real-article v2 hash check: {len(records)} articles, {len(with_suffix)} "
+              "with the staff-only suffix: all equal", file=sys.stderr)
+
+    def test_v2_builder_equals_sql_on_the_edge_cases(self):
+        for staff_json, has_suffix in v2sql.STAFF_CASES:
+            with self.subTest(staff=staff_json):
+                r = v2_rec(None if staff_json is None else json.loads(staff_json))
+                row = self.conn.execute(
+                    "select kb_article_v2_sha256(%s, %s, %s::jsonb), kb_article_v1_sha256(%s, %s)",
+                    [r["title"], r["fullText"], staff_json, r["title"], r["fullText"]]).fetchone()
+                self.assertEqual(row[0], hashlib.sha256(
+                    embed_kb.article_v2_text(r).encode("utf-8")).hexdigest())
+                self.assertEqual(row[0] != row[1], has_suffix)
+        # SQL takes a non-string text as its JSON text; the pipeline refuses it instead.
+        for value in NON_STRING_TEXTS:
+            with self.subTest(text=value):
+                with self.assertRaises(embed_kb.EmbedError):
+                    embed_kb.article_v2_text(v2_rec({"text": value}))
+
+    def test_v1_and_v2_load_side_by_side_then_both_searches(self):
+        records = corpus("1", "2", "7")
+        self.write_input(records)
+        ingest_kb.sync(self.conn, base.rows(*records), False)
+        loaded = {}
+        for version in ("article-v1", "article-v2"):
+            cfg, sha = self.use(version)
+            self.assertEqual(self.embed(FakeTransport())[0], 0)
+            cached = embed_kb.read_cache(self.cache_path(), cfg, sha)
+            c = embed_kb.load_rows(self.conn, cfg, sha, cached)
+            self.assertEqual(c, {"articles": 3, "loaded": 3, "replaced": 0})
+            loaded[version] = (sha, cached)
+        v1_sha, v1_cached = loaded["article-v1"]
+        v2_sha, v2_cached = loaded["article-v2"]
+        self.assertNotEqual(v1_sha, v2_sha)
+        with self.conn.cursor() as cur:
+            cur.execute("select config_sha256, template_version, count(e.*) from embedding_configs "
+                        "left join article_embeddings e using (config_sha256) group by 1, 2 "
+                        "order by 2")
+            self.assertEqual(cur.fetchall(), [(v1_sha, "article-v1", 3),
+                                              (v2_sha, "article-v2", 3)])
+            cur.execute("select count(*) from article_embeddings e join articles a "
+                        "using (source_article_id) where e.config_sha256 = %s and "
+                        "e.source_text_sha256 = kb_article_v2_sha256(a.title, a.full_text, "
+                        "a.staff_only) and e.source_text_sha256 <> "
+                        "kb_article_v1_sha256(a.title, a.full_text)", [v2_sha])
+            self.assertEqual(cur.fetchone()[0], 3)  # every corpus record has staff text
+
+        def probe(cached, sid="2"):
+            return embed_kb.vector_literal(embed_kb.decode_embedding(
+                cached[sid]["embedding_b64"], DIMS))
+
+        rows_v1 = self.conn.execute("select source_article_id, score from kb_search_semantic("
+                                    "%s::text::extensions.vector, 50, %s)",
+                                    [probe(v1_cached), v1_sha]).fetchall()
+        rows_v2 = self.conn.execute("select source_article_id, score from kb_search_semantic_v2("
+                                    "%s::text::extensions.vector, 50, %s)",
+                                    [probe(v2_cached), v2_sha]).fetchall()
+        self.assertEqual(rows_v1[0], ("2", 1.0))
+        self.assertEqual(rows_v2[0], ("2", 1.0))
+        self.assertEqual(len(rows_v1), 3)
+        self.assertEqual(len(rows_v2), 3)
+        # Each function refuses the other version's config.
+        self.assertEqual(self.sqlstate("select * from kb_search_semantic_v2("
+                                       "%s::text::extensions.vector, 50, %s)",
+                                       [probe(v1_cached), v1_sha]), "KBF02")
+        # Reloading v2 replaces only v2 rows; v1 still searches.
+        cfg, sha = self.use("article-v2")
+        self.assertEqual(embed_kb.load_rows(self.conn, cfg, sha, v2_cached)["replaced"], 3)
+        self.assertEqual(self.conn.execute(
+            "select count(*) from kb_search_semantic(%s::text::extensions.vector, 50, %s)",
+            [probe(v1_cached), v1_sha]).fetchone()[0], 3)
+
+    def test_v2_load_uses_the_v2_hash(self):
+        # A change only to staff text leaves the v1 hash alone but makes the v2 cache stale.
+        records = corpus("1", "2")
+        self.write_input(records)
+        cfg, sha = self.use("article-v2")
+        self.assertEqual(self.embed(FakeTransport())[0], 0)
+        cached = embed_kb.read_cache(self.cache_path(), cfg, sha)
+        changed = [dict(records[0], staffOnly={"text": "Changed staff steps.", "links": []}),
+                   records[1]]
+        ingest_kb.sync(self.conn, base.rows(*changed), False)
+        with self.assertRaises(embed_kb.EmbedError) as ctx:
+            with self.conn.transaction():
+                embed_kb.load_rows(self.conn, cfg, sha, cached)
+        self.assertIn("1 articles have no valid cached embedding (first: 1)", str(ctx.exception))
+        self.assertEqual(self.conn.execute("select count(*) from article_embeddings")
+                         .fetchone()[0], 0)
+        # The v1 hash of the same rows is unchanged by the staff edit.
+        self.assertEqual(self.conn.execute(
+            "select kb_article_v1_sha256(title, full_text) from articles "
+            "where source_article_id = '1'").fetchone()[0],
+            hashlib.sha256(embed_kb.article_v1_text(records[0]).encode()).hexdigest())
 
 
 if __name__ == "__main__":

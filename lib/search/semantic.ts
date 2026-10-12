@@ -11,6 +11,8 @@ import {
   canonicalJson,
   getSemanticConfig,
   type SemanticConfig,
+  SemanticConfigError,
+  type TemplateVersion,
 } from "@/lib/search/semantic-config";
 import type { SearchRow } from "@/lib/search/types";
 
@@ -21,6 +23,25 @@ import type { SearchRow } from "@/lib/search/types";
 export const SEMANTIC_SQL =
   "select rank, source_article_id, title, url, category, score " +
   "from kb_search_semantic($1::text::extensions.vector, $2::int, $3::text)";
+
+// article-v2 experiment (DECISIONS.md, 2026-10-07): the same ranking for
+// article-v2 configs. kb_search_semantic_v2 (supabase/migrations/*_add_article_
+// v2.sql) also refuses any config whose template_version is not 'article-v2'.
+export const SEMANTIC_V2_SQL =
+  "select rank, source_article_id, title, url, category, score " +
+  "from kb_search_semantic_v2($1::text::extensions.vector, $2::int, $3::text)";
+
+// The ranking SQL for a config, chosen by its template_version.
+const SEMANTIC_SQL_BY_VERSION: Record<TemplateVersion, string> = {
+  "article-v1": SEMANTIC_SQL,
+  "article-v2": SEMANTIC_V2_SQL,
+};
+
+export function semanticSqlFor(config: SemanticConfig): string {
+  const version = config.templateVersion;
+  if (!Object.hasOwn(SEMANTIC_SQL_BY_VERSION, version)) throw new SemanticConfigError();
+  return SEMANTIC_SQL_BY_VERSION[version as TemplateVersion];
+}
 
 // The stored row for the server's config sha256. kb_search_semantic (KBF02) only
 // checks that it exists; checkConfigRow below checks what it holds.
@@ -107,6 +128,7 @@ export function makeSemanticSearch(deps: SemanticDeps): SearchFn {
   const verified = new Set<string>();
   return async (query, depth) => {
     const config = deps.config();
+    const sql = semanticSqlFor(config);
     // Before the query is embedded: a mismatch never spends an OpenAI call.
     if (!verified.has(config.sha256)) {
       checkConfigRow(await deps.configRows(config.sha256), config);
@@ -125,14 +147,21 @@ export function makeSemanticSearch(deps: SemanticDeps): SearchFn {
       throw new EmbeddingError(code);
     }
     const literal = toVectorLiteral(vector, config.dimensions);
-    const result = await deps.query(SEMANTIC_SQL, [literal, depth, config.sha256]);
+    const result = await deps.query(sql, [literal, depth, config.sha256]);
     return result.rows;
   };
 }
 
-export const searchSemantic: SearchFn = makeSemanticSearch({
-  embed: (text, config) => embedQuery(text, config),
-  query: (text, params) => getPool().query<SearchRow>(text, params),
-  configRows: async (sha256) => (await getPool().query(CONFIG_ROW_SQL, [sha256])).rows,
-  config: getSemanticConfig,
-});
+function productionDeps(version: TemplateVersion): SemanticDeps {
+  return {
+    embed: (text, config) => embedQuery(text, config),
+    query: (text, params) => getPool().query<SearchRow>(text, params),
+    configRows: async (sha256) => (await getPool().query(CONFIG_ROW_SQL, [sha256])).rows,
+    config: () => getSemanticConfig(version),
+  };
+}
+
+export const searchSemantic: SearchFn = makeSemanticSearch(productionDeps("article-v1"));
+
+// Eval-only (semantic-v2 in lib/search/config.ts).
+export const searchSemanticV2: SearchFn = makeSemanticSearch(productionDeps("article-v2"));

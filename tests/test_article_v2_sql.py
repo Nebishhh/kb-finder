@@ -64,6 +64,26 @@ ARTICLES = {
 # The six characters the article-v2 trim rule removes (SQL comment in the migration).
 TRIM = " \t\n\x0b\x0c\r"
 
+# kb_article_v2_sha256 edge cases: (staff_only as JSON text or None for SQL NULL,
+# suffix expected). Shared with tests/test_embed_kb.py, which checks the
+# pipeline's builder on the same cases.
+STAFF_CASES = [
+    (None, False),
+    ("null", False),
+    ("{}", False),
+    ('{"links": []}', False),
+    ('{"text": null, "links": []}', False),
+    ('{"text": "", "links": []}', False),
+    (json.dumps({"text": TRIM, "links": []}), False),
+    (json.dumps({"text": " \n\t ", "links": []}), False),
+    (json.dumps({"text": "\xa0", "links": []}), True),        # NBSP is content
+    (json.dumps({"text": " ", "links": []}), True),      # em space is content
+    (json.dumps({"text": "Café – naïve 日本 😀"}), True),
+    (json.dumps({"text": "Café – naïve 日本", "links": []}, ensure_ascii=False), True),
+    (json.dumps({"text": "  padded\r\n", "links": []}), True),  # kept untrimmed
+    (json.dumps({"text": "é"}), True),                  # not NFC-normalized
+]
+
 if URL:
     import psycopg
     from psycopg import sql
@@ -320,23 +340,7 @@ class ArticleV2MigrationTests(unittest.TestCase):
     def test_article_v2_sha256_contract(self):
         self.cur.execute(self.v2)
         title, body = "Wi-Fi help", "Line one.\nLine two."
-        # (staff_only as JSON text or None for SQL NULL, suffix expected)
-        cases = [
-            (None, False),
-            ("null", False),
-            ("{}", False),
-            ('{"links": []}', False),
-            ('{"text": null, "links": []}', False),
-            ('{"text": "", "links": []}', False),
-            (json.dumps({"text": TRIM, "links": []}), False),
-            (json.dumps({"text": " \n\t ", "links": []}), False),
-            (json.dumps({"text": "\xa0", "links": []}), True),        # NBSP is content
-            (json.dumps({"text": " ", "links": []}), True),      # em space is content
-            (json.dumps({"text": "Café – naïve 日本 😀"}), True),
-            (json.dumps({"text": "Café – naïve 日本", "links": []}, ensure_ascii=False), True),
-            (json.dumps({"text": "  padded\r\n", "links": []}), True),  # kept untrimmed
-            (json.dumps({"text": "é"}), True),                  # not NFC-normalized
-        ]
+        cases = STAFF_CASES  # module level, shared with test_embed_kb.py
         for staff_json, has_suffix in cases:
             with self.subTest(staff=staff_json):
                 staff = None if staff_json is None else json.loads(staff_json)

@@ -26,6 +26,8 @@ import {
   ConfigMismatchError,
   makeSemanticSearch,
   SEMANTIC_SQL,
+  SEMANTIC_V2_SQL,
+  semanticSqlFor,
   toVectorLiteral,
   type ConfigRowsFn,
   type QueryFn,
@@ -149,6 +151,10 @@ const lexicalV2NeverCalled = vi.fn<SearchFn>(async () => {
   throw new Error("lexical-v2 retriever called");
 });
 
+const semanticV2NeverCalled = vi.fn<SearchFn>(async () => {
+  throw new Error("semantic-v2 retriever called");
+});
+
 function jsonRequest(body: unknown): Request {
   return new Request("http://localhost/api/search", {
     method: "POST",
@@ -159,7 +165,12 @@ function jsonRequest(body: unknown): Request {
 
 async function runSemantic(semantic: SearchFn, env: SearchEnv = EVAL_ON, query = QUERY) {
   const response = await handleSearch(jsonRequest({ query, mode: "semantic" }), {
-    retrievers: { lexical: lexicalNeverCalled, semantic, "lexical-v2": lexicalV2NeverCalled },
+    retrievers: {
+      lexical: lexicalNeverCalled,
+      semantic,
+      "lexical-v2": lexicalV2NeverCalled,
+      "semantic-v2": semanticV2NeverCalled,
+    },
     gate: () => "open" as const,
     limit: async () => "ok" as const,
     env,
@@ -186,6 +197,7 @@ function captureOutput(): string[] {
 
 afterEach(() => {
   expect(lexicalNeverCalled).not.toHaveBeenCalled();
+  expect(semanticV2NeverCalled).not.toHaveBeenCalled();
   vi.restoreAllMocks();
 });
 
@@ -263,6 +275,7 @@ describe("dispatch and gating", () => {
       lexical: vi.fn<SearchFn>(async () => [row(1, "11", 0.5)]),
       semantic: vi.fn<SearchFn>(async () => [row(1, "22", 0.75)]),
       "lexical-v2": vi.fn<SearchFn>(async () => [row(1, "33", 0.25)]),
+      "semantic-v2": vi.fn<SearchFn>(async () => [row(1, "44", 0.125)]),
     };
   }
 
@@ -719,7 +732,12 @@ describe("the stored embedding_configs row is checked against the file", () => {
     });
     const lexical = vi.fn<SearchFn>(async () => [row(1, "11", 0.5)]);
     const response = await handleSearch(jsonRequest({ query: "wifi", mode: "lexical" }), {
-      retrievers: { lexical, semantic, "lexical-v2": lexicalV2NeverCalled },
+      retrievers: {
+        lexical,
+        semantic,
+        "lexical-v2": lexicalV2NeverCalled,
+        "semantic-v2": semanticV2NeverCalled,
+      },
       gate: () => "open" as const,
       limit: async () => "ok" as const,
       env: EVAL_ON,
@@ -874,5 +892,184 @@ describe("credential isolation", () => {
     const lines = readFileSync(join(ROOT, ".env.example"), "utf8").split(/\r?\n/);
     expect(lines.some((l) => /^\s*OPENAI_API_KEY\s*=/.test(l))).toBe(false);
     expect(lines.some((l) => l.includes("OPENAI_API_KEY"))).toBe(true);
+  });
+});
+
+// ------------------------------------------------------------------ article-v2
+
+// article-v2 experiment (DECISIONS.md, 2026-10-07): semantic-v2 uses
+// config/embedding/article-v2.json and kb_search_semantic_v2. v1 is unchanged.
+describe("article-v2 config and semantic-v2 search", () => {
+  const V2_FILE = join(ROOT, "config", "embedding", "article-v2.json");
+  // Printed by scripts/embed_kb.py preflight --config for the same file.
+  const PYTHON_V2_SHA256 =
+    "5cb0d08b0547a1ab611854c919d0f694eb3eb59314118775d265023c7fb12f33";
+  // The v1 strings exactly as they were before article-v2 (commit 0153549).
+  const V1_SEMANTIC_SQL =
+    "select rank, source_article_id, title, url, category, score " +
+    "from kb_search_semantic($1::text::extensions.vector, $2::int, $3::text)";
+  const V1_CONFIG_ROW_SQL =
+    "select config, model, dimensions, template_version " +
+    "from embedding_configs where config_sha256 = $1";
+  const bytes = readFileSync(V2_FILE);
+  const parsed = JSON.parse(bytes.toString("ascii")) as Record<string, unknown>;
+  const v2 = getSemanticConfig("article-v2");
+  const v1Parsed = JSON.parse(readFileSync(CONFIG_FILE, "ascii")) as Record<string, unknown>;
+
+  function v2Row(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      config: JSON.parse(v2.canonical) as unknown,
+      model: v2.model,
+      dimensions: v2.dimensions,
+      template_version: v2.templateVersion,
+      ...overrides,
+    };
+  }
+
+  function v2Search(configRows: ConfigRowsFn) {
+    const embed = vi.fn<SemanticDeps["embed"]>(async () => unitVector(4));
+    const query = fakeQuery([row(1, "9", 0.9)]);
+    const semantic = makeSemanticSearch({
+      embed,
+      query,
+      configRows,
+      config: () => getSemanticConfig("article-v2"),
+    });
+    return { embed, query, semantic };
+  }
+
+  it("the v2 file is canonical byte for byte and its sha256 is the pinned value", () => {
+    expect(canonicalJson(parsed)).toBe(bytes.toString("ascii"));
+    expect(v2.canonical).toBe(bytes.toString("ascii"));
+    expect(createHash("sha256").update(bytes).digest("hex")).toBe(PYTHON_V2_SHA256);
+    expect(v2.sha256).toBe(PYTHON_V2_SHA256);
+    expect(v2.templateVersion).toBe("article-v2");
+  });
+
+  it("the v2 file differs from v1 only in template_version, staff_only and template", () => {
+    const changed = Object.keys({ ...parsed, ...v1Parsed })
+      .filter((k) => canonicalJson(parsed[k]) !== canonicalJson(v1Parsed[k]))
+      .sort();
+    expect(changed).toEqual(["staff_only", "template", "template_version"]);
+    expect(parsed.template_version).toBe("article-v2");
+    expect(parsed.staff_only).toBe("suffix-if-text-nonblank-v1");
+    expect(parsed.template).toBe("Title: {title}\n\n{fullText}\n\nStaff only:\n{staffOnly.text}");
+  });
+
+  it("v1 is unchanged: default config, sha, SQL strings", () => {
+    expect(getSemanticConfig()).toBe(getSemanticConfig("article-v1"));
+    expect(getSemanticConfig().sha256).toBe(PYTHON_CONFIG_SHA256);
+    expect(getSemanticConfig().templateVersion).toBe("article-v1");
+    expect(SEMANTIC_SQL).toBe(V1_SEMANTIC_SQL);
+    expect(CONFIG_ROW_SQL).toBe(V1_CONFIG_ROW_SQL);
+    expect(semanticSqlFor(getSemanticConfig())).toBe(V1_SEMANTIC_SQL);
+    expect(SEMANTIC_V2_SQL).toBe(V1_SEMANTIC_SQL.replace("kb_search_semantic(",
+      "kb_search_semantic_v2("));
+    expect(semanticSqlFor(v2)).toBe(SEMANTIC_V2_SQL);
+    expect(v2.sha256).not.toBe(getSemanticConfig().sha256);
+  });
+
+  it("a file is only accepted as its own version", () => {
+    expect(() => loadSemanticConfig(v1Parsed, "article-v2")).toThrow(SemanticConfigError);
+    expect(() => loadSemanticConfig(parsed, "article-v1")).toThrow(SemanticConfigError);
+    expect(loadSemanticConfig(parsed, "article-v2").sha256).toBe(PYTHON_V2_SHA256);
+    expect(loadSemanticConfig(v1Parsed, "article-v1").sha256).toBe(PYTHON_CONFIG_SHA256);
+  });
+
+  it("an unknown template_version has no SQL and fails before any read or embed", async () => {
+    const other = loadSemanticConfig({ ...parsed, template_version: "article-v3" });
+    expect(() => semanticSqlFor(other)).toThrow(SemanticConfigError);
+    expect(() => semanticSqlFor({ ...v2, templateVersion: "constructor" }))
+      .toThrow(SemanticConfigError);
+    const configRows = fakeConfigRows([v2Row()]);
+    const embed = vi.fn<SemanticDeps["embed"]>(async () => unitVector(4));
+    const query = fakeQuery();
+    const semantic = makeSemanticSearch({ embed, query, configRows, config: () => other });
+    await expect(semantic(QUERY, SEARCH_DEPTH)).rejects.toBeInstanceOf(SemanticConfigError);
+    expect(configRows).not.toHaveBeenCalled();
+    expect(embed).not.toHaveBeenCalled();
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it("semantic-v2 checks the v2 row, then runs kb_search_semantic_v2 with the v2 sha", async () => {
+    const configRows = fakeConfigRows([v2Row()]);
+    const { embed, query, semantic } = v2Search(configRows);
+    await expect(semantic(QUERY, SEARCH_DEPTH)).resolves.toHaveLength(1);
+    expect(configRows).toHaveBeenCalledTimes(1);
+    expect(configRows).toHaveBeenCalledWith(PYTHON_V2_SHA256);
+    expect(embed).toHaveBeenCalledTimes(1);
+    expect(embed.mock.calls[0][1]).toBe(v2);
+    expect(query).toHaveBeenCalledTimes(1);
+    const [text, params] = query.mock.calls[0];
+    expect(text).toBe(SEMANTIC_V2_SQL);
+    expect(params).toEqual([toVectorLiteral(unitVector(4), DIMS), SEARCH_DEPTH, PYTHON_V2_SHA256]);
+    expect(configRows.mock.invocationCallOrder[0]).toBeLessThan(
+      embed.mock.invocationCallOrder[0],
+    );
+  });
+
+  it.each([
+    ["no row", []],
+    ["the v1 row", [storedRow()]],
+    ["two rows", [v2Row(), v2Row()]],
+    ["template_version article-v1", [v2Row({ template_version: "article-v1" })]],
+    ["config is the v1 file", [v2Row({ config: v1Parsed })]],
+    ["staff_only changed", [v2Row({ config: { ...parsed, staff_only: "excluded" } })]],
+    ["model column", [v2Row({ model: "text-embedding-3-large" })]],
+  ])("semantic-v2 with %s: KBF02_CONFIG_MISMATCH before any embed", async (_n, rows) => {
+    const { embed, query, semantic } = v2Search(fakeConfigRows(rows));
+    await expect(semantic(QUERY, SEARCH_DEPTH)).rejects.toMatchObject({
+      name: "ConfigMismatchError",
+      code: "KBF02_CONFIG_MISMATCH",
+    });
+    expect(embed).not.toHaveBeenCalled();
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it("v1 semantic still runs kb_search_semantic with the v1 sha", async () => {
+    const configRows = fakeConfigRows();
+    const embed = vi.fn<SemanticDeps["embed"]>(async () => unitVector(4));
+    const query = fakeQuery([row(1, "9", 0.9)]);
+    const semantic = makeSemanticSearch({ embed, query, configRows, config: getSemanticConfig });
+    await expect(semantic(QUERY, SEARCH_DEPTH)).resolves.toHaveLength(1);
+    expect(configRows).toHaveBeenCalledWith(PYTHON_CONFIG_SHA256);
+    expect(query.mock.calls[0][0]).toBe(V1_SEMANTIC_SQL);
+    expect(query.mock.calls[0][1][2]).toBe(PYTHON_CONFIG_SHA256);
+    // A v2 row never satisfies the v1 check.
+    const v1WithV2Row = makeSemanticSearch({
+      embed, query, configRows: fakeConfigRows([v2Row()]), config: getSemanticConfig,
+    });
+    await expect(v1WithV2Row(QUERY, SEARCH_DEPTH)).rejects.toBeInstanceOf(ConfigMismatchError);
+  });
+
+  it("a semantic-v2 request reaches only the semantic-v2 retriever, and only with eval modes", async () => {
+    const make = () => ({
+      lexical: vi.fn<SearchFn>(async () => [row(1, "11", 0.5)]),
+      semantic: vi.fn<SearchFn>(async () => [row(1, "22", 0.75)]),
+      "lexical-v2": vi.fn<SearchFn>(async () => [row(1, "33", 0.25)]),
+      "semantic-v2": vi.fn<SearchFn>(async () => [row(1, "44", 0.125)]),
+    });
+    for (const [env, status] of [[EVAL_ON, 200], [{}, 400],
+      [{ DEFAULT_SEARCH_MODE: "semantic" }, 400]] as const) {
+      const f = make();
+      const response = await handleSearch(jsonRequest({ query: QUERY, mode: "semantic-v2" }), {
+        retrievers: f,
+        gate: () => "open" as const,
+        limit: async () => "ok" as const,
+        env,
+      });
+      expect(response.status).toBe(status);
+      expect(f["semantic-v2"]).toHaveBeenCalledTimes(status === 200 ? 1 : 0);
+      expect(f.lexical).not.toHaveBeenCalled();
+      expect(f.semantic).not.toHaveBeenCalled();
+      expect(f["lexical-v2"]).not.toHaveBeenCalled();
+    }
+  });
+
+  it("the route maps semantic-v2 to searchSemanticV2 and nothing else to it", () => {
+    const route = readFileSync(join(ROOT, "app", "api", "search", "route.ts"), "utf8");
+    expect(route).toContain('"semantic-v2": searchSemanticV2,');
+    expect(route.match(/searchSemanticV2/g)).toHaveLength(2); // import + mapping
+    expect(route).toContain("semantic: searchSemantic,");
   });
 });

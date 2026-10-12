@@ -2,13 +2,17 @@
 """Phase 5: embed every article once (article-v1), cache the vectors, load them into Postgres.
 
 Input  : data/parsed/articles.jsonl, validated with ingest_kb.load_records
-Config : config/embedding/article-v1.json (canonical bytes; config_sha256 = sha256 of them)
-Cache  : cache/article_embeddings/<first 16 hex of config_sha256>.jsonl (gitignored)
+Config : config/embedding/article-v1.json (canonical bytes; config_sha256 = sha256 of them),
+         or --config config/embedding/article-v2.json (article-v2 experiment, DECISIONS.md
+         2026-10-07). The file's template_version picks the text builder and SQL functions.
+Cache  : cache/article_embeddings/<first 16 hex of config_sha256>.jsonl (gitignored), so
+         each config has its own cache file
 Encoder: cl100k_base, file kept in cache/tiktoken/ and checked against the config pin
 
-Run:  .venv/Scripts/python scripts/embed_kb.py preflight
-      .venv/Scripts/python scripts/embed_kb.py embed --paid --max-cost-usd X   (human only)
-      .venv/Scripts/python scripts/embed_kb.py load [--allow-remote]
+Run:  .venv/Scripts/python scripts/embed_kb.py [--config PATH] preflight
+      .venv/Scripts/python scripts/embed_kb.py [--config PATH] embed --paid --max-cost-usd X
+                                                                        (human only)
+      .venv/Scripts/python scripts/embed_kb.py [--config PATH] load [--allow-remote]
 
 Subcommands
 -----------
@@ -25,11 +29,17 @@ embed      Paid. Refuses without --paid. --max-cost-usd is required, may not exc
            connects to the database. No automatic retries.
 load       No API call. DATABASE_URL only; non-local hosts are refused unless
            --allow-remote. One transaction: config row, this config's embeddings
-           replaced, then kb_search_semantic is called once so every KBF check runs.
-           Any failure rolls back.
+           replaced, then kb_search_semantic (article-v2: kb_search_semantic_v2) is
+           called once so every KBF check runs. Any failure rolls back.
 
 article-v1 is exactly "Title: {title}\\n\\n{fullText}". No tags, description, category,
 URL, staffOnly or section fields. (Lexical indexes title, tags, description, fullText.)
+
+article-v2 is the article-v1 text, then "\\n\\nStaff only:\\n" + staffOnly.text, untrimmed,
+only when that text is a string with content after stripping exactly the six characters
+in STAFF_TRIM. No suffix when staffOnly is null, has no "text", or "text" is null. Any
+other "text" type is an error, never skipped. The bytes match kb_article_v2_sha256
+(supabase/migrations/*_add_article_v2.sql).
 
 Input rule (text-if-fits-else-token-ids-v1): the text is encoded with cl100k_base,
 special-token text encoded as ordinary text. If it fits in max_tokens it is sent as
@@ -85,10 +95,12 @@ BATCH_MAX_TOKENS = 100_000
 API_MAX_INPUT_TOKENS = 8192
 
 TEMPLATE = "Title: {title}\n\n{fullText}"
+TEMPLATE_V2 = TEMPLATE + "\n\nStaff only:\n{staffOnly.text}"
+# The characters the article-v2 suffix rule strips (btrim set in kb_article_v2_sha256).
+STAFF_TRIM = " \t\n\x0b\x0c\r"
 NORM_TOLERANCE = 1e-3
 
-# Values the code implements. The config must name exactly these.
-FIXED_CONFIG = {
+_SHARED_CONFIG = {
     "dimensions": 1536,
     "encoding": "cl100k_base",
     "input_hash": "sha256-kind-prefixed-v1",
@@ -98,9 +110,27 @@ FIXED_CONFIG = {
     "query_input": "raw-query-string-v1",
     "response_encoding": "base64-float32le",
     "special_tokens": "encode_as_text",
-    "staff_only": "excluded",
-    "template": TEMPLATE,
-    "template_version": "article-v1",
+}
+
+# Values the code implements, by template_version. The config must name exactly one.
+ALLOWED_CONFIGS = {
+    "article-v1": {**_SHARED_CONFIG, "staff_only": "excluded", "template": TEMPLATE,
+                   "template_version": "article-v1"},
+    "article-v2": {**_SHARED_CONFIG, "staff_only": "suffix-if-text-nonblank-v1",
+                   "template": TEMPLATE_V2, "template_version": "article-v2"},
+}
+
+# What load runs, by template_version: the SQL text hash per article, then one probe
+# search so every KBF check runs. Fixed strings; nothing is formatted in.
+LOAD_SQL = {
+    "article-v1": ("select source_article_id, kb_article_v1_sha256(title, full_text) "
+                   "from articles",
+                   "select count(*) from kb_search_semantic(%s::text::extensions.vector, "
+                   "1, %s)"),
+    "article-v2": ("select source_article_id, kb_article_v2_sha256(title, full_text, "
+                   "staff_only) from articles",
+                   "select count(*) from kb_search_semantic_v2(%s::text::extensions.vector, "
+                   "1, %s)"),
 }
 TRUNCATION_RULES = ("prefix-v1", "none-abort")
 HEX64 = frozenset("0123456789abcdef")
@@ -146,10 +176,15 @@ def load_config(path: Path) -> tuple[dict, str]:
         raise EmbedError(f"config: cannot read {path} as ASCII JSON", EXIT_USAGE) from None
     if not isinstance(cfg, dict) or canonical_json(cfg) != raw:
         raise EmbedError("config: file is not canonical JSON", EXIT_USAGE)
-    expected = set(FIXED_CONFIG) | {"encoding_file_sha256", "truncation"}
+    version = cfg.get("template_version")
+    fixed = ALLOWED_CONFIGS.get(version) if isinstance(version, str) else None
+    if fixed is None:
+        raise EmbedError("config: template_version is not one this code implements",
+                         EXIT_USAGE)
+    expected = set(fixed) | {"encoding_file_sha256", "truncation"}
     if set(cfg) != expected:
         raise EmbedError("config: unexpected or missing keys", EXIT_USAGE)
-    for k, v in FIXED_CONFIG.items():
+    for k, v in fixed.items():
         if cfg[k] != v or type(cfg[k]) is not type(v):
             raise EmbedError(f"config: {k} is not the value this code implements", EXIT_USAGE)
     if not _is_hex64(cfg["encoding_file_sha256"]):
@@ -206,6 +241,36 @@ def article_v1_text(rec: dict) -> str:
     return f"Title: {rec['title']}\n\n{rec['fullText']}"
 
 
+def article_v2_text(rec: dict) -> str:
+    """article-v1 text plus the staff-only suffix, byte for byte what
+    kb_article_v2_sha256 hashes. Errors name the article, never its text."""
+    text = article_v1_text(rec)
+    sid = rec["sourceArticleId"]
+    if "staffOnly" not in rec:
+        raise EmbedError(f"article {sid}: staffOnly is missing", EXIT_INVALID)
+    staff = rec["staffOnly"]
+    if staff is None:
+        return text
+    if not isinstance(staff, dict):
+        raise EmbedError(f"article {sid}: staffOnly is not null or an object", EXIT_INVALID)
+    staff_text = staff.get("text")
+    if staff_text is None:
+        return text
+    if not isinstance(staff_text, str):
+        raise EmbedError(f"article {sid}: staffOnly.text is not a string or null",
+                         EXIT_INVALID)
+    if staff_text.strip(STAFF_TRIM) == "":
+        return text
+    return text + "\n\nStaff only:\n" + staff_text
+
+
+TEXT_BUILDERS = {"article-v1": article_v1_text, "article-v2": article_v2_text}
+
+
+def text_builder(cfg: dict):
+    return TEXT_BUILDERS[cfg["template_version"]]
+
+
 def sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -216,9 +281,10 @@ def input_sha256(kind: str, payload) -> str:
     return sha256_hex(b"tokens\n" + json.dumps(payload, separators=(",", ":")).encode("ascii"))
 
 
-def prepare_input(rec: dict, enc, truncation: dict) -> dict:
-    """What is sent for one article, plus the identity of exactly that."""
-    text = article_v1_text(rec)
+def prepare_input(rec: dict, enc, truncation: dict, build_text=article_v1_text) -> dict:
+    """What is sent for one article, plus the identity of exactly that. build_plan
+    passes the config's builder (text_builder)."""
+    text = build_text(rec)
     tokens = encode_tokens(enc, text)
     max_tokens = truncation["max_tokens"]
     if len(tokens) <= max_tokens:
@@ -499,7 +565,8 @@ def build_plan(args, cfg, config_sha256, enc) -> dict:
         for e in errors:
             print(e)
         raise EmbedError(f"input validation failed: {len(errors)} errors", EXIT_INVALID)
-    preps = [prepare_input(r, enc, cfg["truncation"]) for r in records]
+    build = text_builder(cfg)
+    preps = [prepare_input(r, enc, cfg["truncation"], build) for r in records]
     cache_path = cache_path_for(args.cache_dir, config_sha256)
     journal_path = cache_path.with_name(cache_path.name + ".journal")
     cached = read_cache(cache_path, cfg, config_sha256)
@@ -523,8 +590,8 @@ def print_plan(plan: dict, cfg: dict, config_sha256: str, args) -> None:
     print(f"model {cfg['model']} dimensions={cfg['dimensions']} "
           f"template {cfg['template_version']}")
     print(f"encoding {cfg['encoding']} file sha256={cfg['encoding_file_sha256']} (verified)")
-    print(f"article-v1 tokens before truncation: max {full[-1]} p50 {nearest_rank(full, 0.5)} "
-          f"p95 {nearest_rank(full, 0.95)} total {sum(full)} "
+    print(f"{cfg['template_version']} tokens before truncation: max {full[-1]} "
+          f"p50 {nearest_rank(full, 0.5)} p95 {nearest_rank(full, 0.95)} total {sum(full)} "
           f"over_{max_tokens} {sum(t > max_tokens for t in full)}")
     print(f"truncation {cfg['truncation']['rule']} max_tokens={max_tokens}: "
           f"truncated {sum(p['truncated'] for p in preps)}, "
@@ -691,7 +758,9 @@ def cmd_embed(args, cfg, config_sha256, enc, environ, transport_factory) -> int:
 
 def load_rows(conn, cfg: dict, config_sha256: str, cached: dict[str, dict]) -> dict:
     """Replace this config's embeddings with the cached rows for every DB article, then
-    run kb_search_semantic once. Caller owns the transaction."""
+    run kb_search_semantic (article-v2: kb_search_semantic_v2) once. Caller owns the
+    transaction."""
+    hash_sql, probe_sql = LOAD_SQL[cfg["template_version"]]
     with conn.cursor() as cur:
         cur.execute("select config from embedding_configs where config_sha256 = %s",
                     [config_sha256])
@@ -705,8 +774,7 @@ def load_rows(conn, cfg: dict, config_sha256: str, cached: dict[str, dict]) -> d
         elif got[0] != cfg:
             raise EmbedError("embedding_configs row for this sha256 holds a different config",
                              EXIT_INVALID)
-        cur.execute("select source_article_id, kb_article_v1_sha256(title, full_text) "
-                    "from articles")
+        cur.execute(hash_sql)
         db = dict(cur.fetchall())
         missing = sorted((sid for sid, h in db.items()
                           if sid not in cached or cached[sid]["source_text_sha256"] != h),
@@ -728,8 +796,7 @@ def load_rows(conn, cfg: dict, config_sha256: str, cached: dict[str, dict]) -> d
         probe = vector_literal(decode_embedding(cached[min(db, key=int)]["embedding_b64"], dims)) \
             if db else None
         if probe is not None:
-            cur.execute("select count(*) from kb_search_semantic(%s::text::extensions.vector, "
-                        "1, %s)", [probe, config_sha256])
+            cur.execute(probe_sql, [probe, config_sha256])
             cur.fetchone()
     return {"articles": len(db), "loaded": len(db), "replaced": replaced}
 

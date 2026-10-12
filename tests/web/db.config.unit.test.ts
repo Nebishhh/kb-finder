@@ -15,7 +15,7 @@ import { dailyCap } from "@/lib/limits/daily-cap";
 import { errorSummary } from "@/lib/safe-error";
 import { handleSearch } from "@/lib/search/handler";
 import { searchLexical, searchLexicalV2 } from "@/lib/search/lexical";
-import { searchSemantic } from "@/lib/search/semantic";
+import { searchSemantic, searchSemanticV2 } from "@/lib/search/semantic";
 
 // Offline. pg's Pool is replaced by a recorder, so nothing connects. The
 // certificate below is a throwaway self-signed test certificate whose key was
@@ -252,6 +252,7 @@ describe("getPool and /api/search on a hosted misconfiguration", () => {
           lexical: searchLexical,
           semantic: searchSemantic,
           "lexical-v2": searchLexicalV2,
+          "semantic-v2": searchSemanticV2,
         },
         gate: () => "open",
         limit: dailyCap,

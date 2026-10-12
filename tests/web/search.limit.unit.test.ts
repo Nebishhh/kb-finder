@@ -60,9 +60,13 @@ function harness(limitResult: LimitFn = async () => "ok") {
     calls.push("lexical-v2");
     return [ROW];
   });
+  const semanticV2 = vi.fn<SearchFn>(async () => {
+    calls.push("semantic-v2");
+    return [ROW];
+  });
   async function run(request: Request, env: SearchEnv = {}) {
     const response = await handleSearch(request, {
-      retrievers: { lexical, semantic, "lexical-v2": lexicalV2 },
+      retrievers: { lexical, semantic, "lexical-v2": lexicalV2, "semantic-v2": semanticV2 },
       gate: () => "open",
       limit,
       env,

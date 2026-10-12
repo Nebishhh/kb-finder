@@ -75,12 +75,17 @@ const lexicalV2NeverCalled = vi.fn<SearchFn>(async () => {
   throw new Error("lexical-v2 retriever called");
 });
 
+const semanticV2NeverCalled = vi.fn<SearchFn>(async () => {
+  throw new Error("semantic-v2 retriever called");
+});
+
 async function run(request: Request, search: SearchFn) {
   const response = await handleSearch(request, {
     retrievers: {
       lexical: search,
       semantic: semanticNeverCalled,
       "lexical-v2": lexicalV2NeverCalled,
+      "semantic-v2": semanticV2NeverCalled,
     },
     gate: () => "open" as const,
     limit: async () => "ok" as const,

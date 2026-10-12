@@ -57,6 +57,7 @@ describe.skipIf(!databaseUrl)("POST /api/search against the local DB", () => {
     ["empty query", JSON.stringify({ query: "", mode: "lexical" })],
     ["extra field", JSON.stringify({ query: "wifi", mode: "lexical", limit: 100 })],
     ["semantic without the gate", JSON.stringify({ query: "wifi", mode: "semantic" })],
+    ["semantic-v2 without the gate", JSON.stringify({ query: "wifi", mode: "semantic-v2" })],
     ["invalid JSON", '{"query": "wifi", '],
   ])("%s returns 400", async (_name, body) => {
     const response = await POST(post(body));
@@ -566,6 +567,126 @@ describe.skipIf(!databaseUrl)("LEXICAL_V2_SQL beside LEXICAL_SQL as kb_app", () 
       const v2 = (await client.query(LEXICAL_V2_SQL, ["campus printer", 50])).rows;
       expect(v1.length).toBeGreaterThan(0);
       expect(v2).toEqual(v1);
+    } finally {
+      await client.query("rollback");
+      const left = await client.query(
+        "select count(*)::int as n from pg_namespace where nspname = $1",
+        [schema],
+      );
+      await client.end();
+      expect(left.rows[0].n).toBe(0);
+    }
+  });
+});
+
+// The real SEMANTIC_V2_SQL beside SEMANTIC_SQL as kb_app, with both configs
+// from their files, against every migration in order, in a throwaway schema on
+// a dedicated client, inside one transaction that is always rolled back. Rows
+// and vectors are synthetic; no OpenAI call is made.
+describe.skipIf(!databaseUrl)("SEMANTIC_V2_SQL beside SEMANTIC_SQL as kb_app", () => {
+  const MIGRATION_DIR = join(process.cwd(), "supabase", "migrations");
+  const MIGRATIONS = readdirSync(MIGRATION_DIR)
+    .filter((n) => n.endsWith(".sql"))
+    .sort()
+    .map((name) => readFileSync(join(MIGRATION_DIR, name), "utf8"));
+
+  function unit(index: number, dims: number): number[] {
+    const v = new Array<number>(dims).fill(0);
+    v[index] = 1;
+    return v;
+  }
+
+  it("v1 and v2 rank the same vectors the same way; each config fails the other's checks", async () => {
+    const { CONFIG_ROW_SQL, makeSemanticSearch, SEMANTIC_SQL, SEMANTIC_V2_SQL, toVectorLiteral } =
+      await import("@/lib/search/semantic");
+    const { getSemanticConfig } = await import("@/lib/search/semantic-config");
+    const v1 = getSemanticConfig("article-v1");
+    const v2 = getSemanticConfig("article-v2");
+    const schema = `kbtest_${crypto.randomUUID().replaceAll("-", "")}`;
+    const client = new Client({ connectionString: databaseUrl });
+    await client.connect();
+    try {
+      await client.query("begin");
+      await client.query(`create schema ${schema}`);
+      await client.query(`set local search_path to ${schema}`);
+      for (const sql of MIGRATIONS) await client.query(sql);
+      // 1 has staff-only text, 2 and 3 do not.
+      await client.query(
+        "insert into articles (source_article_id, title, url, full_text, sections, " +
+          "staff_only, parser_version) values " +
+          "('1', 'Printer setup', 'https://td.usd.edu/TDClient/33/Portal/KB/Article/1/x', " +
+          "'Add a campus printer.', '[]', " +
+          "'{\"text\": \"Escalate to zebrafinch queue.\", \"links\": []}', '2'), " +
+          "('2', 'Queue help', 'https://td.usd.edu/TDClient/33/Portal/KB/Article/2/x', " +
+          "'The zebrafinch queue handles printers.', '[]', null, '2'), " +
+          "('3', 'Wifi', 'https://td.usd.edu/TDClient/33/Portal/KB/Article/3/x', " +
+          "'Reconnect.', '[]', '{\"text\": \" \\n\", \"links\": []}', '2')",
+      );
+      const hashes: [typeof v1, string][] = [
+        [v1, "kb_article_v1_sha256(a.title, a.full_text)"],
+        [v2, "kb_article_v2_sha256(a.title, a.full_text, a.staff_only)"],
+      ];
+      for (const [cfg, hash] of hashes) {
+        await client.query("insert into embedding_configs values ($1, $2::jsonb, $3, $4, $5)", [
+          cfg.sha256, cfg.canonical, cfg.model, cfg.dimensions, cfg.templateVersion,
+        ]);
+        for (const [id, index] of [["1", 1], ["2", 0], ["3", 2]] as const) {
+          await client.query(
+            "insert into article_embeddings (config_sha256, source_article_id, " +
+              "source_text_sha256, input_kind, input_sha256, input_tokens, truncated, embedding) " +
+              `select $1, a.source_article_id, ${hash}, 'text', repeat('c', 64), 5, false, ` +
+              "$3::text::extensions.vector from articles a where a.source_article_id = $2",
+            [cfg.sha256, id, toVectorLiteral(unit(index, cfg.dimensions), cfg.dimensions)],
+          );
+        }
+      }
+      await client.query("grant kb_app to current_user with inherit false, set true");
+      await client.query("set local role kb_app");
+
+      const embed = vi.fn(async () => unit(0, v1.dimensions));
+      const search = (config: () => typeof v1) =>
+        makeSemanticSearch({
+          embed,
+          query: (text, params) => client.query(text, params),
+          configRows: async (sha256) => (await client.query(CONFIG_ROW_SQL, [sha256])).rows,
+          config,
+        });
+      const ids = (rows: { rank: number; source_article_id: string }[]) =>
+        rows.map((r) => [r.rank, r.source_article_id]);
+      const rowsV1 = await search(() => v1)("wifi", 50);
+      const rowsV2 = await search(() => v2)("wifi", 50);
+      expect(ids(rowsV1)).toEqual([[1, "2"], [2, "1"], [3, "3"]]);
+      expect(rowsV2).toEqual(rowsV1);
+      expect(embed).toHaveBeenCalledTimes(2);
+
+      // The DB side: each function refuses the other version's config (KBF02).
+      const q = toVectorLiteral(unit(0, v1.dimensions), v1.dimensions);
+      const sqlstate = async (sql: string, cfg: string) => {
+        await client.query("savepoint s");
+        try {
+          await client.query(sql, [q, 50, cfg]);
+          return "ok";
+        } catch (err) {
+          return (err as { code?: string }).code;
+        } finally {
+          await client.query("rollback to savepoint s");
+        }
+      };
+      expect(await sqlstate(SEMANTIC_V2_SQL, v1.sha256)).toBe("KBF02");
+      expect(await sqlstate(SEMANTIC_V2_SQL, v2.sha256)).toBe("ok");
+      expect(await sqlstate(SEMANTIC_SQL, v1.sha256)).toBe("ok");
+      // A v2 embedding for the staff-text article, hashed as v1, is stale (KBF05).
+      await client.query("reset role");
+      await client.query(
+        "update article_embeddings e set source_text_sha256 = " +
+          "kb_article_v1_sha256(a.title, a.full_text) from articles a " +
+          "where a.source_article_id = e.source_article_id and e.config_sha256 = $1 " +
+          "and e.source_article_id = '1'",
+        [v2.sha256],
+      );
+      await client.query("set local role kb_app");
+      expect(await sqlstate(SEMANTIC_V2_SQL, v2.sha256)).toBe("KBF05");
+      expect(await sqlstate(SEMANTIC_SQL, v1.sha256)).toBe("ok");
     } finally {
       await client.query("rollback");
       const left = await client.query(

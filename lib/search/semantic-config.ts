@@ -3,11 +3,21 @@ import "server-only";
 import { createHash } from "node:crypto";
 
 import articleV1 from "@/config/embedding/article-v1.json";
+import articleV2 from "@/config/embedding/article-v2.json";
 
-// The query side of the active embedding config. Everything comes from
-// config/embedding/article-v1.json, the same file scripts/embed_kb.py hashes;
+// The query side of an embedding config. Everything comes from
+// config/embedding/<version>.json, the same file scripts/embed_kb.py hashes;
 // nothing here is a second copy. The sha256 is taken over the canonical
-// serialization, which a unit test pins byte for byte to the file.
+// serialization, which a unit test pins byte for byte to each file.
+// article-v1 serves semantic; article-v2 (DECISIONS.md, 2026-10-07) serves
+// the eval-only semantic-v2 mode.
+
+const CONFIG_FILES = {
+  "article-v1": articleV1,
+  "article-v2": articleV2,
+} as const;
+
+export type TemplateVersion = keyof typeof CONFIG_FILES;
 
 export type SemanticConfig = {
   model: string;
@@ -57,7 +67,12 @@ export function canonicalJson(value: unknown): string {
   throw new SemanticConfigError();
 }
 
-export function loadSemanticConfig(raw: unknown): SemanticConfig {
+// expectedVersion, when given, must equal the file's template_version, so a
+// file can never serve another version's mode.
+export function loadSemanticConfig(
+  raw: unknown,
+  expectedVersion?: TemplateVersion,
+): SemanticConfig {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
     throw new SemanticConfigError();
   }
@@ -68,6 +83,7 @@ export function loadSemanticConfig(raw: unknown): SemanticConfig {
     model.trim() === "" ||
     typeof templateVersion !== "string" ||
     templateVersion.trim() === "" ||
+    (expectedVersion !== undefined && templateVersion !== expectedVersion) ||
     typeof dimensions !== "number" ||
     !Number.isInteger(dimensions) ||
     dimensions <= 0 ||
@@ -81,11 +97,17 @@ export function loadSemanticConfig(raw: unknown): SemanticConfig {
   return { model, dimensions, templateVersion, canonical, sha256 };
 }
 
-let active: SemanticConfig | undefined;
+const loaded = new Map<TemplateVersion, SemanticConfig>();
 
-// Validated on first semantic use, never at import, so a bad config can only
-// fail semantic requests, never lexical ones.
-export function getSemanticConfig(): SemanticConfig {
-  active ??= loadSemanticConfig(articleV1);
-  return active;
+// Validated on first use of that version, never at import, so a bad config can
+// only fail requests for its own mode, never lexical ones or the other version.
+export function getSemanticConfig(
+  version: TemplateVersion = "article-v1",
+): SemanticConfig {
+  let config = loaded.get(version);
+  if (config === undefined) {
+    config = loadSemanticConfig(CONFIG_FILES[version], version);
+    loaded.set(version, config);
+  }
+  return config;
 }

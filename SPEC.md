@@ -111,7 +111,8 @@ functions, and the `gate_fail_global_day` kind added to the two
   `search_vector` is a stored generated column (lexical only).
 - `embedding_configs`: one row per embedding configuration.
   `config_sha256` (primary key) is the sha256 of the canonical bytes
-  of `config/embedding/article-v1.json`; also `config` (jsonb),
+  of `config/embedding/article-v1.json` (or `article-v2.json` for the
+  article-v2 experiment); also `config` (jsonb),
   `model`, `dimensions` (must be 1536), `template_version`.
 - `article_embeddings`: one row per (config, article), primary key
   `(config_sha256, source_article_id)`.
@@ -139,7 +140,7 @@ Request:
 ```ts
 const SearchRequestSchema = z.object({
   query: z.string().min(1).max(5000),
-  mode: z.enum(["lexical", "semantic"]),
+  mode: z.enum(["lexical", "semantic", "lexical-v2", "semantic-v2"]),
 }).strict(); // extra request fields (e.g. limit) are rejected with 400
 ```
 
@@ -181,6 +182,13 @@ Modes:
 - `semantic`: text-embedding-3-small + pgvector over whole articles.
   Frozen configuration: DECISIONS.md, "Phase 5 semantic-v1
   configuration".
+- `lexical-v2` (experimental, eval-only): `lexical` over
+  `search_vector_v2`, which adds staff-only text at weight D. Same
+  query handling, ranking and tie-break; ranking lives only in
+  `kb_search_lexical_v2`. DECISIONS.md, "article-v2 experiment".
+- `semantic-v2` (experimental, eval-only): `semantic` over article-v2
+  embeddings (below). Ranking lives only in `kb_search_semantic_v2`.
+  DECISIONS.md, "article-v2 experiment".
 - Planned, not built: `normalized_lexical`, `normalized_semantic`
   (query rewritten by the normalization model, prompt
   `normalize-v1`, then searched). Each is added only when its
@@ -225,11 +233,40 @@ Semantic mode:
   `EmbeddingError OPENAI_HTTP_429`), never provider text or query
   text.
 
+article-v2 (the `semantic-v2` experiment; `semantic` stays on
+article-v1):
+- Config `config/embedding/article-v2.json`, identical to article-v1
+  except `template_version` `article-v2`, `staff_only`
+  `suffix-if-text-nonblank-v1` and the template. Its sha256 is
+  `5cb0d08b0547a1ab611854c919d0f694eb3eb59314118775d265023c7fb12f33`;
+  its embeddings sit beside v1's under that sha, with their own cache
+  file. Model, dimensions, truncation and query input are as above.
+- Text: the article-v1 text, then `"\n\nStaff only:\n"` followed by
+  `staffOnly.text` exactly as stored (untrimmed), only when that text
+  has content. No suffix when `staffOnly` is null, has no `text`, or
+  `text` is null, empty or made only of space, tab, LF, VT, FF and CR
+  (U+0020, U+0009 to U+000D). Any other character, including
+  non-ASCII whitespace such as U+00A0, is content. UTF-8, no Unicode
+  normalization, LF only. The embed script refuses a `text` that is
+  neither a string nor null. The contract is `kb_article_v2_sha256`
+  (`supabase/migrations/*_add_article_v2.sql`); the embed script
+  builds the identical bytes.
+- `kb_search_semantic_v2` has the same checks, ranking and tie-break
+  as `kb_search_semantic`. KBF02 also fires for a config whose
+  `template_version` is not exactly `article-v2`, and KBF05 compares
+  against `kb_article_v2_sha256`.
+- Staff-only text is searchable in `lexical-v2` and `semantic-v2`
+  only. It is never displayed: results carry no article text.
+
 Mode gating (server-side):
 - `DEFAULT_SEARCH_MODE` is always allowed. Unset means `lexical`.
   The hosted app sets it to `semantic`. A value that names no known
-  mode is a config error (500 below).
-- `EVAL_MODES_ENABLED` exactly `"true"` unlocks the other modes.
+  mode is a config error (500 below). Only `lexical` and `semantic`
+  may be the default: `lexical-v2` or `semantic-v2` there is also a
+  config error, with or without `EVAL_MODES_ENABLED`.
+- `EVAL_MODES_ENABLED` exactly `"true"` unlocks the other modes,
+  including the experimental `lexical-v2` and `semantic-v2`, which
+  are reachable no other way.
   Any other value, including `"TRUE"` or `"1"`, does not.
 - Any other mode is rejected with 400.
 - The UI resolves `DEFAULT_SEARCH_MODE` the same way, on the server
@@ -315,7 +352,9 @@ KBF02 server-side check (`lib/search/semantic.ts`):
 config sha256. Before embedding, the server also reads that
 `embedding_configs` row and requires exactly one row whose `config`
 (compared in canonical JSON form), `model`, `dimensions` and
-`template_version` equal `config/embedding/article-v1.json`.
+`template_version` equal the mode's config file:
+`config/embedding/article-v1.json` for `semantic`,
+`config/embedding/article-v2.json` for `semantic-v2`.
 Otherwise it throws `ConfigMismatchError` and logs
 `ConfigMismatchError KBF02_CONFIG_MISMATCH`. Only a pass is
 remembered, per server process, so a failed check is retried on the
