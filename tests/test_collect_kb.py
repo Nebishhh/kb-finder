@@ -80,6 +80,7 @@ TREE = {
 
 
 class DiscoveryTests(unittest.TestCase):
+    @unittest.skipUnless(CAT.exists(), "sample HTML data/samples/category_html not in repo (gitignored)")
     def test_real_fixtures(self):
         arts, subs = collect_kb.parse_category((CAT / "12.html").read_bytes(), BASE + "Category/12/x")
         self.assertEqual((len(arts), len({a["id"] for a in arts}), len(subs)), (603, 603, 18))
@@ -184,6 +185,7 @@ class WalkTests(unittest.TestCase):
         self.assertEqual(collect_kb.USER_AGENT, "KBFinder-Collector/0.1 "
                          "(personal academic project; robots-respecting; 6s minimum delay)")
 
+    @unittest.skipUnless(ART.exists(), "sample HTML data/samples/html not in repo (gitignored)")
     def test_fixture_bodies_are_valid(self):
         for p in sorted(ART.glob("*[0-9].html")):
             if p.stem.endswith("_print"):

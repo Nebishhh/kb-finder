@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import parse_kb  # noqa: E402
 from bs4 import BeautifulSoup  # noqa: E402
 
-FIX = ROOT / "data" / "samples" / "html"
+FIX = ROOT / "data" / "samples" / "html"  # git-ignored samples; fixture tests skip if absent
 IDS = ["4535", "5913", "1027", "508", "233", "8721", "6260", "1866", "352", "430",
        "9079", "4613", "8318"]
 STAFF_IDS = {"4535", "508", "233", "6260", "1866", "430", "9079"}
@@ -36,6 +36,7 @@ def wrap(body_html):
         "<a href='/x'>RELATED-ONLY</a></div></body></html>").encode()
 
 
+@unittest.skipUnless(FIX.exists(), "sample HTML data/samples/html not in repo (gitignored)")
 class FixtureTests(unittest.TestCase):
     def test_all_samples_parse(self):
         for i in IDS:
@@ -292,6 +293,7 @@ class SyntheticTests(unittest.TestCase):
         self.assertIn("Nested note.", a["fullText"])
         self.assertIn("footer_unclassified", a["warnings"])
 
+    @unittest.skipUnless(FIX.exists(), "sample HTML data/samples/html not in repo (gitignored)")
     def test_zero_width_characters_removed(self):
         zw = "".join(map(chr, (0x200B, 0x200C, 0x200D, 0x2060, 0xFEFF)))
         a = parse_kb.parse_article(wrap("<p>ab" + zw + "cd</p><p>" + zw + "</p><p>e" + zw + " f</p>"))
