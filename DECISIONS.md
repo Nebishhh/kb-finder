@@ -677,3 +677,38 @@ negative partly because its fix is staff-only. article-v2 is scored on eval
 v2, with the decision rule written before that run. Production stays on v1
 until then. Build is local only; nothing changes on the hosted database
 until a later, logged decision.
+## 2026-10-12: article-v2 built and loaded locally (not scored)
+
+The article-v2 experiment (entry of 2026-10-07) is built and loaded on the
+local dev database only. Commits: 0153549 (migration and lexical-v2), then
+the article-v2 embedding config and semantic-v2 mode.
+
+Lexical: search_vector_v2 (v1 vector plus staff text at weight D) and
+kb_search_lexical_v2. On the local dev database the v1 results for 7
+generic queries were identical before and after the migration (334 rows,
+rank, id and exact score), and search_vector_v2 differs from search_vector
+on exactly the 1,255 articles with staff text.
+
+Semantic: config config/embedding/article-v2.json, sha256
+5cb0d08b0547a1ab611854c919d0f694eb3eb59314118775d265023c7fb12f33.
+Cache file cache/article_embeddings/5cb0d08b0547a1ab.jsonl, 3,109 rows,
+sha256 112a8f1275b35a306e75efea8c8674bbabada843cb24ef28119257ac356fa6c9.
+Input: 577,380 tokens before truncation, 569,605 sent, 1 article truncated
+(9431, as in v1). Projected cost $0.011392. Actual cost: [FROM OPENAI USAGE].
+One paid run; a later run had 3,109 cache hits and sent nothing. The Python
+text builder matches kb_article_v2_sha256 byte for byte on all 3,109
+articles.
+
+Loaded locally: both configs hold 3,109 rows, and kb_search_semantic and
+kb_search_semantic_v2 each return 50 results with no KBF error. article-v1's
+config, sha, cache file, text bytes and SQL are unchanged (checked before
+and after the refactor).
+
+Tests after Part 2: Python 418 (live DB included), unit 427, db 24, lint and
+build clean.
+
+Unchanged: production stays on v1. lexical-v2 and semantic-v2 are reachable
+only with EVAL_MODES_ENABLED; neither can be DEFAULT_SEARCH_MODE. The hosted
+database does not have the article-v2 migration or embeddings. Not scored:
+article-v2 is judged on eval v2, with the decision rule written before that
+run.
