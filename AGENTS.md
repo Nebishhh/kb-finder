@@ -2,7 +2,7 @@
 
 ## Context
 Retrieval tool mapping IT issue descriptions to public Coyote OneStop
-Knowledge Base articles. Full spec: SPEC.md. Workflow: WORKFLOW.md.
+Knowledge Base articles. Full spec: SPEC.md. Decisions and eval results: DECISIONS.md.
 Retrieval quality comes before UI polish.
 
 ## Current Stack
