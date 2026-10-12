@@ -17,3 +17,10 @@ next-env.d.ts
 coverage/
 # Local caches (embeddings etc.); never committed.
 cache/
+
+# KB content stays local
+data/parsed/
+data/samples/html/
+data/samples/category_html/
+.vercel/
+HANDOFF.md
