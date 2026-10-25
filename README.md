@@ -1,383 +1,167 @@
 # KB Finder
 
-KB Finder maps messy IT issue descriptions to articles in the public
-Coyote OneStop Knowledge Base. It returns a ranked list of real
-articles. It never writes answers, titles, IDs or links.
+Type an IT problem the way a person would say it. Get the knowledge base articles that fix it.
 
-The candidate pool is the Technology category (ID 61) and all its
-subcategories: 3,109 articles.
+KB Finder searches the 3,109 Technology articles in the University of South Dakota's public IT knowledge base. It returns real articles, ranked. It never writes its own answers.
 
-## Modes
+**Live demo:** [kb-finder.nebanebish.com](https://kb-finder.nebanebish.com) (access code on request, to limit API costs)
 
-- `lexical`: Postgres full-text search ("Postgres FTS baseline", not
-  BM25).
-- `semantic`: OpenAI `text-embedding-3-small` embeddings with exact
-  cosine search in pgvector, over whole articles (template
-  `article-v1`).
+**Stack:** Next.js 16 · React 19 · TypeScript · Python 3.12 · PostgreSQL + pgvector · OpenAI embeddings · Supabase · Vercel
 
-`DEFAULT_SEARCH_MODE` picks the default mode, which is always allowed.
-Unset means `lexical`. Any other mode is allowed only when
-`EVAL_MODES_ENABLED` is exactly `true`.
+![KB Finder search page](docs/screenshot.png)
 
-Semantic met the rule pre-registered in DECISIONS.md, so it is the
-hosted default: the hosted app sets `DEFAULT_SEARCH_MODE=semantic` and
-leaves `EVAL_MODES_ENABLED` unset. The UI reads the same setting on
-the server for each page request and sends that mode, so it always
-sends an allowed one. A `DEFAULT_SEARCH_MODE` that names no known mode
-makes the page show a configuration error and every search a 500.
+## Why
+
+I work at the USD IT Service Desk. People describe problems in their own words, like "my laptop screen broke." The knowledge base uses IT terms, like "Student Personal Computer Hardware Repair." Keyword search can struggle when the words don't match. KB Finder searches by meaning instead.
+
+## How it works
+
+- **Collect:** a Python crawler copies the public articles, following robots.txt with a 6-second delay.
+- **Search:** articles are turned into embeddings with OpenAI and matched to the user's description in Postgres (pgvector).
+- **Serve:** a Next.js app with one search API. The eval script calls the same API, so what gets tested is what users get.
 
 ## Results
 
-Same 21 positive cases, same labels, same `run_eval.py`, depth 50.
-Numbers are copied from DECISIONS.md ("First lexical baseline result"
-and "First semantic eval result"), which is the source of truth.
+I tested keyword search against semantic search on 21 real-style problems, each written two ways: how a student would type it, and short technician wording.
 
-| Mode | Track | Top-1 | Top-3 | MRR@50 | No target in top 50 |
-|---|---|---|---|---|---|
-| lexical | A (customer_query) | 7/21 (33%) | 13/21 (62%) | 0.481 | 1/21 |
-| lexical | B (technician_query) | 8/21 (38%) | 11/21 (52%) | 0.489 | 1/21 |
-| semantic | A (customer_query) | 12/21 (57%) | 16/21 (76%) | 0.690 | 0/21 |
-| semantic | B (technician_query) | 6/21 (29%) | 16/21 (76%) | 0.542 | 0/21 |
+| | Correct article in top 3 (student wording) | Correct article in top 3 (technician wording) |
+|---|---|---|
+| Keyword search | 13/21 (62%) | 11/21 (52%) |
+| Semantic search | 16/21 (76%) | 16/21 (76%) |
 
-The decision rule, frozen before any semantic run: semantic becomes
-the default only if Track A Top-3 >= 16/21 and Track B Top-3 >= 11/21
-(aggregate counts). Both held.
+I set the pass bar after the keyword baseline but before any semantic results. Semantic cleared it, so it became the default. It cleared the student bar exactly, and 21 cases is a small set, so I treat this as a promising start, not proof. Full numbers and caveats are below and in [DECISIONS.md](DECISIONS.md).
 
-**Read these numbers with care.**
-- **Small sample.** There are 21 positives. One case moves a metric
-  by about 5 points. Differences of one or two cases mean little.
-- **Track A met the threshold exactly.** 16/21 against a bar of 16.
-  One case the other way would have failed the rule.
-- **Track B Top-1 fell from 8 to 6.** Cases 001, 008, 010 and 016
-  moved from rank 1 to rank 2 or 3. Short technician wording that
-  matches a title still favors lexical.
-- **The modes do not see the same fields.** Lexical indexes title,
-  tags, description and full text. Semantic embeds title and full text
-  only. The gap is not only the retrieval method.
-- **case_021 is fixed.** Lexical missed it on both tracks (a
-  vocabulary gap: "laptop screen broke" against "Student Personal
-  Computer Hardware Repair"). Semantic ranks it 3 (Track A) and 4
-  (Track B).
-- **case_012 Track B regressed** from rank 6 to 39, while its Track A
-  improved from 29 to 5.
-- **Negatives.** The 4 negative cases are reviewed by hand, not
-  scored. Semantic top scores for them are 0.33 to 0.62, overlapping
-  real matches, so a score cutoff would not work as abstention.
-- **One scored run.** Query embeddings are not cached, so a second
-  semantic run can differ slightly. The first complete run is the
-  scored one.
+## What I focused on
 
-## Setup
+- **Honest evaluation:** test cases were locked before any results, the pass rule before any semantic results, and nothing was retuned after seeing numbers.
+- **Privacy:** searches are never stored or logged.
+- **Fail safe:** if semantic search breaks, the app shows an error instead of quietly giving worse results.
+- **Cost and access limits:** an access code, a daily search cap, and a restricted API key.
 
-Python 3.12 in `.venv`, Node, and the Supabase CLI. Commands are for
-PowerShell on Windows.
+## Known limits
+
+- It always returns results, even for problems the knowledge base doesn't cover.
+- The test set is small. A bigger one, ideally written by other people, is next.
+
+## How it was built
+
+I built this with AI coding agents under written rules. Claude Code writes the code, Codex reviews it, and every change waits for my approval. I read each diff and make every commit myself. The rules are in [AGENTS.md](AGENTS.md), and the full technical spec is in [SPEC.md](SPEC.md).
+
+## Run it locally
+
+The knowledge base content isn't included, but the tests run without it:
 
 ```
 py -3.12 -m venv .venv
 .venv/Scripts/python -m pip install -r requirements.txt
 npm install
+.venv/Scripts/python -m unittest discover -s tests
+npm run test:unit
 ```
 
-## Start the database
+Full setup is in the details below.
 
-Local Postgres through the Supabase CLI: the database and the local
-transaction pooler (Supavisor, port 54329), nothing else. The pooler
-is there to test the hosted path as `kb_app`; scripts, tests and local
-dev use the direct port 54322 as `postgres`. **Start Supabase only from
-a shell that does not have `OPENAI_API_KEY`.**
+## License
+
+Code: MIT. Knowledge base content belongs to the University of South Dakota and isn't covered by that license.
+
+Personal project. Not an official USD tool.
+
+---
+
+## Details
+
+<details>
+<summary><b>How it works, in full</b></summary>
+
+1. **Collect.** A Python crawler walks the public KB category pages over plain HTTP. It respects robots.txt and waits 6 seconds between requests. A full run takes about 5.3 hours.
+2. **Parse.** Each article becomes structured fields: title, sections, tags. Text in "ITS Staff Only" boxes goes into its own field and is not searchable in the live app.
+3. **Search.** Two modes, both in Postgres:
+   - `lexical`: Postgres full-text search. This is the baseline.
+   - `semantic`: OpenAI `text-embedding-3-small` over whole articles, with exact cosine search in pgvector.
+4. **Serve.** A Next.js app with one search route, `POST /api/search`. The UI and the eval script both call it, so what gets measured is what users get.
+
+The hosted app runs semantic mode on Vercel and Supabase.
+
+</details>
+
+<details>
+<summary><b>Full results and caveats</b></summary>
+
+21 positive test cases, each written two ways: Track A is how a stressed student would type it, Track B is short technician wording. Top-3 means a correct article is in the first three results. Depth 50 for every mode.
+
+| Mode | Track | Top-1 | Top-3 | MRR@50 | No target in top 50 |
+|---|---|---|---|---|---|
+| lexical | A (student) | 7/21 (33%) | 13/21 (62%) | 0.481 | 1/21 |
+| lexical | B (technician) | 8/21 (38%) | 11/21 (52%) | 0.489 | 1/21 |
+| semantic | A (student) | 12/21 (57%) | 16/21 (76%) | 0.690 | 0/21 |
+| semantic | B (technician) | 6/21 (29%) | 16/21 (76%) | 0.542 | 0/21 |
+
+The set also has 4 negative cases: problems the KB shouldn't cover. They aren't in the table. With no abstention, semantic always returns something, so I review those by hand.
+
+Semantic became the default because it passed a rule I wrote before any semantic run: Track A Top-3 at least 16/21 and Track B Top-3 at least 11/21.
+
+**Read these numbers with care:**
+- 21 cases is small. One case moves a metric by about 5 points.
+- Track A met the bar exactly. One case the other way and semantic would have failed the rule.
+- Semantic lost Top-1 on technician wording (8 to 6). Short queries that match a title still favor keywords.
+- The two modes don't see the same fields (semantic has no tags or description), so the gap is not only the method.
+- The first scenario topics were drafted with an LLM from my project scope and workflow notes, without browsing the KB. I can't rule out that those notes overlapped with the sample articles I'd inspected. Some cases came from drafts written without a topic list. I wrote or edited the final wording and froze it before assigning any labels.
+
+The test cases are in `eval/cases.json`.
+
+</details>
+
+<details>
+<summary><b>Engineering decisions</b></summary>
+
+- **Pre-registered evals.** Queries frozen before labels, labels frozen before the first run, decision rule written before the semantic run. Nothing is retuned after seeing numbers. Any change is a new, logged experiment.
+- **Pinned configs.** The corpus, migrations, embedding config and article embeddings are pinned by SHA-256. The search function refuses to run on missing, stale or mismatched embeddings.
+- **Queries are never stored.** Query text, its hash and its embedding are never written to logs, files, caches or database tables. Errors log a fixed code, never request text. In semantic mode the query is sent to OpenAI to be embedded.
+- **Fail closed.** A semantic failure returns an error, never a silent fallback to keyword results. A misconfiguration blocks search instead of weakening it.
+- **Bounded cost and access.** A shared access code with a daily cap on failed logins, 200 searches per day, a request size cap, and a restricted embeddings-only API key with low prepaid credit.
+- **Locked-down database.** The app connects as a least-privilege role with row-level security, over TLS with certificate checks. The public Data API is disabled.
+
+</details>
+
+<details>
+<summary><b>Limitations and what's next</b></summary>
+
+**Limitations**
+- **No abstention.** Semantic always returns results, even for problems the KB doesn't cover. The UI says so.
+- **Small eval set** (see above).
+- **Semantic reruns can differ slightly.** Query embeddings aren't cached, by design.
+- **Free-tier hosting** pauses after 7 idle days.
+
+**What's next**
+- **Eval v2.** About 50 new queries written blind, ideally by other people in their own words, with labels and the decision rule fixed before any run. It gates the next two items.
+- **Staff-only text as a search signal.** Built locally as `article-v2`, not scored yet. It makes that text searchable but never shows it in results.
+- **Comparison against the KB's built-in search.**
+- **An "I'm not sure" path** instead of always returning results.
+
+</details>
+
+<details>
+<summary><b>Full local setup</b></summary>
+
+The current tree doesn't include the KB content, so a full setup starts by collecting it. That makes over 3,100 requests to USD's site over about 5.3 hours, so please only run it if you need to. Your corpus will also differ from the pinned one, so the numbers above won't reproduce exactly. This part also needs the Supabase CLI.
 
 ```
+.venv/Scripts/python scripts/collect_kb.py
+.venv/Scripts/python scripts/parse_kb.py
+
 supabase start -x gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector
 supabase db reset
-```
 
-`supabase db reset` applies every migration, including the Phase 7
-ones: the Data API lockdown, the `kb_app` role with the
-`kb_rate_counters` table, and the pinned `search_path` on the `kb_`
-functions. `kb_app` is created `NOLOGIN` with no password. To use it
-through the pooler, set LOGIN and a password by hand and keep the
-password out of every file (see `.env.example`).
-
-## Check a database (read-only)
-
-```
-.venv/Scripts/python scripts/db_fingerprint.py [--per-article] [--settings] [--allow-remote]
-```
-
-It prints counts, config fields, versions and SHA-256 hashes of the
-articles and embedding vectors, in one read-only transaction that is
-always rolled back, so a local and a hosted database can be compared
-with a plain diff. `--settings` adds server settings such as the
-`auto_explain` ones. It needs `$env:DATABASE_URL`, refuses non-local
-hosts without `--allow-remote`, and a remote URL must also set
-`sslmode=verify-full`. It never prints the connection string or any
-article text.
-
-## Ingest the articles
-
-Copy `.env.example` to `.env.local`. Set `DATABASE_URL` in the shell
-too (see `.env.example`), then:
-
-```
+$env:DATABASE_URL = "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
 .venv/Scripts/python scripts/ingest_kb.py
-```
 
-It reads `data/parsed/articles.jsonl`. It refuses non-local hosts
-unless `--allow-remote` is given.
-
-## Load the article embeddings (no API call)
-
-The article embeddings live in a gitignored cache,
-`cache/article_embeddings/`, pinned by sha256 in DECISIONS.md. After
-a `supabase db reset` and ingest, load them with no API call:
-
-```
-.venv/Scripts/python scripts/embed_kb.py load
-```
-
-It runs in one transaction and finishes by running the semantic search
-function once. If any article is missing, stale or mismatched, the
-load rolls back.
-
-## Start the app
-
-Set `$env:DATABASE_URL` (see `.env.example`), then:
-
-```
 $env:NEXT_TELEMETRY_DISABLED = "1"
 $env:ACCESS_GATE = "off"
 $env:RATE_LIMIT = "off"
 npm run dev
 ```
 
-`ACCESS_GATE=off` and `RATE_LIMIT=off` are for local dev and eval runs
-only. Without them the gate needs `ACCESS_PASSWORD` and
-`GATE_COOKIE_SECRET`, and every valid search counts against the daily
-cap. Each flag works only when it is exactly `off` and `VERCEL` is
-unset; on Vercel either one makes every search a 500.
+That runs lexical mode. Semantic mode needs a one-time article embed with your own OpenAI key (about $0.01 for the full corpus) through `scripts/embed_kb.py`. See [SPEC.md](SPEC.md) and [AGENTS.md](AGENTS.md) for every command, flag and test.
 
-All search goes through `POST /api/search`. The UI shows the top 10.
-The API returns at most 50. With `DEFAULT_SEARCH_MODE` unset and
-without `EVAL_MODES_ENABLED`, only lexical works.
-
-## Hosted controls
-
-The hosted app is private: the project owner plus at most 2 or 3
-trusted testers. In brief:
-
-- **Password gate.** One shared password (`ACCESS_PASSWORD`: exactly
-  4 ASCII digits, or at least 20 characters). `POST /api/gate` checks
-  it and sets a signed, HttpOnly, Secure, SameSite=Lax cookie that
-  lasts 7 days. The MAC
-  covers the expiry and sha256 of the password, keyed by
-  `GATE_COOKIE_SECRET` (at least 32 bytes), so rotating either one
-  revokes every cookie. Pages without a valid cookie redirect to
-  `/gate`; `/api/search` checks the cookie itself and answers 401. A
-  missing or invalid password or secret fails closed.
-- **Failed-login cap.** At most 10 failed logins per UTC day across
-  all clients, in `kb_rate_counters` (kind `gate_fail_global_day`,
-  key `all`, no IP stored). Each attempt reserves a slot before the
-  password is compared, and a correct one gives it back. Attempt 11
-  of a day is a 429 and is never compared. Failing 10 times locks out
-  new logins until the next UTC day; existing cookies keep working.
-- **Body cap.** `/api/search` reads at most 32 KiB (32,768 bytes)
-  before parsing; a larger body is a 413. `/api/gate` reads at most
-  1 KiB.
-- **Daily cap.** One global counter: 200 valid, allowed searches per
-  UTC day across both modes. Search 201 of a day is a 429. Invalid
-  and unauthorized requests do not count; a search that fails after
-  the cap check does. The counter lives in `kb_rate_counters`.
-- **`kb_app` role.** The hosted app connects as `kb_app` through the
-  transaction pooler. It can read the KB tables, run the search
-  functions and their two helpers, and read and write the counter,
-  nothing else. `statement_timeout` is 5000 ms on the role itself.
-  RLS is on for every table, with
-  policies only for `kb_app`; `anon`, `authenticated` and PUBLIC have
-  no privileges on the KB objects.
-- **TLS.** When `VERCEL` is set, the server verifies the database
-  certificate chain against `DATABASE_CA_PEM` (the Supabase database
-  CA) and checks the hostname. A missing or invalid CA, or any query
-  string in `DATABASE_URL`, makes every search a 500.
-- **Semantic config check.** Before the first semantic query is
-  embedded, the server checks that the stored `embedding_configs` row
-  matches `config/embedding/article-v1.json` field for field. Only a
-  pass is remembered, once per server process. A mismatch is a 500
-  and spends no OpenAI call.
-
-## Run the eval
-
-With the app running (`ACCESS_GATE=off` and `RATE_LIMIT=off` in the
-app shell; `run_eval.py` sends no cookie, and a real run would use up
-the day's cap), from a shell without the key:
-
-```
-.venv/Scripts/python scripts/run_eval.py --mode lexical --cases eval/cases.json
-```
-
-`--cases` has no default. Smoke test with the fake set:
-
-```
-.venv/Scripts/python scripts/run_eval.py --mode lexical --cases tests/fixtures/fake_cases.json
-```
-
-Compare two `--json-out` reports case by case (rank, article ID and
-exact score):
-
-```
-.venv/Scripts/python scripts/compare_eval_json.py OLD.json NEW.json
-```
-
-## Paid steps (project owner only)
-
-Agents never run these and never set `OPENAI_API_KEY`. Use a dedicated
-OpenAI project with prepaid credit, auto-reload off and a spend limit.
-Locally the key exists only in the app shell, typed in when needed,
-and never in a file. The hosted app uses a restricted key of its own,
-set only in Vercel (see Privacy).
-
-### Article embed (once)
-
-1. Plan with no API call:
-   `.venv/Scripts/python scripts/embed_kb.py preflight`
-   It prints token counts, cache hits and misses, and projected cost.
-2. In a fresh shell that will not start Supabase:
-   ```
-   $env:OPENAI_API_KEY = Read-Host -MaskInput "OpenAI key"
-   .venv/Scripts/python scripts/embed_kb.py embed --paid --max-cost-usd 0.05
-   Remove-Item Env:OPENAI_API_KEY
-   ```
-   `--max-cost-usd` is required, with a hard cap of $0.50 and 2,000,000
-   tokens. The run stops if the billed tokens pass either limit. A
-   stopped run keeps a journal, so rerunning never re-bills finished
-   batches.
-3. Load into Postgres (no key): `.venv/Scripts/python scripts/embed_kb.py load`
-
-**Cost:** the full article embed was 544,549 tokens, about $0.011
-(DECISIONS.md, "Phase 5 article embed"). Each semantic query is one
-small embedding call.
-
-### Semantic eval
-
-- **Shell 1, database, no key:** `supabase start ...` as above.
-- **Shell 2, app, the only shell with the key:**
-  ```
-  $env:DATABASE_URL = "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
-  $env:NEXT_TELEMETRY_DISABLED = "1"
-  $env:EVAL_MODES_ENABLED = "true"
-  $env:ACCESS_GATE = "off"
-  $env:RATE_LIMIT = "off"
-  $env:OPENAI_API_KEY = Read-Host -MaskInput "OpenAI key"
-  npm run dev
-  ```
-- **Shell 3, eval runner, no key:**
-  ```
-  .venv/Scripts/python scripts/run_eval.py --mode semantic --cases tests/fixtures/fake_cases.json
-  .venv/Scripts/python scripts/run_eval.py --mode semantic --cases eval/cases.json --json-out <new file>
-  ```
-  The fake-case run is a smoke test, not an eval run.
-- **Afterwards:** stop the app and close shell 2.
-
-## Tests
-
-```
-.venv/Scripts/python -m unittest discover -s tests
-npm run lint
-npm run build
-npm run test:unit
-npm run test:db
-```
-
-Live database tests are skipped unless
-`$env:KB_FINDER_TEST_DATABASE_URL` is set. No test calls OpenAI: web
-tests block real `fetch`, and the embedding tests block the network
-and never build a real client.
-
-## Privacy
-
-- Query text is ephemeral. It is never logged, echoed, stored or put
-  in a URL.
-- Query embeddings are ephemeral too. The query vector and any query
-  hash are never written to disk, cache, logs or the database.
-- Semantic mode sends query text to OpenAI. Issues are typed in by
-  hand with personal details removed. Lexical mode sends nothing to
-  OpenAI.
-- `OPENAI_API_KEY` is server-side only. Locally it lives only in the
-  app shell. On Vercel it is a Production-only environment variable
-  marked Sensitive. It is never in `.env.local` or any other file,
-  never under a `NEXT_PUBLIC_` name, and no Supabase component reads
-  it.
-- Errors are logged as a class and a fixed code. Provider error text
-  and query text never reach a log.
-- Every error body is fixed and never echoes the request: 400
-  `{"error":"Invalid request"}`, 401 `{"error":"Unauthorized"}`, 413
-  `{"error":"Request too large"}`, 429 `{"error":"Too many requests"}`,
-  500 `{"error":"Search failed"}`. The UI maps each status to its own
-  fixed message and never shows response text.
-- The daily cap stores one global counter per UTC day (key `all`),
-  never an IP address or anything about the request. Windows older
-  than one day are deleted.
-- The gate password is never logged, echoed or stored; the cookie
-  holds only an expiry and a MAC.
-- `run_eval.py` never prints or writes query text. `--json-out`
-  writes case IDs, ranks, scores and article IDs only.
-- No names, IDs, emails, phone numbers or ticket data.
-
-## Frozen configurations
-
-Set before any eval run of that mode. Nothing here changes after
-seeing eval numbers. Any change is a new, logged experiment.
-
-**Lexical** (DECISIONS.md, Phase 4):
-- english config. Title weight A, tags and description B, full text C.
-- staffOnly text is stored but not searchable.
-- Query lexemes are ORed together.
-- `ts_rank`, default weights, normalization 0. Ties break on
-  `source_article_id` with C collation.
-- Ranking lives in one SQL function, `kb_search_lexical`.
-
-**Semantic** (DECISIONS.md, "Phase 5 semantic-v1 configuration"):
-- `text-embedding-3-small`, 1536 dimensions.
-- `article-v1` is exactly `"Title: {title}\n\n{fullText}"`, with no
-  staffOnly text.
-- Articles over 8,000 cl100k_base tokens are cut to their first 8,000
-  token IDs. One article (9431) is cut.
-- Exact cosine search, no ANN index. Score is cosine similarity, not
-  a probability. Ties break on `source_article_id` with C collation.
-- Ranking lives in one SQL function, `kb_search_semantic`. It fails
-  loudly on an incomplete, stale or mismatched embedding set.
-
-**Both:**
-- Depth fixed at 50 on the server. The client cannot change it.
-- statement_timeout 5000 ms, pool of 5 connections.
-- Corpus, migrations, embedding config and article cache are pinned by
-  SHA-256 in DECISIONS.md.
-
-## How the eval set was made
-
-- The query topics came from LLM drafts written without access to
-  the KB. It is not verified what project context the topic model
-  had. Some cases came from drafts written without a topic list.
-  See DECISIONS.md, "Where the case topics came from".
-- The project owner wrote or edited the final wording. It was frozen
-  in commit 7052d5e, before any labels.
-- Target labels were assigned afterward, in commit 3eecb22. The 3
-  label changes are logged in DECISIONS.md.
-
-## What comes next and why
-
-- **Phase 7: clean UI and hosting.** The hosting code is done
-  (default mode, gate, caps, `kb_app`, TLS). Deploying to Vercel and
-  hosted Supabase, checking the hosted database against the local
-  fingerprint, and the UI pass are still to come.
-- **Phase 6: query normalization.** A stretch goal that starts only
-  after hosting.
-- **Separate, logged experiments.** Hybrid retrieval, reranking and a
-  new, separately versioned eval set (case_013 and case_025 returned
-  articles close to what the student asked for). None of them
-  changes either frozen configuration.
-
-## Data note
-
-The articles come from the public Coyote OneStop Knowledge Base.
-Collection respected robots.txt with a 6-second delay. This is a
-personal project, not an official university tool.
+</details>

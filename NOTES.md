@@ -86,3 +86,7 @@ Persistent notes for later phases and new ideas go here.
 - No example queries were added in step 16. Any future examples go here so eval v2 excludes them.
 - Samsung Internet and some in-app browsers force their own dark mode over the site. Demo in regular Chrome.
 - Browsers cache favicons hard; check a new icon in an incognito tab.
+
+- Screenshot example query (2026-10-13), shown in docs/screenshot.png: "Hi, my microphone stopped working in Zoom this morning. I'm in class and the other people in the meeting say they can't hear me at all. My camera still works fine. I already tried leaving and rejoining the meeting. I'm on a Windows laptop." Exclude from eval v2.
+
+- Screenshot example query (2026-10-13), shown in docs/screenshot.png: "Hi, my microphone stopped working in Zoom this morning. I'm in class and the other people in the meeting say they can't hear me at all. My camera still works fine. I already tried leaving and rejoining the meeting. I'm on a Windows laptop." Exclude from eval v2.
