@@ -43,9 +43,6 @@ I set the pass bar after the keyword baseline but before any semantic results. S
 - It always returns results, even for problems the knowledge base doesn't cover.
 - The test set is small. A bigger one, ideally written by other people, is next.
 
-## How it was built
-
-I built this with AI coding agents under written rules. Claude Code writes the code, Codex reviews it, and every change waits for my approval. I read each diff and make every commit myself. The rules are in [AGENTS.md](AGENTS.md), and the full technical spec is in [SPEC.md](SPEC.md).
 
 ## Run it locally
 
