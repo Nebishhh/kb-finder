@@ -35,7 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {children}
           <footer className="site-footer">
             <span>A personal project. Not an official USD tool.</span>
-            <a className="footer-link" href="https://github.com/Nebishhh">
+            <a className="footer-link" href="https://nebanebish.com/">
               Neba
             </a>
           </footer>

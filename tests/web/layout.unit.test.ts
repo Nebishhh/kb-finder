@@ -21,11 +21,11 @@ describe("site footer", () => {
     expect(renderFooter()).toContain("<span>A personal project. Not an official USD tool.</span>");
   });
 
-  it("links Neba to the GitHub profile in the same tab", () => {
+  it("links Neba to the personal site in the same tab", () => {
     const footer = renderFooter();
     const link = footer.match(/<a[^>]*>([^<]*)<\/a>/);
     expect(link?.[1]).toBe("Neba");
-    expect(link?.[0]).toContain('href="https://github.com/Nebishhh"');
+    expect(link?.[0]).toContain('href="https://nebanebish.com/"');
     expect(link?.[0]).not.toContain("target=");
   });
 });
