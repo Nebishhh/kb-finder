@@ -25,6 +25,7 @@ vi.mock("@/lib/gate/cookie", async (importOriginal) => {
 });
 
 const PIN = "8264";
+const PIN6 = "826431";
 const SECRET = "test-cookie-secret-0123456789abcdef"; // 35 bytes
 const PIN_ENV: GateEnv = { ACCESS_PASSWORD: PIN, GATE_COOKIE_SECRET: SECRET };
 const T = Date.UTC(2026, 9, 1, 12, 0, 0); // ms
@@ -70,15 +71,27 @@ describe("ACCESS_PASSWORD validation", () => {
     expect(resolveGateConfig({ ...PIN_ENV, ACCESS_PASSWORD: "0000" }).mode).toBe("on");
   });
 
+  it("exactly 6 ASCII digits is a valid PIN", () => {
+    expect(resolveGateConfig({ ...PIN_ENV, ACCESS_PASSWORD: PIN6 }).mode).toBe("on");
+    expect(resolveGateConfig({ ...PIN_ENV, ACCESS_PASSWORD: "123456" }).mode).toBe("on");
+    expect(resolveGateConfig({ ...PIN_ENV, ACCESS_PASSWORD: "000000" }).mode).toBe("on");
+  });
+
   it.each([
     "123",
     "12345",
+    "1234567",
     "12a4",
+    "12345a",
     " 1234",
     "1234 ",
     "1234\n",
+    " 123456",
+    "123456 ",
+    "123456\n",
     "١٢٣٤", // Arabic-Indic digits are not ASCII
     "１２３４", // fullwidth digits
+    "１２３４５６", // fullwidth digits, six of them
     "a".repeat(19),
     "1".repeat(19),
     "",
@@ -130,14 +143,27 @@ describe("the failed-login cap in /api/gate", () => {
     expect(cap.release).toHaveBeenCalledWith(T);
   });
 
-  it("the 10th failure of a day is still compared; reaching 11 is 429 without a compare", async () => {
-    expect(GATE_FAIL_CAP).toBe(10);
+  it("a 6-digit PIN logs in; the old 4-digit PIN is then a counted failure", async () => {
+    const env = { ...PIN_ENV, ACCESS_PASSWORD: PIN6 };
     const { state, cap } = fakeCap();
-    for (let i = 1; i <= 10; i++) expect((await login("0000", cap)).status, `attempt ${i}`).toBe(401);
-    expect(state.count).toBe(10);
+    const right = await login(PIN6, cap, env);
+    expect(right.status).toBe(204);
+    expect(right.setCookie).toMatch(/^kbf_gate=v1\.\d+\.[A-Za-z0-9_-]{43}; /);
+    expect(state.count).toBe(0);
+    expect((await login(PIN, cap, env)).status).toBe(401);
+    expect(state.count).toBe(1);
+  });
+
+  it("the 100th failure of a day is still compared; reaching 101 is 429 without a compare", async () => {
+    expect(GATE_FAIL_CAP).toBe(100);
+    const { state, cap } = fakeCap();
+    for (let i = 1; i <= GATE_FAIL_CAP; i++) {
+      expect((await login("0000", cap)).status, `attempt ${i}`).toBe(401);
+    }
+    expect(state.count).toBe(GATE_FAIL_CAP);
 
     vi.mocked(checkPassword).mockClear();
-    // Even the right PIN: the count reaches 11, so it is never compared.
+    // Even the right PIN: the count reaches 101, so it is never compared.
     const result = await login(PIN, cap);
     expect(result).toEqual({
       status: 429,
@@ -147,15 +173,15 @@ describe("the failed-login cap in /api/gate", () => {
     });
     expect(checkPassword).not.toHaveBeenCalled();
     expect(cap.release).not.toHaveBeenCalled();
-    expect(state.count).toBe(11);
+    expect(state.count).toBe(GATE_FAIL_CAP + 1);
     expect((await login("0000", cap)).status).toBe(429);
     expect(checkPassword).not.toHaveBeenCalled();
   });
 
-  it("the right PIN at count 10 still gets in", async () => {
-    const { state, cap } = fakeCap(9);
+  it("the right PIN at count 100 still gets in", async () => {
+    const { state, cap } = fakeCap(GATE_FAIL_CAP - 1);
     expect((await login(PIN, cap)).status).toBe(204);
-    expect(state.count).toBe(9);
+    expect(state.count).toBe(GATE_FAIL_CAP - 1);
   });
 
   it("a reserve error is 500, fails closed, and the PIN is never compared", async () => {
@@ -196,7 +222,7 @@ describe("the failed-login cap in /api/gate", () => {
   });
 
   it("RATE_LIMIT=off with VERCEL unset skips the cap", async () => {
-    const { cap } = fakeCap(50);
+    const { cap } = fakeCap(GATE_FAIL_CAP + 50);
     const env = { ...PIN_ENV, RATE_LIMIT: "off" };
     expect((await login("0000", cap, env)).status).toBe(401);
     expect((await login(PIN, cap, env)).status).toBe(204);

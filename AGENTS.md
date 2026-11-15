@@ -16,12 +16,14 @@ Retrieval quality comes before UI polish.
   semantic-v2. DEFAULT_SEARCH_MODE is always allowed and may only be
   lexical or semantic (unset means lexical; the hosted app sets
   semantic); other modes need EVAL_MODES_ENABLED exactly "true"
-- Access gate: one shared password (a 4-digit PIN or a passphrase of
-  20+ characters), signed 7-day cookie, 10 failed logins per UTC day;
-  ACCESS_GATE=off only off Vercel (local dev and evals)
-- Limits: 32 KiB search body cap; one global cap of 200 valid
-  searches per UTC day in kb_rate_counters; RATE_LIMIT=off only off
-  Vercel (local dev and evals)
+- Access gate: one shared password (a 4- or 6-digit PIN or a passphrase
+  of 20+ characters), signed 7-day cookie, one global cap of 100 failed
+  logins per UTC day; ACCESS_GATE=off only off Vercel (local dev and
+  evals)
+- Limits: 32 KiB search body cap; one global cap of 2000 valid
+  searches per UTC day in kb_rate_counters, whose global rows are kept
+  90 days as daily totals; RATE_LIMIT=off only off Vercel (local dev
+  and evals)
 - OpenAI text-embedding-3-small for semantic mode only
 - next.config.ts must keep agentRules: false (next dev otherwise writes to AGENTS.md)
 

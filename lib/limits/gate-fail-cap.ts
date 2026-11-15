@@ -9,9 +9,9 @@ import { DAILY_CAP_SQL, LimitError } from "@/lib/limits/daily-cap";
 // it runs unchanged through the transaction pooler with kb_app's existing
 // privileges on kb_rate_counters.
 //
-// Reserve is the search cap's statement with this kind: it purges windows that
-// started more than one day before $1, then upserts today's row and returns the
-// new count atomically (see DAILY_CAP_SQL).
+// Reserve is the search cap's statement with this kind: it purges old windows
+// (global rows after 90 days, every other key after one day), then upserts
+// today's row and returns the new count atomically (see DAILY_CAP_SQL).
 export const GATE_RESERVE_SQL = DAILY_CAP_SQL;
 
 // Release gives back one reservation on the same day's row: decrement, or delete

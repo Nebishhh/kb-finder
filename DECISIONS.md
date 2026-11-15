@@ -712,3 +712,41 @@ only with EVAL_MODES_ENABLED; neither can be DEFAULT_SEARCH_MODE. The hosted
 database does not have the article-v2 migration or embeddings. Not scored:
 article-v2 is judged on eval v2, with the decision rule written before that
 run.
+
+## 2026-11-14: 6-digit PIN, higher caps, 90-day daily totals
+
+Usage is growing: several coworkers now use the hosted app and another
+starts this week. Both daily limits are global, so one person's use or
+typos affected everyone. Cost is not a constraint (about $0.02 of
+embeddings in a month).
+
+**PIN.** ACCESS_PASSWORD may now be exactly 4 or exactly 6 ASCII digits,
+or still a passphrase of at least 20 characters. 4 digits stays valid
+only so the code can ship before the hosted PIN changes; it is removed
+in a later change. Changing the PIN revokes every cookie, because the
+password hash is in the MAC, so every device signs in again.
+
+**Failed-login cap: 100 per UTC day, still global** (was 10). With N
+codes and a cap of c tries a day, the chance of a guess within d days is
+c*d/N and the expected time is N/(2c) days. For a 6-digit PIN at 100 a
+day: 5,000 days (about 14 years), 0.3% within 30 days. The 4-digit PIN
+at 10 a day was 500 days and 3% within 30 days. Per-IP limits were
+rejected again as the bound: an attacker can change address, coworkers
+on one campus address would share a bucket anyway, and it would mean
+storing an IP hash. Accepted tradeoff, unchanged: anyone can lock out
+new logins until the next UTC day, now by failing 100 times; devices
+already logged in keep working.
+
+**Search cap: 2,000 per UTC day, still global** (was 200). It is now a
+circuit breaker against a runaway loop, not a usage quota. It stays a
+constant in code, not an environment variable.
+
+**Daily totals.** The two global rows in kb_rate_counters (key 'all')
+are kept for 90 days instead of 1, counts only. Rows of any other key
+are still purged after one day, so a per-IP row, if one is ever used,
+never outlives a day. The cap decision still reads only the current
+day's row. The search total includes requests refused over the cap; the
+login total is failed plus refused attempts; a day with no failed login
+has no row. No migration and no grant change.
+
+Production retrieval, ranking and embeddings are unchanged.

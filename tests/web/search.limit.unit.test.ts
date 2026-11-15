@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { DAILY_SEARCH_CAP, GLOBAL_DAY_KIND, GLOBAL_KEY } from "@/lib/limits/config";
+import {
+  DAILY_SEARCH_CAP,
+  GLOBAL_DAY_KIND,
+  GLOBAL_KEY,
+  GLOBAL_RETENTION_DAYS,
+} from "@/lib/limits/config";
 import {
   DAILY_CAP_SQL,
   LimitError,
@@ -211,8 +216,8 @@ describe("makeDailyCap", () => {
     }));
   }
 
-  it("is 200 per UTC day on the global row", () => {
-    expect(DAILY_SEARCH_CAP).toBe(200);
+  it("is 2000 per UTC day on the global row", () => {
+    expect(DAILY_SEARCH_CAP).toBe(2000);
     expect(GLOBAL_DAY_KIND).toBe("search_global_day");
     expect(GLOBAL_KEY).toBe("all");
   });
@@ -229,14 +234,32 @@ describe("makeDailyCap", () => {
     expect(DAILY_CAP_SQL).not.toMatch(/now\(\)/i);
   });
 
+  it("keeps global rows 90 days and purges every other key after one day", () => {
+    expect(GLOBAL_RETENTION_DAYS).toBe(90);
+    expect(DAILY_CAP_SQL).toContain(
+      "delete from kb_rate_counters " +
+        `where window_start < $1::timestamptz - interval '${GLOBAL_RETENTION_DAYS} days' ` +
+        `or (key <> '${GLOBAL_KEY}' and window_start < $1::timestamptz - interval '1 day')`,
+    );
+    expect(DAILY_CAP_SQL.match(/delete from/g)).toHaveLength(1);
+    expect(DAILY_CAP_SQL.match(/interval/g)).toHaveLength(2);
+  });
+
   it.each([
     [1, "ok"],
-    [199, "ok"],
-    [200, "ok"],
-    [201, "daily_cap"],
-    [5000, "daily_cap"],
+    [201, "ok"],
+    [1999, "ok"],
+    [2000, "ok"],
+    [2001, "daily_cap"],
+    [50000, "daily_cap"],
   ])("count %i -> %s", async (count, expected) => {
     expect(await makeDailyCap({ query: fakeQuery(count), now: () => NOW })()).toBe(expected);
+  });
+
+  it("an injected cap replaces the default", async () => {
+    const cap = (count: number) => makeDailyCap({ query: fakeQuery(count), now: () => NOW, cap: 5 })();
+    expect(await cap(5)).toBe("ok");
+    expect(await cap(6)).toBe("daily_cap");
   });
 
   it.each([

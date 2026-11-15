@@ -243,11 +243,13 @@ describe.skipIf(!databaseUrl)("the daily cap through DAILY_CAP_SQL as kb_app", (
     }
   }
 
-  async function capAt(client: Client, iso: string) {
+  // cap is left out to use DAILY_SEARCH_CAP, or set small so a test can reach it.
+  async function capAt(client: Client, iso: string, cap?: number) {
     const { makeDailyCap } = await import("@/lib/limits/daily-cap");
     return makeDailyCap({
       query: (text, params) => client.query(text, params),
       now: () => new Date(iso),
+      cap,
     });
   }
 
@@ -269,26 +271,29 @@ describe.skipIf(!databaseUrl)("the daily cap through DAILY_CAP_SQL as kb_app", (
     });
   });
 
-  it("allows exactly 200 a day; request 201 trips the cap; the next UTC day starts over", async () => {
+  // The real cap is 2000; a cap of 5 is injected so the test does not loop 2000
+  // upserts. The statement and the comparison are the same either way.
+  it("allows exactly the cap a day; the next request trips it; the next UTC day starts over", async () => {
     await inThrowawaySchema(async (client) => {
       const { DAILY_SEARCH_CAP } = await import("@/lib/limits/config");
-      expect(DAILY_SEARCH_CAP).toBe(200);
-      const day1 = await capAt(client, "2026-10-01T23:59:59Z");
-      for (let i = 1; i <= 200; i++) expect(await day1(), `request ${i}`).toBe("ok");
+      expect(DAILY_SEARCH_CAP).toBe(2000);
+      const SMALL_CAP = 5;
+      const day1 = await capAt(client, "2026-10-01T23:59:59Z", SMALL_CAP);
+      for (let i = 1; i <= SMALL_CAP; i++) expect(await day1(), `request ${i}`).toBe("ok");
       expect(await day1()).toBe("daily_cap");
       expect(await day1()).toBe("daily_cap");
 
-      const day2 = await capAt(client, "2026-10-02T00:00:00Z");
+      const day2 = await capAt(client, "2026-10-02T00:00:00Z", SMALL_CAP);
       expect(await day2()).toBe("ok");
       const after = await rows(client);
       expect(after).toEqual([
-        { kind: "search_global_day", key: "all", w: "2026-10-01 00:00:00+00", count: 202 },
+        { kind: "search_global_day", key: "all", w: "2026-10-01 00:00:00+00", count: SMALL_CAP + 2 },
         { kind: "search_global_day", key: "all", w: "2026-10-02 00:00:00+00", count: 1 },
       ]);
     });
   });
 
-  it("deletes windows that started more than one day before the request", async () => {
+  it("keeps global rows 90 days; deletes other keys' windows older than one day", async () => {
     await inThrowawaySchema(async (client) => {
       const key = "b".repeat(64);
       await client.query(
@@ -296,12 +301,16 @@ describe.skipIf(!databaseUrl)("the daily cap through DAILY_CAP_SQL as kb_app", (
           "('search_ip_10m', $1, '2026-10-02T13:59:59Z', 4), " + // 1 day + 1 s before: purged
           "('search_ip_10m', $1, '2026-10-02T14:00:00Z', 5), " + // exactly 1 day: kept
           "('search_ip_day', $1, '2026-10-02T00:00:00Z', 6), " + // 38 h before: purged
-          "('search_global_day', 'all', '2026-10-01T00:00:00Z', 9)", // purged
+          "('search_global_day', 'all', '2026-10-01T00:00:00Z', 9), " + // global, 2 days: kept
+          "('search_global_day', 'all', '2026-07-05T13:59:59Z', 3), " + // 90 days + 1 s: purged
+          "('search_global_day', 'all', '2026-07-05T14:00:00Z', 2)", // exactly 90 days: kept
         [key],
       );
       const cap = await capAt(client, "2026-10-03T14:00:00Z");
       expect(await cap()).toBe("ok");
       expect(await rows(client)).toEqual([
+        { kind: "search_global_day", key: "all", w: "2026-07-05 14:00:00+00", count: 2 },
+        { kind: "search_global_day", key: "all", w: "2026-10-01 00:00:00+00", count: 9 },
         { kind: "search_ip_10m", key, w: "2026-10-02 14:00:00+00", count: 5 },
         { kind: "search_global_day", key: "all", w: "2026-10-03 00:00:00+00", count: 1 },
       ]);
@@ -467,11 +476,11 @@ describe.skipIf(!databaseUrl)("the failed-login cap and the gate kind as kb_app"
     });
   });
 
-  it("the 11th reservation of a day trips, even for the right PIN; the next UTC day starts over", async () => {
+  it("the 101st reservation of a day trips, even for the right PIN; the next UTC day starts over", async () => {
     await inThrowawaySchema(async (client) => {
       const { handleGateLogin } = await import("@/lib/gate/login");
       const { GATE_FAIL_CAP } = await import("@/lib/limits/config");
-      expect(GATE_FAIL_CAP).toBe(10);
+      expect(GATE_FAIL_CAP).toBe(100);
       const cap = await failCap(client);
       const login = async (pin: string, iso: string) => {
         const response = await handleGateLogin(
@@ -489,9 +498,11 @@ describe.skipIf(!databaseUrl)("the failed-login cap and the gate kind as kb_app"
 
       const day1 = "2026-10-01T23:59:59Z";
       expect(await login(PIN, day1)).toBe(204); // reserved, then released: net zero
-      for (let i = 1; i <= 10; i++) expect(await login("0000", day1), `attempt ${i}`).toBe(401);
+      for (let i = 1; i <= GATE_FAIL_CAP; i++) {
+        expect(await login("0000", day1), `attempt ${i}`).toBe(401);
+      }
       expect(await rows(client)).toEqual([
-        { kind: "gate_fail_global_day", key: "all", w: "2026-10-01 00:00:00+00", count: 10 },
+        { kind: "gate_fail_global_day", key: "all", w: "2026-10-01 00:00:00+00", count: GATE_FAIL_CAP },
       ]);
       expect(await login(PIN, day1)).toBe(429);
       expect(await login("0000", day1)).toBe(429);
@@ -500,22 +511,26 @@ describe.skipIf(!databaseUrl)("the failed-login cap and the gate kind as kb_app"
       expect(await login(PIN, day2)).toBe(204);
       expect(await login("0000", day2)).toBe(401);
       expect(await rows(client)).toEqual([
-        { kind: "gate_fail_global_day", key: "all", w: "2026-10-01 00:00:00+00", count: 12 },
+        { kind: "gate_fail_global_day", key: "all", w: "2026-10-01 00:00:00+00", count: GATE_FAIL_CAP + 2 },
         { kind: "gate_fail_global_day", key: "all", w: "2026-10-02 00:00:00+00", count: 1 },
       ]);
     });
   });
 
-  it("reserve purges windows that started more than one day before the request", async () => {
+  it("reserve keeps global rows 90 days and purges older ones", async () => {
     await inThrowawaySchema(async (client) => {
       await client.query(
         "insert into kb_rate_counters values " +
-          "('gate_fail_global_day', 'all', '2026-10-01T00:00:00Z', 9), " + // 2 days before: purged
-          "('search_global_day', 'all', '2026-10-02T00:00:00Z', 7)", // exactly 1 day: kept
+          "('gate_fail_global_day', 'all', '2026-07-04T00:00:00Z', 4), " + // 91 days before: purged
+          "('gate_fail_global_day', 'all', '2026-07-05T00:00:00Z', 3), " + // exactly 90 days: kept
+          "('gate_fail_global_day', 'all', '2026-10-01T00:00:00Z', 9), " + // 2 days before: kept
+          "('search_global_day', 'all', '2026-10-02T00:00:00Z', 7)", // 1 day before: kept
       );
       const cap = await failCap(client);
       expect(await cap.reserve(Date.parse("2026-10-03T00:00:00Z"))).toBe(1);
       expect(await rows(client)).toEqual([
+        { kind: "gate_fail_global_day", key: "all", w: "2026-07-05 00:00:00+00", count: 3 },
+        { kind: "gate_fail_global_day", key: "all", w: "2026-10-01 00:00:00+00", count: 9 },
         { kind: "search_global_day", key: "all", w: "2026-10-02 00:00:00+00", count: 7 },
         { kind: "gate_fail_global_day", key: "all", w: "2026-10-03 00:00:00+00", count: 1 },
       ]);

@@ -4,8 +4,8 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 import type { GateResult } from "@/lib/search/handler";
 
-// Access gate for the hosted app: one shared password or 4-digit PIN (the owner
-// plus 2-3 trusted testers), exchanged at /api/gate for a signed cookie.
+// Access gate for the hosted app: one shared password or PIN of 4 or 6 digits
+// (the owner plus several coworkers), exchanged at /api/gate for a signed cookie.
 // Brute force against a PIN is bounded by the global failed-login cap
 // (lib/gate/login.ts), not by the password's length. This is the only
 // module that reads ACCESS_PASSWORD or GATE_COOKIE_SECRET; nothing here logs.
@@ -20,8 +20,9 @@ import type { GateResult } from "@/lib/search/handler";
 export const GATE_COOKIE = "kbf_gate";
 export const GATE_LIFETIME_S = 7 * 24 * 60 * 60;
 export const MIN_PASSWORD_LENGTH = 20;
-// A PIN: exactly four ASCII digits, nothing around them.
-const PIN_SHAPE = /^[0-9]{4}$/;
+// A PIN: exactly four or exactly six ASCII digits, nothing around them. Four is
+// kept so the code can ship before the hosted PIN changes; it goes away later.
+const PIN_SHAPE = /^(?:[0-9]{4}|[0-9]{6})$/;
 export const MIN_SECRET_BYTES = 32;
 
 export type GateEnv = {
@@ -56,9 +57,9 @@ export function gateEnvFrom(env: Record<string, string | undefined>): GateEnv {
 
 // ACCESS_GATE exactly "off" disables the gate, only when VERCEL is unset (local
 // dev and evals). Anything else needs a valid password and a long enough
-// secret; anything else fails closed. A valid password is exactly 4 ASCII digits
-// (a PIN) or at least 20 characters (a passphrase), so either can be used without
-// a code change.
+// secret; anything else fails closed. A valid password is exactly 4 or exactly 6
+// ASCII digits (a PIN) or at least 20 characters (a passphrase), so either can be
+// used without a code change.
 export function resolveGateConfig(env: GateEnv): GateConfig {
   if (env.ACCESS_GATE === "off") {
     return env.VERCEL ? { mode: "invalid", code: "GATE_OFF_ON_VERCEL" } : { mode: "off" };

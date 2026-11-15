@@ -281,8 +281,8 @@ fails answers the request; every body is fixed, sent with
    `{"error":"Search failed"}`.
 2. Access gate, from the Cookie header only, before the body is read.
    A misconfigured gate (`ACCESS_GATE=off` while `VERCEL` is set,
-   `ACCESS_PASSWORD` missing or neither exactly 4 ASCII digits nor
-   at least 20 characters,
+   `ACCESS_PASSWORD` missing or neither exactly 4 or 6 ASCII digits
+   nor at least 20 characters,
    `GATE_COOKIE_SECRET` missing or under 32 bytes) is 500
    `{"error":"Search failed"}`. No valid `kbf_gate` cookie: 401
    `{"error":"Unauthorized"}`. `ACCESS_GATE` exactly `off` with
@@ -293,7 +293,7 @@ fails answers the request; every body is fixed, sent with
    `{"error":"Invalid request"}`.
 4. Schema, then mode gating: 400 `{"error":"Invalid request"}`.
 5. Daily cap, only for valid, allowed searches: one global counter,
-   200 per UTC day across both modes. Search 201 of a day is 429
+   2,000 per UTC day across all modes. Search 2,001 of a day is 429
    `{"error":"Too many requests"}`. A limiter error is 500
    `{"error":"Search failed"}` (fails closed). `RATE_LIMIT` exactly
    `off` with `VERCEL` unset skips this step (local dev and evals
@@ -313,7 +313,7 @@ connects as `kb_app` through the transaction pooler.
 
 Access gate login: `POST /api/gate` with `{"password": string}`
 (body capped at 1 KiB). `ACCESS_PASSWORD` is either a PIN of exactly
-4 ASCII digits or a passphrase of at least 20 characters; anything
+4 or 6 ASCII digits or a passphrase of at least 20 characters; anything
 else is a misconfigured gate. Brute force is bounded by a global
 failed-login cap, not by the password's length. In order:
 
@@ -323,11 +323,11 @@ failed-login cap, not by the password's length. In order:
    JSON or schema: 400 `{"error":"Invalid request"}`. Neither counts
    against the cap.
 3. `ACCESS_GATE` exactly `off` with `VERCEL` unset: 204, no cookie.
-4. Failed-login cap: 10 per UTC day across all clients
+4. Failed-login cap: 100 per UTC day across all clients
    (`GATE_FAIL_CAP`). Every attempt first reserves a slot atomically
    in `kb_rate_counters` (kind `gate_fail_global_day`, key `all`),
    before the password is compared, so concurrent guesses cannot get
-   past the cap. Attempt 11 of a day is 429
+   past the cap. Attempt 101 of a day is 429
    `{"error":"Too many attempts"}` and the password is never
    compared, even a correct one. A reserve error is 500
    `{"error":"Gate unavailable"}` (fails closed). `RATE_LIMIT`
@@ -342,7 +342,7 @@ failed-login cap, not by the password's length. In order:
    still succeeds; that attempt stays counted.
 
 Every response body is fixed and sent with `Cache-Control: no-store`.
-Anyone can lock out new logins until the next UTC day by failing 10
+Anyone can lock out new logins until the next UTC day by failing 100
 times; devices already holding a valid cookie keep working. Page
 requests without a valid cookie redirect to `/gate`; `/api/search`
 checks the cookie itself and is the real boundary.
@@ -389,9 +389,13 @@ next request.
   global kinds, both keyed `all` (the CHECK requires `all` for
   exactly these two): `search_global_day` (the daily search cap) and
   `gate_fail_global_day` (the failed-login cap). No IP address, IP
-  hash, password or anything else from the request is stored. Each
-  search cap check and each login reservation deletes windows, of
-  any kind, that started more than one day before the request. The
+  hash, password or anything else from the request is stored. The
+  two global rows are kept for 90 days as daily totals (counts
+  only): the search total includes requests refused over the cap,
+  and the login total is failed plus refused attempts. Each search
+  cap check and each login reservation deletes global rows that
+  started more than 90 days before the request, and rows of any
+  other key that started more than one day before it. The
   table's CHECK also allows per-IP kinds (`search_ip_10m`, `search_ip_day`, `gate_ip_10m`, keyed by a 64-hex
   HMAC), which the app does not use.
 - Error and limit logs are fixed strings plus an error class and

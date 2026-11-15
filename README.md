@@ -116,7 +116,7 @@ The test cases are in `eval/cases.json`.
 - **Pinned configs.** The corpus, migrations, embedding config and article embeddings are pinned by SHA-256. The search function refuses to run on missing, stale or mismatched embeddings.
 - **Queries are never stored.** Query text, its hash and its embedding are never written to logs, files, caches or database tables. Errors log a fixed code, never request text. In semantic mode the query is sent to OpenAI to be embedded.
 - **Fail closed.** A semantic failure returns an error, never a silent fallback to keyword results. A misconfiguration blocks search instead of weakening it.
-- **Bounded cost and access.** A shared access code with a daily cap on failed logins, 200 searches per day, a request size cap, and a restricted embeddings-only API key with low prepaid credit.
+- **Bounded cost and access.** A shared access code with a daily cap on failed logins, 2,000 searches per day, a request size cap, and a restricted embeddings-only API key with low prepaid credit.
 - **Locked-down database.** The app connects as a least-privilege role with row-level security, over TLS with certificate checks. The public Data API is disabled.
 
 </details>

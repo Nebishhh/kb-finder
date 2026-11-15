@@ -15,15 +15,20 @@ import type { LimitFn } from "@/lib/search/handler";
 // concurrent request for the same day waits on that lock, then updates the
 // newest committed version, so no increment is lost and every caller gets a
 // distinct count back. The decision is made from that returned count, never from
-// a separate read. The purge CTE only deletes windows that started more than one
-// day before $1, which never includes the current day's row, so it cannot race
-// the upsert.
+// a separate read.
+//
+// The purge CTE keeps the global rows (key 'all') for 90 days as daily totals,
+// counts only, and deletes every other key's windows that started more than one
+// day before $1. Neither rule ever includes the current day's row, so the purge
+// cannot race the upsert, and the cap decision never reads an older row.
 //
 // $1 is the request time, passed in (not now()) so tests can move the clock.
 // The window is the UTC day containing $1.
 export const DAILY_CAP_SQL =
   "with purge as (" +
-  "delete from kb_rate_counters where window_start < $1::timestamptz - interval '1 day'" +
+  "delete from kb_rate_counters " +
+  "where window_start < $1::timestamptz - interval '90 days' " +
+  "or (key <> 'all' and window_start < $1::timestamptz - interval '1 day')" +
   "), bump as (" +
   "insert into kb_rate_counters (kind, key, window_start, count) " +
   "values ($2, $3, date_trunc('day', $1::timestamptz, 'UTC'), 1) " +
