@@ -246,7 +246,13 @@ describe("handleSearch with the gate", () => {
     const gate: GateFn = (request) => checkGate(request.headers.get("cookie"), env, T);
     const run = async (request: Request) => {
       const response = await handleSearch(request, {
-        retrievers: { lexical, semantic, "lexical-v2": lexicalV2, "semantic-v2": semanticV2 },
+        retrievers: {
+          lexical,
+          semantic,
+          "lexical-v2": lexicalV2,
+          "semantic-v2": semanticV2,
+          hybrid: async () => [],
+        },
         gate,
         limit,
         env: {},
@@ -537,6 +543,7 @@ describe("the password and query never leak", () => {
           semantic: async () => [],
           "lexical-v2": async () => [],
           "semantic-v2": async () => [],
+          hybrid: async () => [],
         },
         gate: (request) => checkGate(request.headers.get("cookie"), SENTINEL_ENV, T),
         limit: async () => "ok",

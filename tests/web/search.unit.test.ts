@@ -80,6 +80,10 @@ const semanticV2NeverCalled = vi.fn<SearchFn>(async () => {
   throw new Error("semantic-v2 retriever called");
 });
 
+const hybridNeverCalled = vi.fn<SearchFn>(async () => {
+  throw new Error("hybrid retriever called");
+});
+
 const allow: LimitFn = async () => "ok";
 const open: GateFn = () => "open";
 
@@ -95,6 +99,7 @@ function deps(
       semantic: semanticNeverCalled,
       "lexical-v2": lexicalV2NeverCalled,
       "semantic-v2": semanticV2NeverCalled,
+      hybrid: hybridNeverCalled,
     },
     gate,
     limit,
@@ -111,6 +116,7 @@ afterEach(() => {
   expect(semanticNeverCalled).not.toHaveBeenCalled();
   expect(lexicalV2NeverCalled).not.toHaveBeenCalled();
   expect(semanticV2NeverCalled).not.toHaveBeenCalled();
+  expect(hybridNeverCalled).not.toHaveBeenCalled();
   vi.restoreAllMocks();
 });
 
@@ -207,7 +213,13 @@ describe("lexical-v2 gating", () => {
     return {
       f: { lexical, semantic, "lexical-v2": lexicalV2, "semantic-v2": semanticV2 },
       deps: {
-        retrievers: { lexical, semantic, "lexical-v2": lexicalV2, "semantic-v2": semanticV2 },
+        retrievers: {
+          lexical,
+          semantic,
+          "lexical-v2": lexicalV2,
+          "semantic-v2": semanticV2,
+          hybrid: hybridNeverCalled,
+        },
         gate: open,
         limit: allow,
         env,
@@ -286,7 +298,8 @@ describe("semantic-v2 gating", () => {
     const semantic = vi.fn<SearchFn>(async () => [row(1, "22", 0.75, null)]);
     const lexicalV2 = vi.fn<SearchFn>(async () => [row(1, "33", 0.25, null)]);
     const semanticV2 = vi.fn<SearchFn>(async () => [row(1, "44", 0.125, null)]);
-    const f = { lexical, semantic, "lexical-v2": lexicalV2, "semantic-v2": semanticV2 };
+    const hybrid = vi.fn<SearchFn>(async () => [row(1, "55", 0.03125, null)]);
+    const f = { lexical, semantic, "lexical-v2": lexicalV2, "semantic-v2": semanticV2, hybrid };
     return { f, deps: { retrievers: f, gate: open, limit: allow, env } };
   }
 
@@ -302,7 +315,7 @@ describe("semantic-v2 gating", () => {
 
   it("is a known mode but not a possible default", () => {
     expect(SEARCH_MODES).toContain("semantic-v2");
-    expect(SEARCH_MODES).toEqual(["lexical", "semantic", "lexical-v2", "semantic-v2"]);
+    expect(SEARCH_MODES).toEqual(["lexical", "semantic", "lexical-v2", "semantic-v2", "hybrid"]);
     expect(DEFAULT_SEARCH_MODES).toEqual(["lexical", "semantic"]);
     expect(resolveDefaultMode({ DEFAULT_SEARCH_MODE: "semantic-v2" })).toBeNull();
     expect(
@@ -345,6 +358,7 @@ describe("semantic-v2 gating", () => {
       expect(f.lexical).not.toHaveBeenCalled();
       expect(f.semantic).not.toHaveBeenCalled();
       expect(f["lexical-v2"]).not.toHaveBeenCalled();
+      expect(f.hybrid).not.toHaveBeenCalled();
     }
   });
 

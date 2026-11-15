@@ -58,6 +58,7 @@ describe.skipIf(!databaseUrl)("POST /api/search against the local DB", () => {
     ["extra field", JSON.stringify({ query: "wifi", mode: "lexical", limit: 100 })],
     ["semantic without the gate", JSON.stringify({ query: "wifi", mode: "semantic" })],
     ["semantic-v2 without the gate", JSON.stringify({ query: "wifi", mode: "semantic-v2" })],
+    ["hybrid without the gate", JSON.stringify({ query: "wifi", mode: "hybrid" })],
     ["invalid JSON", '{"query": "wifi", '],
   ])("%s returns 400", async (_name, body) => {
     const response = await POST(post(body));

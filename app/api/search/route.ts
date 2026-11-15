@@ -1,6 +1,7 @@
 import { checkGate, gateEnvFrom } from "@/lib/gate/cookie";
 import { dailyCap } from "@/lib/limits/daily-cap";
 import { handleSearch } from "@/lib/search/handler";
+import { searchHybrid } from "@/lib/search/hybrid";
 import { searchLexical, searchLexicalV2 } from "@/lib/search/lexical";
 import { searchSemantic, searchSemanticV2 } from "@/lib/search/semantic";
 
@@ -14,6 +15,7 @@ export function POST(request: Request): Promise<Response> {
       semantic: searchSemantic,
       "lexical-v2": searchLexicalV2,
       "semantic-v2": searchSemanticV2,
+      hybrid: searchHybrid,
     },
     gate: (req) =>
       checkGate(req.headers.get("cookie"), gateEnvFrom(process.env), Date.now()),

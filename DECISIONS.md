@@ -750,3 +750,123 @@ login total is failed plus refused attempts; a day with no failed login
 has no row. No migration and no grant change.
 
 Production retrieval, ranking and embeddings are unchanged.
+
+## 2026-11-15: Hybrid experiment (hybrid-rrf-v1): configuration and decision rule (frozen)
+
+Set before any hybrid code runs on real cases. Nothing below changes
+after seeing hybrid numbers. Any later change is a new, logged
+experiment.
+
+**Hypothesis.**
+Semantic finds the right article on technician wording (Track B Top-3
+16/21) but ranks it first less often than lexical did (Top-1 6/21
+against 8/21). Fusing the lexical and semantic rankings raises Track B
+Top-1 without hurting student wording (Track A).
+
+**Not a blind test.**
+Eval v1 results have been seen, and the hypothesis comes from them
+(cases 001, 008, 010 and 016). The result is a first signal only.
+Hybrid is judged on eval v2, with its rule written before that run.
+
+**Configuration.**
+Mode hybrid, eval-only (EVAL_MODES_ENABLED exactly "true"), never a
+default. It calls the lexical and semantic (article-v1) retrievers
+unchanged at depth 50 and fuses the two lists with reciprocal rank
+fusion: score = 1/(60 + lexical rank) + 1/(60 + semantic rank), equal
+weights. An article missing from one list counts as rank 51 there.
+Ties, compared as exact fractions and not as floats, go to the better
+semantic rank. A last key, source_article_id in C collation, makes the
+order total; it cannot decide a result, because two articles with the
+same score and the same semantic rank would need the same lexical
+rank. The top 50 are returned and the score is the RRF sum, not a
+probability. If either leg fails the request fails with that leg's
+error; there is no fallback (D1). One search is one query embedding
+and one count against the daily cap, as in semantic. No query text,
+hash or vector is stored. lexical, semantic, their SQL, configs and
+embeddings are unchanged, and no migration is added.
+
+**Why these values.**
+k = 60 and equal weights are the published RRF defaults, not tuned
+here. Source for k = 60: Cormack, Clarke and Buettcher, "Reciprocal
+Rank Fusion outperforms Condorcet and individual rank learning
+methods", SIGIR 2009, which fixed k = 60 in a pilot study and reports
+that the choice was not critical. Checked against the paper's text on
+2026-11-15. Any other k or any unequal weight could only be set by
+tuning on these cases.
+Rank 51 removes a cutoff artifact: with k = 60 and a 50-row window,
+plain RRF (a missing article adds 0) ranks every article found by both
+legs above every article found by one, because 2/110 is more than
+1/61. Rank 51 is the best rank an absent article could have and makes
+the score continuous at the cutoff (1/110 inside, 1/111 outside). This
+was chosen knowing that case_021 has no lexical hit, so it is not a
+blind choice.
+Ties go to semantic because it is the current default; that works
+against the hypothesis, not for it. A target at lexical rank 1 and
+semantic rank 2 reaches rank 1 only when the semantic top article is
+at lexical rank 3 or worse.
+
+**Fusion lives in TypeScript: a deliberate exception.**
+Earlier entries say ranking lives only in SQL functions: "Ranking
+lives in one SQL function, kb_search_lexical. /api/search calls it and
+nothing reimplements it" (DECISIONS.md:153-155) and "Ranking lives
+only in kb_search_semantic" (DECISIONS.md:258-259). Hybrid keeps that
+for each leg: both lists come from those functions, unchanged, and no
+code ranks articles against a query outside them. The exception is the
+fused order, which is computed in lib/search/hybrid.ts. Why: the
+fusion is a pure function of two finished lists, so it is tested
+offline with fakes; it needs no migration, no grant and no change to
+the hosted database for an eval-only mode; and the lexical query can
+run while the query is being embedded. It is still reachable only
+through POST /api/search, and run_eval.py does no ranking. If hybrid
+is ever promoted, moving the fusion into a SQL function is decided
+then, as a logged change.
+The two legs are parameters of the fusion. A later hybrid over
+lexical-v2 and semantic-v2 would be a new mode and a new logged
+experiment with no change to the fusion code. It is not built.
+
+**Pool connections.**
+Hybrid uses two pool connections per search, one per leg, at the same
+time. The pool is 5 (2026-09-30 entry), so hybrid halves how many
+searches can run at once. Evals send one request at a time, so this
+does not affect the experiment. Revisit pool size before any
+promotion. No end-to-end latency has been measured.
+
+**Comparison.**
+Same frozen cases and labels (eval/cases.json, sha256
+9f2b2afc33d0fea9f0ee5855cee959dc53ec514966283b5056987fcd9e9e47cf),
+same run_eval.py, depth 50. Lexical, semantic and hybrid are run in
+one session on one commit, in that order, each with --json-out. The
+comparator is that session's semantic run. Its aggregates are checked
+against the 2026-10-01 scored run (Track A 12 and 16, Track B 6 and
+16) and any difference is logged; the comparator does not change.
+Query embeddings are not cached, so the semantic leg inside hybrid is
+a separate embedding call from the comparator's. The first complete
+hybrid run is the scored run. Aborted runs are noted. The fake-case
+smoke run is not an eval run. The paired counts come from
+scripts/paired_eval.py BASE NEW, which reads best_rank from the two
+reports and does no ranking.
+
+**Decision rule.**
+Paired, per case, per track. On Top-1, a win is a case where hybrid
+has a target at rank 1 and semantic does not; a loss is the reverse.
+Top-3 is counted the same way.
+Primary: Track B Top-1. The signal is real only with at least 6 wins
+and 0 losses, or at least 8 wins and at most 1 loss (two-sided sign
+test at 5%). Anything less is not a result. A net change of 1 to 3
+cases on any metric is noise.
+Secondary, same bar, reported as secondary: Track A Top-1, and Top-3
+on both tracks. MRR@50 and the negatives are reported only.
+The four named cases are 4 possible wins, below the bar, so "no
+signal" is a likely outcome even if the mechanism works.
+
+**Regression on student wording.**
+Hybrid regresses if, on Track A, Top-1 or Top-3 has a net loss of 4 or
+more cases against semantic, or a target that semantic returned leaves
+the top 50. A net loss of 1 to 3 is noise and is logged with the case
+IDs. A regression stops this configuration: it is not carried to eval
+v2 without a new, logged experiment.
+
+**What the result can change.**
+Nothing in production. A real signal with no regression makes
+hybrid-rrf-v1 a candidate for eval v2. No signal leaves it built and
+gated, to be scored on eval v2 or dropped. The default stays semantic.

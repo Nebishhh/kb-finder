@@ -140,7 +140,7 @@ Request:
 ```ts
 const SearchRequestSchema = z.object({
   query: z.string().min(1).max(5000),
-  mode: z.enum(["lexical", "semantic", "lexical-v2", "semantic-v2"]),
+  mode: z.enum(["lexical", "semantic", "lexical-v2", "semantic-v2", "hybrid"]),
 }).strict(); // extra request fields (e.g. limit) are rejected with 400
 ```
 
@@ -158,6 +158,8 @@ An empty query string ("") is rejected with 400 in every mode.
 - `semantic`: there is no such rule. Any schema-valid query is
   embedded and searched, and the response holds up to 50 results
   (no score threshold, no abstention).
+- `hybrid`: as `semantic`. When the lexical leg has no searchable
+  terms, the fused order is the semantic order.
 
 Response:
 
@@ -189,6 +191,18 @@ Modes:
 - `semantic-v2` (experimental, eval-only): `semantic` over article-v2
   embeddings (below). Ranking lives only in `kb_search_semantic_v2`.
   DECISIONS.md, "article-v2 experiment".
+- `hybrid` (experimental, eval-only): reciprocal rank fusion of the
+  `lexical` and `semantic` lists, each fetched unchanged at depth 50.
+  Score = 1/(60 + lexical rank) + 1/(60 + semantic rank); an article
+  missing from one list counts as rank 51 there; exact ties go to the
+  better semantic rank. The top 50 are returned. The two legs run at
+  the same time, and if either fails the request fails (no fallback).
+  Each leg's ranking still lives only in its SQL function; the fused
+  order is computed in `lib/search/hybrid.ts`, the one deliberate
+  exception to "ranking lives only in SQL". The semantic leg embeds
+  the query, so `hybrid` sends query text to OpenAI exactly as
+  `semantic` does. Frozen configuration and decision rule:
+  DECISIONS.md, "Hybrid experiment (hybrid-rrf-v1)".
 - Planned, not built: `normalized_lexical`, `normalized_semantic`
   (query rewritten by the normalization model, prompt
   `normalize-v1`, then searched). Each is added only when its
@@ -262,11 +276,11 @@ Mode gating (server-side):
 - `DEFAULT_SEARCH_MODE` is always allowed. Unset means `lexical`.
   The hosted app sets it to `semantic`. A value that names no known
   mode is a config error (500 below). Only `lexical` and `semantic`
-  may be the default: `lexical-v2` or `semantic-v2` there is also a
-  config error, with or without `EVAL_MODES_ENABLED`.
+  may be the default: `lexical-v2`, `semantic-v2` or `hybrid` there
+  is also a config error, with or without `EVAL_MODES_ENABLED`.
 - `EVAL_MODES_ENABLED` exactly `"true"` unlocks the other modes,
-  including the experimental `lexical-v2` and `semantic-v2`, which
-  are reachable no other way.
+  including the experimental `lexical-v2`, `semantic-v2` and
+  `hybrid`, which are reachable no other way.
   Any other value, including `"TRUE"` or `"1"`, does not.
 - Any other mode is rejected with 400.
 - The UI resolves `DEFAULT_SEARCH_MODE` the same way, on the server
@@ -367,7 +381,7 @@ next request.
 - Query embeddings are ephemeral. Query text, its hash and its
   vector are never written to disk, cache, logs or the database.
 - No names, IDs, emails, phone numbers, or ticket data.
-- Semantic and normalized modes send query text to OpenAI.
+- Semantic, hybrid and normalized modes send query text to OpenAI.
   Issues are typed in manually with personal details removed.
 - `OPENAI_API_KEY` is set locally only in the shell that runs the app
   (or the paid article embed), never in `.env.local` or any other file
@@ -485,5 +499,8 @@ Caches (under `cache/`, outside eval/, gitignored, never committed):
   model, prompt version.
 
 ## Out of scope before AfroTech
-Hybrid retrieval, reranking, chunking (unless the eval shows long
-articles are missed), no-match thresholds, ticket integration.
+Reranking, chunking (unless the eval shows long articles are missed),
+no-match thresholds, ticket integration.
+
+Hybrid retrieval left this list on 2026-11-15, after AfroTech: it is
+the eval-only `hybrid` mode above.

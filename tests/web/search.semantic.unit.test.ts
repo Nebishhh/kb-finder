@@ -155,6 +155,10 @@ const semanticV2NeverCalled = vi.fn<SearchFn>(async () => {
   throw new Error("semantic-v2 retriever called");
 });
 
+const hybridNeverCalled = vi.fn<SearchFn>(async () => {
+  throw new Error("hybrid retriever called");
+});
+
 function jsonRequest(body: unknown): Request {
   return new Request("http://localhost/api/search", {
     method: "POST",
@@ -170,6 +174,7 @@ async function runSemantic(semantic: SearchFn, env: SearchEnv = EVAL_ON, query =
       semantic,
       "lexical-v2": lexicalV2NeverCalled,
       "semantic-v2": semanticV2NeverCalled,
+      hybrid: hybridNeverCalled,
     },
     gate: () => "open" as const,
     limit: async () => "ok" as const,
@@ -276,6 +281,7 @@ describe("dispatch and gating", () => {
       semantic: vi.fn<SearchFn>(async () => [row(1, "22", 0.75)]),
       "lexical-v2": vi.fn<SearchFn>(async () => [row(1, "33", 0.25)]),
       "semantic-v2": vi.fn<SearchFn>(async () => [row(1, "44", 0.125)]),
+      hybrid: hybridNeverCalled,
     };
   }
 
@@ -737,6 +743,7 @@ describe("the stored embedding_configs row is checked against the file", () => {
         semantic,
         "lexical-v2": lexicalV2NeverCalled,
         "semantic-v2": semanticV2NeverCalled,
+        hybrid: hybridNeverCalled,
       },
       gate: () => "open" as const,
       limit: async () => "ok" as const,
@@ -1048,6 +1055,7 @@ describe("article-v2 config and semantic-v2 search", () => {
       semantic: vi.fn<SearchFn>(async () => [row(1, "22", 0.75)]),
       "lexical-v2": vi.fn<SearchFn>(async () => [row(1, "33", 0.25)]),
       "semantic-v2": vi.fn<SearchFn>(async () => [row(1, "44", 0.125)]),
+      hybrid: hybridNeverCalled,
     });
     for (const [env, status] of [[EVAL_ON, 200], [{}, 400],
       [{ DEFAULT_SEARCH_MODE: "semantic" }, 400]] as const) {

@@ -14,6 +14,7 @@ import {
 import { dailyCap } from "@/lib/limits/daily-cap";
 import { errorSummary } from "@/lib/safe-error";
 import { handleSearch } from "@/lib/search/handler";
+import { searchHybrid } from "@/lib/search/hybrid";
 import { searchLexical, searchLexicalV2 } from "@/lib/search/lexical";
 import { searchSemantic, searchSemanticV2 } from "@/lib/search/semantic";
 
@@ -253,6 +254,7 @@ describe("getPool and /api/search on a hosted misconfiguration", () => {
           semantic: searchSemantic,
           "lexical-v2": searchLexicalV2,
           "semantic-v2": searchSemanticV2,
+          hybrid: searchHybrid,
         },
         gate: () => "open",
         limit: dailyCap,
