@@ -1,5 +1,5 @@
 #!/bin/sh
-protected=$(git diff --cached --name-only --no-renames | grep -E '^(eval/|data/samples/urls\.txt$|data/samples/category_urls\.txt$)')
+protected=$(git diff --cached --name-only --no-renames | grep -E '^(eval/|data/samples/urls\.txt$|data/samples/category_urls\.txt$|NOTES\.md$)')
 [ -z "$protected" ] && exit 0
 
 echo "Protected files staged:"

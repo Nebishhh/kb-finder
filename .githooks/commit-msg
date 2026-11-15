@@ -1,0 +1,5 @@
+#!/bin/sh
+if grep -Eiq '^co-authored-by:.*(claude|anthropic|codex|openai|chatgpt|copilot|gemini|cursor)|generated with' "$1"; then
+  echo "Commit message has AI attribution. Commit refused."
+  exit 1
+fi

@@ -1,6 +1,12 @@
 {
   "attribution": { "commit": "", "pr": "" },
   "permissions": {
+    "ask": [
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "PowerShell(git commit:*)",
+      "PowerShell(git push:*)"
+    ],
     "deny": [
       "Edit(eval/**)",
       "Edit(data/samples/urls.txt)",
@@ -23,7 +29,20 @@
       "Edit(.claude/**)",
       "Edit(NOTES.md)",
       "Read(eval/**)",
-      "Read(cache/**)"
+      "Read(cache/**)",
+      "Read(.env)",
+      "Read(.env.local)",
+      "Bash(git -C:*)",
+      "Bash(git push --force-with-lease:*)",
+      "PowerShell(git commit --no-verify:*)",
+      "PowerShell(git commit --amend:*)",
+      "PowerShell(git push --force:*)",
+      "PowerShell(git rebase:*)",
+      "PowerShell(git reset:*)",
+      "PowerShell(git config:*)",
+      "PowerShell(git -c:*)",
+      "PowerShell(python:*)",
+      "PowerShell(py:*)"
     ]
   }
 }

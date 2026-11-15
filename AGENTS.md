@@ -12,11 +12,13 @@ Retrieval quality comes before UI polish.
 - PostgreSQL via local Supabase (database plus the local transaction
   pooler); pgvector in the extensions schema; hosted app connects as
   kb_app
-- Search modes: lexical and semantic. DEFAULT_SEARCH_MODE is always
-  allowed (unset means lexical; the hosted app sets semantic); other
-  modes need EVAL_MODES_ENABLED exactly "true"
-- Access gate: shared password, signed 7-day cookie; ACCESS_GATE=off
-  only off Vercel (local dev and evals)
+- Search modes: lexical, semantic, and the eval-only lexical-v2 and
+  semantic-v2. DEFAULT_SEARCH_MODE is always allowed and may only be
+  lexical or semantic (unset means lexical; the hosted app sets
+  semantic); other modes need EVAL_MODES_ENABLED exactly "true"
+- Access gate: one shared password (a 4-digit PIN or a passphrase of
+  20+ characters), signed 7-day cookie, 10 failed logins per UTC day;
+  ACCESS_GATE=off only off Vercel (local dev and evals)
 - Limits: 32 KiB search body cap; one global cap of 200 valid
   searches per UTC day in kb_rate_counters; RATE_LIMIT=off only off
   Vercel (local dev and evals)
@@ -25,6 +27,8 @@ Retrieval quality comes before UI polish.
 
 Phase 7 is complete and deployed. Planned later: query
 normalization (Phase 6).
+The hosted app is used by the owner and several coworkers, all behind
+the one shared password.
 
 ## Commands
 - py -3.12 -m venv .venv
@@ -64,7 +68,7 @@ normalization (Phase 6).
   (read-only; needs $env:DATABASE_URL; remote also needs sslmode=verify-full)
 - .venv/Scripts/python -m unittest tests.test_db_fingerprint
   (live-DB part skipped unless $env:KB_FINDER_TEST_DATABASE_URL is set)
-- .venv/Scripts/python scripts/run_eval.py --mode lexical --cases <path> [--base-url URL] [--allow-remote] [--json-out PATH]
+- .venv/Scripts/python scripts/run_eval.py --mode MODE --cases <path> [--base-url URL] [--allow-remote] [--json-out PATH]
   (needs the app running; agents pass only tests/fixtures/fake_cases.json)
 - .venv/Scripts/python -m unittest tests.test_run_eval
 - npm install
@@ -95,10 +99,9 @@ Add commands only after they exist. Do not invent command names.
 ## Human-Owned Files
 - Never create, edit, or delete eval/**, data/samples/urls.txt,
   data/samples/category_urls.txt, or NOTES.md.
-- Never read eval/** unless the session is explicitly the
-  labeling session. Use the schema in SPEC.md instead.
-- Never use git commit --no-verify or -n, git push --force,
-  git commit --amend, git rebase, or git reset.
+- Never read eval/** unless the human's own message in this session
+  says it is the labeling session. Reading includes git show, git diff
+  and git log -p on those paths. Use the schema in SPEC.md instead.
 
 ## Data Handling
 - Public KB article content may be stored.
@@ -126,13 +129,18 @@ Add commands only after they exist. Do not invent command names.
 
 ## Verification
 Before reporting work complete:
-- run the relevant command (except run_eval.py, which the human runs;
-  use the smoke test against the fake SPEC.md case instead)
+- run the relevant command (except run_eval.py on real cases, which
+  the human runs; agents run it only with
+  --cases tests/fixtures/fake_cases.json)
 - report failures
 - show the actual diff
 - do not claim success from code inspection alone
 
-
+## Commits
+- Never commit or push without the human's explicit approval in the
+  current session, given for that specific commit or push.
 - Never add Co-Authored-By trailers, "Generated with" lines, or any
-  agent name to commit messages, PR text, or git author fields.
+  agent or model name to commit messages, PR text, or git author fields.
   Never change git user.name or user.email.
+- Never use git commit --no-verify or -n, git push --force,
+  git commit --amend, git rebase, or git reset.
