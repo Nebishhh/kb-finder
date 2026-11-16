@@ -63,6 +63,11 @@ the one shared password.
 - .venv/Scripts/python scripts/paired_eval.py BASE NEW
   (human runs it on real --json-out reports; agents only on synthetic ones)
 - .venv/Scripts/python -m unittest tests.test_paired_eval
+- .venv/Scripts/python scripts/check_eval_ids.py CSV_PATH
+  (needs $env:DATABASE_URL, local only; human runs it on the real
+  eval v2 file; agents only on synthetic CSVs)
+- .venv/Scripts/python -m unittest tests.test_check_eval_ids
+  (live-DB part skipped unless $env:KB_FINDER_TEST_DATABASE_URL is set)
 - .venv/Scripts/python -m unittest tests.test_db_privileges
   (live-DB parts skipped unless $env:KB_FINDER_TEST_DATABASE_URL is set)
 - .venv/Scripts/python -m unittest tests.test_hardening_sql
