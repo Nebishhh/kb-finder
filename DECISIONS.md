@@ -870,3 +870,62 @@ v2 without a new, logged experiment.
 Nothing in production. A real signal with no regression makes
 hybrid-rrf-v1 a candidate for eval v2. No signal leaves it built and
 gated, to be scored on eval v2 or dropped. The default stays semantic.
+
+## 2026-11-15: Hybrid experiment (hybrid-rrf-v1): result
+
+The scored run under the frozen entry above. One session, code at
+31edeb6, the committed eval/cases.json (sha256
+9f2b2afc33d0fea9f0ee5855cee959dc53ec514966283b5056987fcd9e9e47cf),
+depth 50. Order: lexical, semantic, hybrid, each with --json-out, then
+scripts/paired_eval.py with semantic as base and hybrid as new. No
+aborted runs. A fake-case warm-up came first in all three modes and is
+not an eval run. npm run test:db passed (25) earlier on this branch.
+Raw outputs are kept outside the repo.
+
+**Comparator check.**
+This session's semantic run: Track A Top-1 12/21, Top-3 16/21; Track B
+Top-1 6/21, Top-3 16/21. These match the 2026-10-01 scored run, as do
+both MRR@50 values. No difference to log. The lexical run also matches
+the 2026-09-30 baseline aggregates.
+
+**Aggregates.**
+21 positives per track.
+
+| Mode | Track | Top-1 | Top-3 | MRR@50 | No target in top 50 |
+|---|---|---|---|---|---|
+| lexical | A | 7/21 (33%) | 13/21 (62%) | 0.481 | 1/21 |
+| lexical | B | 8/21 (38%) | 11/21 (52%) | 0.489 | 1/21 |
+| semantic | A | 12/21 (57%) | 16/21 (76%) | 0.690 | 0/21 |
+| semantic | B | 6/21 (29%) | 16/21 (76%) | 0.542 | 0/21 |
+| hybrid | A | 9/21 (43%) | 15/21 (71%) | 0.607 | 0/21 |
+| hybrid | B | 7/21 (33%) | 16/21 (76%) | 0.539 | 0/21 |
+
+MRR@50 and the negatives are reported only.
+
+**Paired against semantic.**
+Primary, Track B Top-1: 2 wins (case_008, case_010), 1 loss
+(case_006), 18 ties, net +1. The bar is not met.
+Secondary, none met:
+- Track A Top-1: 2 wins (009, 016), 5 losses (002, 004, 008, 019,
+  023), 14 ties, net -3.
+- Track A Top-3: 2 wins (006, 014), 3 losses (007, 019, 021), 16 ties,
+  net -1.
+- Track B Top-3: 1 win (004), 1 loss (015), 19 ties, net 0.
+
+Of the four named cases on Track B, 008 and 010 won; 001 and 016 are
+unchanged at rank 2.
+
+**Regression on student wording.**
+None. No Track A metric has a net loss of 4 or more, and no target
+that semantic returned left the top 50. The Track A net losses of 3
+(Top-1) and 1 (Top-3) are noise under the rule and are logged above
+with their case IDs.
+
+**Outcome.**
+No signal. The rule: "The signal is real only with at least 6 wins
+and 0 losses, or at least 8 wins and at most 1 loss", and "A net
+change of 1 to 3 cases on any metric is noise." Under "What the result
+can change": "No signal leaves it built and gated, to be scored on
+eval v2 or dropped. The default stays semantic." Nothing in production
+changes. Nothing in the hybrid, semantic or lexical configuration,
+depth or labels changes because of these numbers.
