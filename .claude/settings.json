@@ -1,6 +1,10 @@
 {
   "attribution": { "commit": "", "pr": "" },
   "permissions": {
+    "allow": [
+      "Bash(.venv/Scripts/python -m unittest:*)",
+      "PowerShell(.venv/Scripts/python -m unittest:*)"
+    ],
     "ask": [
       "Bash(git commit:*)",
       "Bash(git push:*)",
@@ -32,6 +36,7 @@
       "Read(cache/**)",
       "Read(.env)",
       "Read(.env.local)",
+      "Read(~/kb-finder-private/eval-v2-pilot/**)",
       "Bash(git -C:*)",
       "Bash(git push --force-with-lease:*)",
       "PowerShell(git commit --no-verify:*)",
