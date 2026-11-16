@@ -20,6 +20,8 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
+import compare_eval_json  # noqa: E402
+import paired_eval  # noqa: E402
 import run_eval  # noqa: E402
 
 SENTINEL = "SENTINEL_QUERY_5v8t"
@@ -252,6 +254,14 @@ class ValidationTests(Base):
     def test_non_string_query(self):
         self.assert_invalid([case("c1", customer_query=5)],
                             "case c1: customer_query must be a string")
+
+    def test_null_customer_query_is_invalid(self):
+        self.assert_invalid([case("c1", customer_query=None)],
+                            "case c1: customer_query must be a string")
+
+    def test_non_string_technician_query(self):
+        self.assert_invalid([case("c1", technician_query=5)],
+                            "case c1: technician_query must be a string or null")
 
     def test_blank_query(self):
         self.assert_invalid([case("c1", technician_query="   ")],
@@ -570,6 +580,160 @@ class ReportTests(Base):
         self.assertEqual(code, run_eval.EXIT_UNEXPECTED)
         self.assertIn("unexpected error: RuntimeError", out)
         self.assertNotIn(SENTINEL, out + err)
+
+
+class NullTechnicianQueryTests(Base):
+    def test_null_skips_track_b_for_that_case_only(self):
+        client = FakeClient({("c1", "A"): ["101"], ("c2", "A"): filler(3)})
+        cases = [case("c1", technician_query=None), case("c2")]
+        code, out, err = self.run_cases(cases, client=client)
+        self.assertEqual(code, 0, out)
+        self.assertEqual([key for key, _ in client.calls],
+                         [("c1", "A"), ("c2", "A"), ("c2", "B")])
+        self.assertIn("rows: 2 cases (2 positive, 0 negative), 3 requests", out)
+        a, b = section(out, "A"), section(out, "B")
+        self.assertIn("(N=2)", a)
+        self.assertNotIn("Skipped", a)
+        self.assertIn("Skipped, technician_query is null: 1 case(s)", b)
+        self.assertIn("(N=1)", b)
+        self.assertNotIn("  c1  ", b)
+        self.assertNotIn(SENTINEL, out + err)
+
+    def test_all_null_track_b_prints_n_0(self):
+        cases = [case("c1", technician_query=None),
+                 case("n1", targets=(), technician_query=None)]
+        client = FakeClient({("c1", "A"): ["101"]})
+        code, out, _ = self.run_cases(cases, client=client)
+        self.assertEqual(code, 0, out)
+        self.assertEqual([key for key, _ in client.calls], [("c1", "A"), ("n1", "A")])
+        self.assertIn("rows: 2 cases (1 positive, 1 negative), 2 requests", out)
+        b = section(out, "B")
+        self.assertIn("Skipped, technician_query is null: 2 case(s)", b)
+        self.assertIn("Top-1: 0/0 (n/a)   Top-3: 0/0 (n/a)   MRR@50: n/a (N=0)", b)
+        self.assertIn("No target in top 50: 0 / 0", b)
+        self.assertIn("Negatives (qualitative review only):\n  (none)", b)
+
+    def make_report(self, name, mode, sids):
+        cases = [case("c1", technician_query=None),
+                 case("n1", targets=(), technician_query=None)]
+        path = self.dir / name
+        code, out, _ = self.run_main(self.write_cases(cases), ["--json-out", str(path)],
+                                     FakeClient({("c1", "A"): sids}), mode)
+        self.assertEqual(code, 0, out)
+        return path
+
+    def test_json_report_with_empty_track_b(self):
+        report = json.loads(self.make_report("r.json", "semantic", ["101"])
+                            .read_text(encoding="utf-8"))
+        self.assertEqual(report["rows"]["requests"], 2)
+        self.assertNotIn("skipped_null_query", report["tracks"]["A"])
+        self.assertEqual(report["tracks"]["B"], {
+            "field": "technician_query",
+            "metrics": {"positives": 0, "top1": 0, "top3": 0, "mrr_at_50": None,
+                        "no_target_in_top_50": 0},
+            "positives": [],
+            "negatives": [],
+            "skipped_null_query": 2,
+        })
+
+    def test_paired_and_compare_accept_an_empty_track_b(self):
+        base = self.make_report("base.json", "semantic", ["9", "101"])
+        same = self.make_report("same.json", "semantic", ["9", "101"])
+        new = self.make_report("new.json", "hybrid", ["101"])
+
+        def run(main, *paths):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                code = main([str(p) for p in paths])
+            return code, out.getvalue().splitlines()
+
+        self.assertEqual(run(compare_eval_json.main, base, same), (0, ["identical"]))
+        code, lines = run(compare_eval_json.main, base, new)
+        self.assertEqual(code, 1)
+        self.assertFalse([l for l in lines if "track B" in l])
+
+        code, lines = run(paired_eval.main, base, new)
+        self.assertEqual(code, 0)
+        self.assertIn("== Track A (customer_query), 1 positives ==", lines)
+        self.assertIn("== Track B (technician_query), 0 positives ==", lines)
+        self.assertIn("Top-1 (primary): wins 0, losses 0, ties 0, net +0   "
+                      "sign test p = 1.000   bar: not met", lines)
+        self.assertIn("Top-1 (secondary): wins 1, losses 0, ties 0, net +1   "
+                      "sign test p = 1.000   bar: not met", lines)
+
+
+class V1RegressionTests(Base):
+    """A cases file with no null query gives exactly the output run_eval.py gave
+    before null technician_query was accepted. The expected text was fixed
+    against the earlier code. Do not edit it to make a change pass."""
+
+    def test_fixture_stdout_and_json_are_unchanged(self):
+        keys = {}
+        for c in json.loads(FIXTURE.read_text(encoding="utf-8")):
+            keys[c["customer_query"]] = (c["id"], "A")
+            keys[c["technician_query"]] = (c["id"], "B")
+        client = FakeClient({("case_fake_001", "A"): ["7", "00001"],
+                             ("case_fake_001", "B"): ["00001"],
+                             ("case_fake_002", "A"): ["555", "556"]}, keys=keys)
+        out_path = self.dir / "report.json"
+        code, out, err = self.run_main(FIXTURE, ["--json-out", str(out_path)], client)
+        self.assertEqual((code, err), (0, ""))
+        digest = hashlib.sha256(FIXTURE.read_bytes()).hexdigest()
+        self.assertEqual(out, (
+            f"cases sha256: {digest}   file: {FIXTURE}\n"
+            "mode: lexical   base url: http://127.0.0.1:3000\n"
+            "rows: 2 cases (1 positive, 1 negative), 4 requests\n"
+            "observed depth: max 2 results per request (limit 50)\n"
+            "\n"
+            "== Track A (customer_query) ==\n"
+            "Top-1: 0/1 (0%)   Top-3: 1/1 (100%)   MRR@50: 0.500 (N=1)\n"
+            "No target in top 50: 0 / 1\n"
+            "  case_fake_001  best target rank 2\n"
+            "Negatives (qualitative review only):\n"
+            '  case_fake_002  top: 555 "Title 555" score 1.0000\n'
+            "    top 5: Title 555 | Title 556\n"
+            "\n"
+            "== Track B (technician_query) ==\n"
+            "Top-1: 1/1 (100%)   Top-3: 1/1 (100%)   MRR@50: 1.000 (N=1)\n"
+            "No target in top 50: 0 / 1\n"
+            "  case_fake_001  best target rank 1\n"
+            "Negatives (qualitative review only):\n"
+            "  case_fake_002  no results\n"
+            "\n"
+            f"wrote {out_path}\n"))
+        expected = {
+            "cases_sha256": digest,
+            "mode": "lexical",
+            "base_url": "http://127.0.0.1:3000",
+            "rows": {"cases": 2, "positives": 1, "negatives": 1, "requests": 4},
+            "observed_max_depth": 2,
+            "tracks": {
+                "A": {
+                    "field": "customer_query",
+                    "metrics": {"positives": 1, "top1": 0, "top3": 1, "mrr_at_50": 0.5,
+                                "no_target_in_top_50": 0},
+                    "positives": [{
+                        "case_id": "case_fake_001", "best_rank": 2, "reciprocal_rank": 0.5,
+                        "results": [{"rank": 1, "sourceArticleId": "7", "score": 1.0},
+                                    {"rank": 2, "sourceArticleId": "00001", "score": 0.5}]}],
+                    "negatives": [{
+                        "case_id": "case_fake_002",
+                        "results": [{"rank": 1, "sourceArticleId": "555", "score": 1.0},
+                                    {"rank": 2, "sourceArticleId": "556", "score": 0.5}]}],
+                },
+                "B": {
+                    "field": "technician_query",
+                    "metrics": {"positives": 1, "top1": 1, "top3": 1, "mrr_at_50": 1.0,
+                                "no_target_in_top_50": 0},
+                    "positives": [{
+                        "case_id": "case_fake_001", "best_rank": 1, "reciprocal_rank": 1.0,
+                        "results": [{"rank": 1, "sourceArticleId": "00001", "score": 1.0}]}],
+                    "negatives": [{"case_id": "case_fake_002", "results": []}],
+                },
+            },
+        }
+        self.assertEqual(out_path.read_bytes().replace(b"\r\n", b"\n"),
+                         (json.dumps(expected, indent=2) + "\n").encode("utf-8"))
 
 
 # ------------------------------------------------------------------ arguments

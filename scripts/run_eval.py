@@ -28,6 +28,10 @@ Metrics      Per track, positives only: Top-1, Top-3, MRR@50 (a target outside
              the returned results scores 0) and the count of positives with no
              target in the top 50. Negatives are printed for qualitative review
              only.
+Null query   technician_query may be null: the case has no technician wording.
+             Track B sends no request for it and leaves it out of its counts.
+             customer_query is never null. A missing key or a blank string is
+             still an error.
 Output       Case IDs, ranks, scores, article IDs and titles. Query text is never
              printed, written or put in an error message. --json-out writes
              case IDs, ranks, scores and article IDs only (no titles, no target
@@ -55,6 +59,7 @@ MAX_QUERY_CHARS = 5000  # SearchRequestSchema limit
 REQUEST_TIMEOUT_S = 30.0
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 CASE_KEYS = ("id", "customer_query", "technician_query", "target_article_ids", "has_match")
+NULLABLE_QUERY_FIELDS = ("technician_query",)
 # Case IDs are printed, so only plain identifiers are accepted.
 CASE_ID_RE = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
 TRACKS = (("A", "customer_query"), ("B", "technician_query"))
@@ -130,8 +135,12 @@ def validate_cases(data: object) -> list[str]:
             if field not in case:
                 continue
             value = case[field]
+            nullable = field in NULLABLE_QUERY_FIELDS
+            if value is None and nullable:
+                continue
             if not isinstance(value, str):
-                errors.append(f"{label}: {field} must be a string")
+                kind = "a string or null" if nullable else "a string"
+                errors.append(f"{label}: {field} must be {kind}")
             elif not value.strip():
                 errors.append(f"{label}: {field} must not be blank")
             elif len(value) > MAX_QUERY_CHARS:
@@ -297,11 +306,15 @@ def fmt_count(k: int, n: int) -> str:
 
 def run_cases(cases: list[dict], mode: str, client) -> tuple[dict, int]:
     """One request per case and track, in file order. Returns (tracks, max depth)."""
-    tracks = {t: {"field": f, "positives": [], "negatives": []} for t, f in TRACKS}
+    tracks = {t: {"field": f, "positives": [], "negatives": [], "skipped": 0}
+              for t, f in TRACKS}
     observed = 0
     for case in cases:
         cid = case["id"]
         for track, field in TRACKS:
+            if case[field] is None:
+                tracks[track]["skipped"] += 1
+                continue
             where = f"case {cid} track {track}"
             try:
                 results = check_response(client.search(case[field], mode), mode)
@@ -333,6 +346,8 @@ def print_tracks(tracks: dict, observed: int) -> None:
         mrr = "n/a" if m["mrr_at_50"] is None else f"{m['mrr_at_50']:.3f}"
         print()
         print(f"== Track {track} ({field}) ==")
+        if t["skipped"]:
+            print(f"Skipped, {field} is null: {t['skipped']} case(s)")
         print(f"Top-1: {fmt_count(m['top1'], n)}   Top-3: {fmt_count(m['top3'], n)}   "
               f"MRR@50: {mrr} (N={n})")
         print(f"No target in top 50: {m['no_target_in_top_50']} / {n}")
@@ -374,6 +389,8 @@ def json_report(tracks: dict, observed: int, header: dict) -> dict:
             "negatives": [{"case_id": n["case_id"], "results": slim(n["results"])}
                           for n in t["negatives"]],
         }
+        if t.get("skipped"):
+            out["tracks"][track]["skipped_null_query"] = t["skipped"]
     return out
 
 
@@ -413,7 +430,8 @@ def run(args: argparse.Namespace, client=None) -> int:
         "mode": args.mode,
         "base_url": args.base_url,
         "rows": {"cases": len(data), "positives": positives,
-                 "negatives": len(data) - positives, "requests": len(data) * len(TRACKS)},
+                 "negatives": len(data) - positives,
+                 "requests": sum(1 for c in data for _, f in TRACKS if c[f] is not None)},
     }
     rows = header["rows"]
     print(f"mode: {args.mode}   base url: {args.base_url}")

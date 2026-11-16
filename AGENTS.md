@@ -68,6 +68,10 @@ the one shared password.
   eval v2 file; agents only on synthetic CSVs)
 - .venv/Scripts/python -m unittest tests.test_check_eval_ids
   (live-DB part skipped unless $env:KB_FINDER_TEST_DATABASE_URL is set)
+- .venv/Scripts/python scripts/convert_eval_v2.py CSV_PATH --out PATH [--exclude ROW_ID ...]
+  (--out must be outside the repo; human runs it on the real
+  eval v2 file; agents only on synthetic CSVs)
+- .venv/Scripts/python -m unittest tests.test_convert_eval_v2
 - .venv/Scripts/python -m unittest tests.test_db_privileges
   (live-DB parts skipped unless $env:KB_FINDER_TEST_DATABASE_URL is set)
 - .venv/Scripts/python -m unittest tests.test_hardening_sql

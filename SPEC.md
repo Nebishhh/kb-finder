@@ -428,7 +428,7 @@ Schema: a JSON array of cases.
 |---|---|---|
 | id | string | Case ID |
 | customer_query | string | How a stressed student would type it |
-| technician_query | string | Short technician wording |
+| technician_query | string or null | Short technician wording; null when the case has none |
 | target_article_ids | string[] | Correct sourceArticleIds; empty for negatives |
 | has_match | boolean | false for issues the KB should not cover |
 
@@ -463,6 +463,10 @@ run_eval.py:
 - Logs the SHA-256 of the cases file with every run.
 - Reports Track A (customer_query) and Track B
   (technician_query) separately.
+- A case whose technician_query is null is sent on Track A only.
+  Track B sends no request for it, leaves it out of its counts,
+  and reports how many cases it skipped. A missing key or a blank
+  string is still an error. customer_query is never null.
 - Uses all returned rows (up to 50).
 - Positive cases: Top-1, Top-3, MRR@50, with raw counts
   (e.g. 14/20 (70%)). A hit means any ID in target_article_ids
