@@ -123,6 +123,14 @@ Add commands only after they exist. Do not invent command names.
   with names, IDs, emails, and phone numbers removed.
 - Query embeddings are ephemeral: never write query text, its hash
   or its vector to disk, cache, logs or the database.
+- Exception, owner decision 2026-11-15: the eval v2 pilot is
+  de-identified ticket text. It is stored only outside this repo.
+  Agents never read, commit or print it, and refer to rows by row_id
+  only. During scoring it is sent only to the OpenAI embeddings API,
+  with the local eval key (OPENAI_API_KEY set in the local dev shell,
+  never the hosted Vercel key), and never to a chat model unless a
+  later logged decision in DECISIONS.md allows it. The app still
+  stores and logs nothing from these requests.
 
 ## Paid Calls and Keys
 - Agents never run embed_kb.py embed --paid, never run a real eval

@@ -929,3 +929,83 @@ can change": "No signal leaves it built and gated, to be scored on
 eval v2 or dropped. The default stays semantic." Nothing in production
 changes. Nothing in the hybrid, semantic or lexical configuration,
 depth or labels changes because of these numbers.
+
+## 2026-11-15: Eval v2 pilot: collection snapshot (frozen)
+
+A record of the pilot file as collected, written before any corpus
+check, conversion or scoring. It describes one file, identified by its
+hash. Nothing below changes later; corrections and checks are new
+entries. The facts are the owner's account of the collection. No agent
+has read the file.
+
+**The file.**
+One merged CSV, kept outside the repo, sha256
+7ffd56739d536bfb35b6e8783184e4beff1c2edd642d2c6ae2cc96c8ac391a92.
+45 rows. Columns: row_id, date, channel, type, subject, tech_title,
+query, kb_used_id, kb_used_title, kb_also_ok, notes, sample_pick.
+No row text, subject, title or note is recorded in this repo. Rows
+are referred to by row_id only.
+
+**Counts.**
+- 45 rows, unique by normalized (query, kb_used_id).
+- Channel: 45 email.
+- Type: 35 incident, 10 service request.
+- kb_used_id: present on every row, 44 distinct values.
+- kb_also_ok: empty on every row.
+
+**Method.**
+Collected by hand by the owner from past TeamDynamix tickets. For
+each pick, a random date and time within August 15 to November 15,
+2026 was drawn and the first eligible closed ticket at or after that
+time was taken. Rows were collected in batches of 5 to 10 and merged;
+duplicate batches were removed.
+query is the student's original email from the ticket description,
+verbatim apart from de-identification. De-identification was a local
+offline tool followed by the owner's manual review, using the
+placeholders [NAME], [EMAIL], [PHONE], [ID], [USER], [DEVICE], [ROOM],
+[SECRET] and [OTHER].
+tech_title is filled only when a technician changed the ticket title,
+and is often blank.
+
+**Label.**
+The label is kb_used_id: the KB article the technician recorded on
+the ticket. Recording an article is mandatory at the Service Desk.
+This is the defined label for the pilot. It may not be the best
+article for the issue, and it has not been checked against the v1
+target rule (2026-09-29 entry). One person assembled the labels and
+there is no second labeler.
+
+**Not yet verified.**
+- Corpus coverage: whether each kb_used_id is one of the articles in
+  the local corpus.
+- Ticket-level uniqueness: rows are unique by (query, kb_used_id)
+  only, not confirmed to be 45 different tickets.
+- Final eligibility: which rows count toward a scored run.
+
+**Known weaknesses.**
+- Email only. No phone, chat, walk-up or portal tickets.
+- No skip log. Tickets passed over during sampling were not tracked.
+  The sample cannot be reproduced and there is no seed.
+- Small n: 45 rows before any exclusion.
+- No negatives: every row has a recorded article.
+- How each article was chosen is unknown: a technician may have used
+  the KB's keyword search, picked from experience, or changed it after
+  escalation or review by other staff. The label is the article on the
+  closed ticket. If keyword search was common, labels may favor
+  lexical.
+- A mandatory field can hold the nearest article and not the right
+  one.
+- Single collector, single labeler, and no second check of the
+  de-identification.
+
+**Differences from the plan.**
+docs/plans/eval-v2-and-abstention.md (owner decisions, 2026-11-14)
+expected rewritten queries and a label the owner verifies before it
+counts. The pilot keeps queries verbatim after de-identification and
+takes the recorded article as the label. The AGENTS.md "Data
+Handling" update named in those decisions has not been made.
+
+**Status.**
+No mode has been scored on this file. No decision rule for eval v2 is
+frozen. Nothing in production, in any search mode, or in eval v1
+changes because of this entry.
