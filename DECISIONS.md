@@ -1009,3 +1009,55 @@ Handling" update named in those decisions has not been made.
 No mode has been scored on this file. No decision rule for eval v2 is
 frozen. Nothing in production, in any search mode, or in eval v1
 changes because of this entry.
+
+## 2026-11-16: Eval v2 pilot: corpus coverage check
+
+The first of the checks the snapshot entry (2026-11-15) lists as not
+yet verified. Run by the owner on the pilot file with
+scripts/check_eval_ids.py (check-eval-ids-v1) against the local
+database. The file's sha256 was re-checked by the owner after the
+identifier read-through and is unchanged from the snapshot entry. No
+agent has read the file. No mode has been scored.
+
+**Script output.**
+- rows 45, rows_checked 45, input_problems 0
+- corpus_articles 3109
+- missing_from_corpus 9: p001, p026, p028, p031, p032, p036, p041,
+  p042, p043
+- no_embedding 0
+
+**What the 9 are.**
+The owner looked up each of the 9 by hand in TeamDynamix:
+- 8 rows: the article is approved and published but visible only to
+  signed-in staff.
+- 1 row: the article is an unpublished draft.
+None is a public article that collection missed. The corpus is
+public-only by design (SPEC.md, "Source": the public Coyote OneStop
+Knowledge Base) and was collected without signing in.
+
+**Eligible rows.**
+36 of 45 rows are eligible for scoring: the recorded article is in
+the corpus and has an article-v1 embedding. The 9 are excluded from
+every scored metric. They are a coverage gap, not retrieval failures:
+no search mode can return an article the corpus does not hold. They
+are reported separately as coverage, 36/45 (80%).
+
+**What the gap means.**
+Staff-only published articles were the recorded article on 8 of 45
+sampled tickets (18%), and the users of this tool are staff. On this
+sample, about one ticket in five was resolved with an article the
+tool cannot show. The sample is small and email only, so this is an
+indication, not a rate.
+
+**Not planned.**
+Adding staff-only articles would need approval from the owner and
+from ITS. Their content would have to stay out of this public repo.
+No work on it is planned.
+
+**Still not verified.**
+Ticket-level uniqueness (snapshot entry).
+
+**Status.**
+The eval v2 decision rule will be drafted against 36 eligible rows and
+frozen in its own entry before any scoring. Nothing in production, in
+any search mode, or in eval v1 changes because of this entry.
