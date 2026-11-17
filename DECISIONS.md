@@ -1215,3 +1215,125 @@ verified; two rows from one ticket would not be independent pairs.
 **Status.**
 No mode has been scored on these cases. Nothing in production, in
 any search mode, or in eval v1 changes because of this entry.
+
+## 2026-11-16: Eval v2 pilot: result
+
+The scored run under the frozen entry "Eval v2 pilot: decision rules"
+(2026-11-16). Run by the owner. One session, branch eval-v2-pilot at
+f3e1cf1, the cases file of that entry (sha256
+2eb58fddbed6bc856b25b143f587db3ab6978fa8f9f66da94ce4f526ea607f9b),
+depth 50. Order: lexical, semantic, hybrid, each with --json-out,
+kept outside the repo. A fake-case warm-up came first and is not an
+eval run. No aborted runs. No agent has read the cases file or the
+reports; the numbers below are the owner's.
+
+**Checks before reading metrics.**
+Every report: cases_sha256 equal to the hash above, 36 requests,
+Track B skipped 36 and N=0. There is no earlier eval v2 run to check
+the comparator against.
+
+**Coverage.**
+Unchanged from the coverage entry: 36/45 (80%) eligible. The 9 rows
+whose article is staff-only or a draft are in no number below.
+
+**Aggregates, Track A, 36 positives.**
+
+| Mode | Top-1 | Top-3 | MRR@50 | No target in top 50 |
+|---|---|---|---|---|
+| lexical | 6/36 (17%) | 13/36 (36%) | 0.288 | 11/36 |
+| semantic | 10/36 (28%) | 20/36 (56%) | 0.443 | 5/36 |
+| hybrid | 12/36 (33%) | 21/36 (58%) | 0.471 | 5/36 |
+
+Absolute numbers have no threshold. They are a floor, because the
+label is the one article recorded on the ticket, and they are not
+comparable with eval v1. MRR@50 is reported only.
+
+**Hybrid against semantic (paired_eval.py --rule eval-v2).**
+Primary, Track A Top-3: 5 wins (p006, p007, p008, p023, p034), 4
+losses (p025, p027, p040, p045), 27 ties, net +1, p = 1.000. The bar
+is not met. A net change of 1 is noise.
+Secondary, Track A Top-1: 7 wins (p006, p008, p013, p015, p020,
+p029, p034), 5 losses (p009, p027, p037, p040, p045), 24 ties, net
++2, p = 0.774. Not met. Noise.
+
+**Hybrid regression check.**
+Two targets that semantic returned are not in hybrid's top 50: p018
+and p021. No metric is a real loss and no metric has a net loss of 4
+or more.
+The rule: "Hybrid regresses if Top-1 or Top-3 is a real loss, or has
+a net loss of 4 or more cases, or a target that semantic returned
+leaves the top 50." The third condition is met. hybrid-rrf-v1
+regresses on eval v2.
+
+**Lexical against semantic (paired_eval.py --rule eval-v2).**
+Track A Top-3: 3 wins (p007, p034, p038), 10 losses (p005, p009,
+p014, p020, p025, p027, p033, p037, p040, p045), 23 ties, net -7,
+p = 0.092. Not met.
+Track A Top-1: 5 wins (p007, p013, p015, p029, p038), 9 losses
+(p004, p009, p010, p012, p027, p037, p040, p044, p045), 22 ties,
+net -4, p = 0.424. Not met.
+Neither count is a real win or a real loss. Under the rule this is
+not a result, and it is not described as a trend. The script's
+regression line for this comparison is reported only, as the rule
+says.
+
+**Outcome.**
+- hybrid-rrf-v1: regression. Under "What each outcome can and cannot
+  change": "Hybrid regression: this configuration stops. It is not
+  carried further without a new, logged experiment." It is not
+  promoted and is not scored again. The mode stays in the code,
+  eval-only and gated; removing it is a separate owner decision.
+- Lexical: not a result. "Lexical real loss, or not a result: nothing
+  changes."
+- The default stays semantic. Nothing in production, in any
+  configuration (lexical SQL, article-v1, hybrid-rrf-v1, depth 50) or
+  in eval v1 changes because of these numbers.
+- The technician-wording hypothesis of the frozen hybrid entry
+  (2026-11-15) was not tested here, as the rules entry says. Its
+  eval v1 result stays as logged: no signal.
+
+**Observations. They do not change the outcome.**
+- The two targets that left the top 50 were deep in the semantic
+  list: p018 at semantic rank 38 and p021 at semantic rank 36. The
+  frozen condition has no depth qualifier and is applied as written.
+- Semantic had no target in the top 50 for p002, p003, p016, p017
+  and p038; hybrid for p002, p016, p017, p018 and p021. So hybrid
+  returned two targets that semantic did not: p003 (hybrid rank 28)
+  and p038 (hybrid rank 5). That is why both modes show 5.
+- Two comparisons were tested at 5% with no correction. Neither met
+  the bar, so the question of a false real result does not arise.
+
+**Within the 10 displayed results (post hoc, descriptive only).**
+The app displays 10 results (DISPLAY_COUNT = 10 in
+app/search-client.tsx), while run_eval.py scores all 50 returned.
+Top-10 was not part of the frozen rule. The numbers below were
+computed by the owner from the three --json-out reports after
+scoring, with no new requests. They were chosen after the results
+were seen, so they are not a test of anything.
+
+| Mode | Top-10 | MRR@10 | No target in top 10 |
+|---|---|---|---|
+| lexical | 19/36 (53%) | 0.277 | 17/36 |
+| semantic | 25/36 (69%) | 0.435 | 11/36 |
+| hybrid | 26/36 (72%) | 0.464 | 10/36 |
+
+Paired against semantic at Top-10, counted as the rule counts Top-3:
+- Hybrid: 3 wins (p007, p011, p038), 2 losses (p025, p039), 31 ties,
+  net +1, p = 1.000.
+- Lexical: 3 wins (p007, p011, p038), 9 losses (p005, p009, p014,
+  p020, p025, p027, p039, p040, p045), 24 ties, net -6, p = 0.146.
+
+Hybrid's three Top-10 wins are the same three cases that lexical
+wins.
+
+This section changes no outcome under the frozen rule. hybrid-rrf-v1
+is still a regression and still stops, lexical is still not a
+result, and the default is still semantic. A future decision rule
+should state a top-10 metric before scoring, since 10 is what a user
+sees.
+
+**After this run.**
+The 36 cases have been seen. Any later experiment scored on them is
+not a blind test. Limits are as listed in the rules entry: 36 cases,
+email only, one collector and one labeler, no negatives, Track A
+only, ticket-level uniqueness not verified.
