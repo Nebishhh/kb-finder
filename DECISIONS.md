@@ -1493,3 +1493,129 @@ these cases will have been scored a second time.
 **Status.**
 Neither v2 mode has been run on these cases. Nothing in production,
 in any search mode, or in eval v1 changes because of this entry.
+
+## 2026-11-16: Eval v2 pilot: article-v2 result
+
+The scored run under the frozen entry "Eval v2 pilot: article-v2
+decision rule" (2026-11-16). Run by the owner. One session, main at
+3ed13d5 (the commit that froze the rule), the eval v2 pilot cases
+file (sha256
+2eb58fddbed6bc856b25b143f587db3ab6978fa8f9f66da94ce4f526ea607f9b),
+depth 50. A fake-case warm-up passed in all three modes and is not
+an eval run. Order: semantic, semantic-v2, lexical-v2, each with
+--json-out, kept outside the repo. No aborted runs. No agent has
+read the cases file or the reports; the numbers below are the
+owner's.
+
+This run is exploratory, as the rule says. The 36 cases are a seen
+practice set. Nothing below promotes anything.
+
+**Checks before reading metrics.**
+Every report: cases_sha256 equal to the hash above, 36 requests,
+Track B skipped 36 and N=0.
+
+**Comparator check.**
+This session's semantic run: Top-1 10/36, Top-3 20/36, MRR@50 0.443,
+no target in top 50 5/36, Top-10 25/36, MRR@10 0.435. All six match
+the eval v2 result entry. No difference to log.
+
+**Aggregates, Track A, 36 positives.**
+
+| Mode | Top-1 | Top-3 | MRR@50 | No target in top 50 |
+|---|---|---|---|---|
+| semantic | 10/36 (28%) | 20/36 (56%) | 0.443 | 5/36 |
+| semantic-v2 | 12/36 (33%) | 23/36 (64%) | 0.484 | 4/36 |
+| lexical-v2 | 6/36 (17%) | 14/36 (39%) | 0.295 | 10/36 |
+
+Top-10 metrics, declared in advance, descriptive:
+
+| Mode | Top-10 | MRR@10 | No target in top 10 |
+|---|---|---|---|
+| semantic | 25/36 (69%) | 0.435 | 11/36 |
+| semantic-v2 | 26/36 (72%) | 0.476 | 10/36 |
+| lexical-v2 | 19/36 (53%) | 0.283 | 17/36 |
+
+Absolute numbers have no threshold and are a floor, as in the eval
+v2 result entry. MRR@50 and the top-50 counts are reported only.
+
+**semantic-v2 against semantic (paired_eval.py --rule eval-v2).**
+Primary, Track A Top-3: 3 wins (p006, p008, p023), 0 losses, 33
+ties, net +3, p = 0.250. The bar is not met. A net change of 3 is
+noise under the rule.
+Secondary, Track A Top-1: 2 wins (p014, p015), 0 losses, 34 ties,
+net +2, p = 0.500. Not met. Noise.
+Top-10, descriptive: 1 win (p035), 0 losses, 35 ties.
+Rank direction, descriptive: better 11, worse 3, same 22. The three
+worse cases are p011 (rank 30 to 33), p013 (2 to 3) and p021 (36 to
+40). None crossed a Top-1, Top-3 or Top-10 boundary.
+
+**semantic-v2 regression guard.**
+None. Neither Top-1 nor Top-3 is a real loss or has a net loss of 4
+or more. There is no net Top-10 loss. No target that semantic had in
+the top 3 is outside semantic-v2's top 10.
+
+**lexical-v2 against semantic (paired_eval.py --rule eval-v2).**
+Track A Top-3: 3 wins (p007, p034, p038), 9 losses (p005, p009,
+p014, p020, p025, p027, p033, p040, p045), 24 ties, net -6,
+p = 0.146. Not met.
+Track A Top-1: 5 wins (p007, p013, p015, p029, p038), 9 losses
+(p004, p009, p010, p012, p027, p037, p040, p044, p045), 22 ties,
+net -4, p = 0.424. Not met.
+Top-10, descriptive: 3 wins (p007, p011, p038), 9 losses (p005,
+p009, p014, p020, p025, p027, p039, p040, p045), 24 ties, net -6.
+Neither primary nor secondary count is a real win or a real loss.
+
+**lexical-v2 regression guard.**
+Regression. Three of the four conditions are met:
+- Top-3 has a net loss of 6 and Top-1 a net loss of 4, each 4 or
+  more.
+- There is a net Top-10 loss of 6, which is 4 or more.
+- Eight targets that semantic had in the top 3 are not in
+  lexical-v2's top 10: p005, p009, p014, p020, p025, p027, p040 and
+  p045.
+The remaining condition, a real loss on Top-1 or Top-3, is not met.
+
+**lexical-v2 against lexical (descriptive only).**
+Paired against the lexical report of the eval v2 session, same cases
+file. Top-3: 1 win (p037), 0 losses. Top-1: 0 wins, 0 losses.
+Top-10: 0 wins, 0 losses. No bar and no outcome attach to this.
+
+**Outcome.**
+- semantic-v2: not a result. Under "What each outcome can and cannot
+  change": "semantic-v2 not a result: it stays built, local and
+  gated. It is not scored again on this pilot. It waits for a larger
+  eval set or is dropped by a later owner decision." It is not a
+  candidate in the rule's sense, which requires a real win.
+- lexical-v2: regression against semantic. "lexical-v2 real loss,
+  regression or not a result: nothing changes. Lexical is not the
+  default."
+- The default stays semantic on article-v1. Nothing in production,
+  in any configuration or in eval v1 changes because of these
+  numbers. The hosted database still has no article-v2 migration and
+  no article-v2 embeddings.
+- No question for ITS is answered by this run.
+
+**Observations. They do not change the outcome.**
+- semantic-v2 had no losses against semantic on Top-1, Top-3 or
+  Top-10: 2 wins, 3 wins and 1 win, with 0 losses each. These counts
+  are below the bar and are not evidence that semantic-v2 is better.
+  They are the reason semantic-v2 is the first configuration to
+  score on a held-out set when one exists, under its own frozen
+  rule.
+- semantic-v2 has one fewer case with no target in the top 50 than
+  semantic (4 against 5): p003, at semantic-v2 rank 36. lexical-v2
+  has one fewer than lexical in the eval v2 session (10 against 11):
+  p018, at lexical-v2 rank 36.
+- Against lexical, the staff-only text changed one case at Top-3 and
+  none at Top-1 or Top-10. lexical-v2's regression against semantic
+  is therefore almost entirely the lexical-against-semantic gap
+  already logged in the eval v2 result entry, not an effect of the
+  staff-only text.
+- Two comparisons were tested at 5% with no correction. Neither met
+  the bar.
+
+**After this run.**
+The 36 cases have now been scored twice and are a seen practice set.
+Any confirmation needs a new held-out set and its own frozen rule,
+stated before scoring and including a top-10 metric. Limits are as
+listed in the eval v2 rules entry.
