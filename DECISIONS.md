@@ -1337,3 +1337,159 @@ The 36 cases have been seen. Any later experiment scored on them is
 not a blind test. Limits are as listed in the rules entry: 36 cases,
 email only, one collector and one labeler, no negatives, Track A
 only, ticket-level uniqueness not verified.
+
+## 2026-11-16: Eval v2 pilot: article-v2 decision rule (frozen)
+
+Set before lexical-v2 or semantic-v2 is run on any eval v2 case.
+Nothing below changes after a number has been seen. Any later change
+is a new, logged entry. No agent has read the cases file or any
+report.
+
+**What is tested.**
+The article-v2 experiment (2026-10-07, built 2026-10-12): staff-only
+text made searchable, never displayed. Two eval-only modes:
+- semantic-v2: the article-v1 text, then "Staff only:" and the
+  staff-only text when it is non-blank. Same model, dimensions, query
+  handling, ranking and tie-break as semantic.
+- lexical-v2: the lexical vector (title, tags, description, full
+  text) plus staff-only text at weight D. Same query handling,
+  ranking and tie-break as lexical.
+1,255 of 3,109 articles have staff-only text. Neither mode adds an
+article: the 9 coverage rows stay out of every number.
+
+**Hypothesis.**
+For some tickets the fix sits in the staff-only section of a public
+article. Making that text searchable moves the recorded article up.
+
+**Not a blind test.**
+This rule is written after the eval v2 result (2026-11-16). The
+owner and the agent that drafted it know semantic's result on each
+of these 36 cases: which are in the top 3, which are in the top 10,
+and which have no target in the top 50. The primary and the bar are
+the eval v2 ones, kept for consistency. The top-10 guard and the
+top-10 metrics exist because of what the eval v2 result showed. The
+v2 modes themselves have never been run on these cases.
+This experiment is exploratory. The 36 cases are a seen practice
+set. No outcome here promotes anything; a candidate must be
+confirmed on a new held-out set under its own frozen rule first.
+
+**Cases.**
+The eval v2 pilot cases file, sha256
+2eb58fddbed6bc856b25b143f587db3ab6978fa8f9f66da94ce4f526ea607f9b:
+36 positives, Track A only, no negatives.
+
+**Local database, checked before this entry.**
+scripts/db_fingerprint.py on 2026-11-16, local database: 3109
+articles, 2 embedding configs (article-v1 and article-v2), 6218
+embeddings, article-v2 config sha256
+5cb0d08b0547a1ab611854c919d0f694eb3eb59314118775d265023c7fb12f33.
+No search was run in either v2 mode for this check.
+
+**Run.**
+The owner runs it. One session, one commit, depth 50, local app.
+First a fake-case warm-up in all three modes; it is not an eval
+run, and if any mode fails it, no real case is sent. Then, in this
+order, each with --json-out outside the repo: semantic, semantic-v2,
+lexical-v2. The first complete run of each mode is the scored run.
+Aborted runs are noted. Before reading any metric, each report's
+cases_sha256 is checked against the hash above, with 36 requests and
+Track B skipped 36 and N=0. Semantic and semantic-v2 send the 36
+queries to the OpenAI embeddings API with the local eval key, under
+the 2026-11-15 exception. lexical-v2 sends nothing to OpenAI.
+
+**Comparator.**
+That session's semantic run. Its aggregates are checked against the
+eval v2 result entry (Top-1 10/36, Top-3 20/36, MRR@50 0.443, no
+target in top 50 5/36; Top-10 25/36, MRR@10 0.435). Any difference
+is logged. The comparator does not change. Query embeddings are not
+cached, so small differences are possible.
+
+**Primary metric and bar.**
+Two paired comparisons with scripts/paired_eval.py --rule eval-v2:
+semantic as base and semantic-v2 as new, and semantic as base and
+lexical-v2 as new.
+Primary: Track A Top-3. A result is real only when wins exceed
+losses and the exact two-sided sign test gives p < 0.05: 6-0, 8-1,
+10-2, 12-3, 13-4 or 15-5 in wins-losses, or better. The same test
+with losses ahead is a real loss. Anything short of the bar is not
+a result. A net change of 1 to 3 cases is noise. Counts below the
+bar are logged with their case IDs and are not described as a
+trend.
+Secondary, same bar, reported as secondary: Track A Top-1. A
+secondary result alone changes nothing.
+Each comparison is tested at 5% with no correction, so the chance
+of at least one false real result across the two is up to about
+10%. No outcome below changes production by itself.
+
+**Top-10 metrics, declared in advance, descriptive.**
+The app displays 10 results. Per mode: Top-10 (the target is at
+rank 10 or better), MRR@10 (reciprocal rank, 0 when the target is
+not in the top 10) and the count with no target in the top 10.
+Paired against semantic: Top-10 wins and losses with case IDs.
+These are counted by the owner from the --json-out reports with no
+new requests; no script computes them. No bar is applied to them.
+MRR@50 and the count with no target in the top 50 are reported
+only.
+
+**Regression guard.**
+Applies to each v2 mode against semantic. A mode regresses if Top-1
+or Top-3 is a real loss, or has a net loss of 4 or more cases, or
+there is a net Top-10 loss of 4 or more cases, or a target that
+semantic had in the top 3 is not in that mode's top 10. The top-10
+conditions replace the eval v2 condition about leaving the top 50,
+because the app shows 10 results: a target that falls out of the
+10 is lost to the user, and a target that falls from rank 38 to
+rank 60 was never seen. Query embeddings are not cached, so a
+single move between rank 10 and rank 11 can be noise; that is why
+the Top-10 condition is a net loss and the single-case condition
+starts from the top 3. paired_eval.py still prints its top-50
+check; here it is reported only.
+A net loss of 1 to 3 on Top-1, Top-3 or Top-10 is noise and is
+logged with the case IDs.
+
+**lexical-v2 against lexical, descriptive only.**
+lexical-v2 against semantic does not isolate the staff-only text,
+because lexical and semantic already differ. So lexical-v2 is also
+paired against the lexical report of the eval v2 session, on the
+same cases file. Lexical makes no embedding call, so that report is
+reusable while the corpus and the lexical SQL are unchanged. The
+owner confirms they are unchanged since f3e1cf1: only docs commits
+have been made since. Counts and case IDs are reported. No bar and
+no outcome attach to it.
+
+**What each outcome can and cannot change.**
+No outcome changes production, the default mode, any configuration
+or eval v1. The hosted database has no article-v2 migration and no
+article-v2 embeddings, so neither mode can run there today.
+- semantic-v2 real win, no regression: article-v2 becomes a
+  candidate. It must first be confirmed on a new held-out set under
+  its own frozen rule. Only after that confirmation is there a
+  promotion review, which is its own logged decision. That review
+  would need the migration pushed to the hosted database, the
+  article-v2 embeddings loaded there, and a separately logged
+  release that remaps semantic.
+- semantic-v2 not a result: it stays built, local and gated. It is
+  not scored again on this pilot. It waits for a larger eval set or
+  is dropped by a later owner decision.
+- semantic-v2 regression: this configuration stops. It is not
+  carried further without a new, logged experiment.
+- lexical-v2 real win over semantic: the default stays semantic. As
+  in the eval v2 rule, it opens a logged review of how the recorded
+  articles were chosen.
+- lexical-v2 real loss, regression or not a result: nothing
+  changes. Lexical is not the default.
+- Questions for ITS: no outcome answers them. Whether staff-only
+  sections should be searchable in the hosted tool, and whether
+  staff-only articles may be added to the corpus, stay open and are
+  the owner's to raise. A win here is evidence for that
+  conversation, not permission.
+
+**Limits.**
+As in the eval v2 rules entry: 36 cases, email only, one collector
+and one labeler, no negatives, Track A only, one recorded article
+per case, ticket-level uniqueness not verified. After this run
+these cases will have been scored a second time.
+
+**Status.**
+Neither v2 mode has been run on these cases. Nothing in production,
+in any search mode, or in eval v1 changes because of this entry.
