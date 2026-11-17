@@ -653,13 +653,17 @@ class NullTechnicianQueryTests(Base):
         self.assertFalse([l for l in lines if "track B" in l])
 
         code, lines = run(paired_eval.main, base, new)
+        self.assertEqual(code, 2)
+        self.assertIn("rule hybrid-rrf-v1: its primary track B has no positives", lines[0])
+
+        code, lines = run(paired_eval.main, base, new, "--rule", "eval-v2")
         self.assertEqual(code, 0)
         self.assertIn("== Track A (customer_query), 1 positives ==", lines)
-        self.assertIn("== Track B (technician_query), 0 positives ==", lines)
-        self.assertIn("Top-1 (primary): wins 0, losses 0, ties 0, net +0   "
-                      "sign test p = 1.000   bar: not met", lines)
         self.assertIn("Top-1 (secondary): wins 1, losses 0, ties 0, net +1   "
                       "sign test p = 1.000   bar: not met", lines)
+        self.assertEqual(lines[-2:], ["== Track B (technician_query), 0 positives ==",
+                                      "No positives on this track: nothing to compare."])
+        self.assertFalse([l for l in lines if "primary" in l and "Top-1" in l])
 
 
 class V1RegressionTests(Base):

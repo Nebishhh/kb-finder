@@ -1061,3 +1061,157 @@ Ticket-level uniqueness (snapshot entry).
 The eval v2 decision rule will be drafted against 36 eligible rows and
 frozen in its own entry before any scoring. Nothing in production, in
 any search mode, or in eval v1 changes because of this entry.
+
+## 2026-11-16: Eval v2 pilot: decision rules (frozen)
+
+Set before any mode is scored on the pilot. Nothing below changes
+after a number has been seen. Any later change is a new, logged
+entry. No agent has read the pilot file or the cases file.
+
+**Cases.**
+The owner converted the pilot CSV (snapshot entry, 2026-11-15) with
+scripts/convert_eval_v2.py (convert-eval-v2-v1) with the converter
+code committed in 3e9cb12 (run from the working tree immediately
+before that commit; the code did not change between the run and the
+commit), passing the 9 rows of the coverage entry (2026-11-16) to
+--exclude. Script output: input_sha256 equal to the snapshot hash,
+rows 45, input_problems 0, excluded_by_flag 9, query_too_long 0,
+cases 36, technician_query_null 36. The cases file is kept outside
+the repo, sha256
+2eb58fddbed6bc856b25b143f587db3ab6978fa8f9f66da94ce4f526ea607f9b.
+Each case is one row: the case ID is the row_id, customer_query is
+the query cell unchanged, and the one target is kb_used_id. All 36
+are positives. There are no negatives.
+
+**Track A only.**
+No eligible row has a tech_title, so technician_query is null on
+every case and Track B is empty. run_eval.py sends no Track B
+request. Nothing about technician wording can be learned from this
+pilot.
+
+**Coverage, reported separately.**
+36/45 (80%) of sampled rows are eligible. The other 9 (8 staff-only
+articles, 1 unpublished draft) are a coverage gap and are in no
+scored metric, as logged on 2026-11-16. No mode is credited or
+charged for them.
+
+**Run.**
+The owner runs it. One session, one commit, the cases file above,
+depth 50, local app. Order: lexical, semantic, hybrid, each with
+--json-out, written outside the repo. The first complete run of
+each mode is the scored run. Aborted runs are noted. A fake-case
+warm-up is not an eval run. Before reading any metric, each
+report's cases_sha256 is checked against the hash above, and Track
+B must show 36 skipped cases and N=0. Semantic and hybrid send the
+36 queries to the OpenAI embeddings API with the local eval key,
+under the 2026-11-15 exception. Query embeddings are not cached, so
+the semantic leg inside hybrid is a separate embedding call from
+the semantic run.
+
+**Comparator.**
+Semantic, the production default: that session's semantic run.
+There is no earlier eval v2 run to check it against. Two paired
+comparisons are made with scripts/paired_eval.py --rule eval-v2:
+semantic as base and hybrid as new, and semantic as base and
+lexical as new.
+
+**Primary metric and bar.**
+Paired, per case, Track A. On Top-3, a win is a case where the new
+mode has the target in the top 3 and semantic does not; a loss is
+the reverse; every other case is a tie. Top-1 is counted the same
+way.
+Primary: Track A Top-3. A result is real only when wins exceed
+losses and the exact two-sided sign test on the wins and losses
+gives p < 0.05. In counts, wins-losses: 6-0, 8-1, 10-2, 12-3, 13-4
+or 15-5, or better. The same test with losses ahead is a real loss.
+Anything short of the bar is not a result. A net change of 1 to 3
+cases is noise. Counts below the bar are logged with their case
+IDs and are not described as a trend.
+Secondary, same bar, reported as secondary: Track A Top-1. A
+secondary result alone changes nothing. MRR@50 and the count with
+no target in the top 50 are reported only. Absolute Top-1 and Top-3
+are reported per mode with raw counts and have no threshold.
+
+**Why the bar depends on disagreements, not on n.**
+The sign test ignores ties. Under the null hypothesis, each case
+where the two modes disagree is a win or a loss with probability
+1/2, so with w wins and l losses the two-sided p is
+2 * sum(C(w+l, i) for i = 0..min(w, l)) / 2^(w+l), capped at 1.
+The 36 does not appear. Six wins and no losses give 2/64 = 0.031;
+five and none give 2/32 = 0.0625, which is not below 0.05. So fewer
+than 6 disagreements can never be a result, whatever the 36 cases
+show in aggregate. Each loss costs more than one extra win: 8-1 is
+20/512 = 0.039 and 7-1 is 18/256 = 0.070. On eval v1, hybrid and
+semantic disagreed on 2 to 7 of 21 cases per metric, so "not a
+result" is a likely outcome here even if one mode is better.
+
+**Two comparisons.**
+Each comparison is tested at 5% with no correction, so the chance
+of at least one false real result across the two is up to about
+10%. This is accepted because no outcome below changes production
+by itself.
+
+**Regression.**
+Applies to hybrid against semantic. Hybrid regresses if Top-1 or
+Top-3 is a real loss, or has a net loss of 4 or more cases, or a
+target that semantic returned leaves the top 50. A net loss of 1 to
+3 is noise and is logged with the case IDs. The net-loss guard is
+the eval v1 guard, kept unchanged; it is a caution, not a
+significance test. paired_eval.py prints the same check for the
+lexical comparison, where it is reported only.
+
+**hybrid-rrf-v1: a new rule, not a test of its hypothesis.**
+The frozen hybrid entry (2026-11-15) states a hypothesis about
+technician wording, with Track B Top-1 as its primary, and says
+hybrid is judged on eval v2. This pilot has no Track B, so it
+cannot test that hypothesis, and this entry does not claim to. The
+eval v1 result stays as logged: no signal. The rule here is a
+different question, written new: on real student emails, does
+hybrid-rrf-v1 put the recorded article in the top 3 more often
+than semantic? Its primary is Track A Top-3 under the bar above.
+The configuration is unchanged and is not tuned on these cases.
+On eval v1 Track A, hybrid's net against semantic was -3 on Top-1
+and -1 on Top-3, both noise, so v1 gives no reason to expect a
+win. Whatever happens here, the technician-wording hypothesis
+remains untested on real tickets.
+
+**Lexical against semantic.**
+A check of the default on real emails, not a candidate. The
+snapshot entry notes that the labels may favor lexical if
+technicians found articles by keyword search.
+
+**What each outcome can and cannot change.**
+No outcome changes production, the default mode, any configuration
+(lexical SQL, article-v1, hybrid-rrf-v1, depth 50) or eval v1.
+- Hybrid real win, no regression: hybrid-rrf-v1 becomes a candidate
+  for a promotion review. That review is its own logged decision
+  and needs what the frozen hybrid entry lists (pool size, measured
+  latency, where the fusion lives) and a view on whether 36
+  email-only rows from one labeler are enough. It is not promoted
+  by this result.
+- Hybrid not a result: it stays built and gated and is not
+  promoted. It is not scored again on this pilot. Keeping or
+  dropping it is a later owner decision.
+- Hybrid regression: this configuration stops. It is not carried
+  further without a new, logged experiment.
+- Lexical real win over semantic: the default stays semantic. It
+  opens a logged review of how the recorded articles were chosen
+  before the default is questioned.
+- Lexical real loss, or not a result: nothing changes.
+- Next experiments: the results may inform which experiment is
+  planned next. They do not start one. After this run the 36 cases
+  have been seen, so any later experiment scored on them is not a
+  blind test.
+
+**Limits.**
+36 cases, email only, one collector and one labeler, no negatives,
+no skip log. The label is the article recorded on the ticket, and
+kb_also_ok is empty, so a mode that returns a different, equally
+good article scores a miss. Absolute numbers are therefore a floor
+and are not comparable with eval v1, which used written queries
+and a different target rule. Ticket-level uniqueness is still not
+verified; two rows from one ticket would not be independent pairs.
+
+**Status.**
+No mode has been scored on these cases. Nothing in production, in
+any search mode, or in eval v1 changes because of this entry.

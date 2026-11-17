@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Paired, per-case comparison of two run_eval.py --json-out reports.
 
-Run:  .venv/Scripts/python scripts/paired_eval.py BASE NEW
+Run:  .venv/Scripts/python scripts/paired_eval.py BASE NEW [--rule RULE]
 
 BASE is the comparator (for the hybrid experiment: that session's semantic
 run). NEW is the mode under test. The modes may differ; the cases may not.
@@ -21,7 +21,15 @@ Rule     The decision rule frozen in DECISIONS.md ("Hybrid experiment
          Top-1 or Top-3, or a target BASE returned that NEW does not, is a
          regression. The exact two-sided sign-test p is printed beside each
          count.
-Output   Case IDs, ranks and counts only. The reports hold no query text or
+         --rule eval-v2 applies the rule frozen in DECISIONS.md ("Eval v2
+         pilot: decision rules", 2026-11-16) instead: the primary comparison
+         is Track A Top-3, and the bar is more wins than losses with a
+         two-sided sign test p < 0.05. The same test with losses ahead is
+         printed as a real loss. The Track A regression check is unchanged.
+         A track with no positives prints one line and no counts. A rule
+         whose primary track has no positives is an error, so the default
+         rule cannot be applied to a Track A only report.
+Output  Case IDs, ranks and counts only. The reports hold no query text or
          titles, and the base URL is not printed.
 Exit     0 comparison printed, 2 usage, unreadable report or reports that
          cannot be paired. The exit code does not encode the result.
@@ -36,9 +44,10 @@ from pathlib import Path
 from compare_eval_json import ReportError, load_report
 
 CUTOFFS = (("Top-1", 1), ("Top-3", 3))
-PRIMARY = ("B", "Top-1")
 REGRESSION_TRACK = "A"
 REGRESSION_NET_LOSS = 4
+ALPHA = 0.05
+DEFAULT_RULE = "hybrid-rrf-v1"
 
 EXIT_OK = 0
 EXIT_USAGE = 2
@@ -81,6 +90,40 @@ def meets_bar(wins: int, losses: int) -> bool:
     return (wins >= 6 and losses == 0) or (wins >= 8 and losses <= 1)
 
 
+def bar_hybrid_rrf_v1(wins: int, losses: int) -> str:
+    return "met" if meets_bar(wins, losses) else "not met"
+
+
+def bar_eval_v2(wins: int, losses: int) -> str:
+    if sign_test_p(wins, losses) >= ALPHA:
+        return "not met"
+    return "met" if wins > losses else "met in reverse (real loss)"
+
+
+RULES = {
+    "hybrid-rrf-v1": {
+        "primary": ("B", "Top-1"),
+        "bar": bar_hybrid_rrf_v1,
+        "text": "bar: at least 6 wins and 0 losses, or at least 8 wins and at most "
+                "1 loss; a net change of 1 to 3 cases is noise",
+    },
+    "eval-v2": {
+        "primary": ("A", "Top-3"),
+        "bar": bar_eval_v2,
+        "text": "bar (eval-v2): more wins than losses and exact two-sided sign test "
+                "p < 0.05 (6-0, 8-1, 10-2, 12-3, 13-4, 15-5); a net change of 1 to 3 "
+                "cases is noise",
+    },
+}
+
+
+def check_rule(base: dict, rule: str) -> None:
+    track = RULES[rule]["primary"][0]
+    if not base["tracks"].get(track, {}).get("positives"):
+        raise ReportError(f"rule {rule}: its primary track {track} has no positives; "
+                          f"pass the rule these reports were made for with --rule")
+
+
 def hit(rank: int | None, cutoff: int) -> bool:
     return rank is not None and rank <= cutoff
 
@@ -101,26 +144,29 @@ def fmt_rank(rank: int | None) -> str:
     return "none" if rank is None else str(rank)
 
 
-def compare(base: dict, new: dict) -> list[str]:
+def compare(base: dict, new: dict, rule: str = DEFAULT_RULE) -> list[str]:
+    spec = RULES[rule]
     lines = [f"base: mode {base['mode']}   new: mode {new['mode']}",
              f"cases sha256: {base['cases_sha256']}",
-             "bar: at least 6 wins and 0 losses, or at least 8 wins and at most "
-             "1 loss; a net change of 1 to 3 cases is noise"]
+             spec["text"]]
     for t in sorted(base["tracks"]):
         pairs = pair_track(base["tracks"][t], new["tracks"][t])
         field = base["tracks"][t].get("field")
         name = f"Track {t}" + (f" ({field})" if isinstance(field, str) else "")
         lines.append("")
         lines.append(f"== {name}, {len(pairs)} positives ==")
+        if not pairs:
+            lines.append("No positives on this track: nothing to compare.")
+            continue
         regression = []
         for label, cutoff in CUTOFFS:
             c = count(pairs, cutoff)
             w, l = len(c["wins"]), len(c["losses"])
-            role = "primary" if (t, label) == PRIMARY else "secondary"
+            role = "primary" if (t, label) == spec["primary"] else "secondary"
             lines.append(
                 f"{label} ({role}): wins {w}, losses {l}, ties {c['ties']}, "
                 f"net {w - l:+d}   sign test p = {sign_test_p(w, l):.3f}   "
-                f"bar: {'met' if meets_bar(w, l) else 'not met'}")
+                f"bar: {spec['bar'](w, l)}")
             for kind, cases in (("win ", c["wins"]), ("loss", c["losses"])):
                 for cid, old, cur in cases:
                     lines.append(f"  {kind}  {cid}  rank {fmt_rank(old)} -> {fmt_rank(cur)}")
@@ -144,6 +190,8 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("base", type=Path, help="--json-out report of the comparator mode")
     ap.add_argument("new", type=Path, help="--json-out report of the mode under test")
+    ap.add_argument("--rule", choices=sorted(RULES), default=DEFAULT_RULE,
+                    help="decision rule to label the counts with")
     args = ap.parse_args(argv)
     try:
         base = load_report(args.base, "base")
@@ -151,10 +199,11 @@ def main(argv=None) -> int:
         check_best_ranks(base, "base")
         check_best_ranks(new, "new")
         check_pairable(base, new)
+        check_rule(base, args.rule)
     except ReportError as exc:
         print(f"error: {exc}")
         return EXIT_USAGE
-    for line in compare(base, new):
+    for line in compare(base, new, args.rule):
         print(line)
     return EXIT_OK
 

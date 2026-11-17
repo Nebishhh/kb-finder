@@ -60,7 +60,7 @@ the one shared password.
 - .venv/Scripts/python -m unittest tests.test_semantic_sql
   (live DB; skipped unless $env:KB_FINDER_TEST_DATABASE_URL is set)
 - .venv/Scripts/python -m unittest tests.test_compare_eval_json
-- .venv/Scripts/python scripts/paired_eval.py BASE NEW
+- .venv/Scripts/python scripts/paired_eval.py BASE NEW [--rule RULE]
   (human runs it on real --json-out reports; agents only on synthetic ones)
 - .venv/Scripts/python -m unittest tests.test_paired_eval
 - .venv/Scripts/python scripts/check_eval_ids.py CSV_PATH

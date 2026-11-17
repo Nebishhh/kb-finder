@@ -31,6 +31,16 @@ def report(ranks_a, ranks_b=None, mode="semantic", cases_sha256="a" * 64):
     return run_eval.json_report(tracks, 1, header)
 
 
+def v2_report(ranks_a, mode="semantic"):
+    """Track A as report(); Track B empty, as run_eval.py writes it when every
+    technician_query is null."""
+    r = report(ranks_a, mode=mode)
+    r["tracks"]["B"].update(positives=[], negatives=[],
+                            metrics=run_eval.summarize([]),
+                            skipped_null_query=len(ranks_a) + 1)
+    return r
+
+
 class SignTestTests(unittest.TestCase):
     def test_known_values(self):
         self.assertEqual(pe.sign_test_p(0, 0), 1.0)
@@ -52,6 +62,18 @@ class SignTestTests(unittest.TestCase):
         self.assertGreater(pe.sign_test_p(5, 0), 0.05)
         self.assertGreater(pe.sign_test_p(7, 1), 0.05)
 
+    def test_eval_v2_bar_is_the_sign_test_at_5_percent(self):
+        fewest_wins = []
+        for losses in range(6):
+            wins = losses + 1
+            while pe.bar_eval_v2(wins, losses) != "met":
+                wins += 1
+            fewest_wins.append(wins)
+        self.assertEqual(fewest_wins, [6, 8, 10, 12, 13, 15])
+        self.assertEqual(pe.bar_eval_v2(5, 0), "not met")
+        self.assertEqual(pe.bar_eval_v2(0, 6), "met in reverse (real loss)")
+        self.assertEqual(pe.bar_eval_v2(0, 0), "not met")
+
 
 class PairedTests(unittest.TestCase):
     def setUp(self):
@@ -68,12 +90,70 @@ class PairedTests(unittest.TestCase):
         path.write_text(data, encoding="utf-8")
         return path
 
-    def run_main(self, base, new):
+    def run_main(self, base, new, *args):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             code = pe.main([str(self.write("base.json", base)),
-                            str(self.write("new.json", new))])
+                            str(self.write("new.json", new)), *args])
         return code, out.getvalue().splitlines()
+
+    def test_explicit_default_rule_matches_no_flag(self):
+        base, new = report([1, 2, 4, None]), report([2, 1, 3, 40], mode="hybrid")
+        self.assertEqual(self.run_main(base, new, "--rule", "hybrid-rrf-v1"),
+                         self.run_main(base, new))
+
+    def test_eval_v2_rule_on_a_track_a_only_report(self):
+        code, lines = self.run_main(v2_report([4, 1, 2]),
+                                    v2_report([3, 1, 1], mode="hybrid"),
+                                    "--rule", "eval-v2")
+        self.assertEqual(code, 0)
+        self.assertEqual(lines, [
+            "base: mode semantic   new: mode hybrid",
+            f"cases sha256: {'a' * 64}",
+            "bar (eval-v2): more wins than losses and exact two-sided sign test "
+            "p < 0.05 (6-0, 8-1, 10-2, 12-3, 13-4, 15-5); a net change of 1 to 3 "
+            "cases is noise",
+            "",
+            "== Track A (customer_query), 3 positives ==",
+            "Top-1 (secondary): wins 1, losses 0, ties 2, net +1   "
+            "sign test p = 1.000   bar: not met",
+            "  win   case_003  rank 2 -> 1",
+            "Top-3 (primary): wins 1, losses 0, ties 2, net +1   "
+            "sign test p = 1.000   bar: not met",
+            "  win   case_001  rank 4 -> 3",
+            "Rank direction (descriptive only): better 2, worse 0, same 1",
+            "Regression check (net loss of 4 or more, or a target leaving the "
+            "top 50): none",
+            "",
+            "== Track B (technician_query), 0 positives ==",
+            "No positives on this track: nothing to compare.",
+        ])
+
+    def test_eval_v2_bar_on_the_primary(self):
+        # A Top-3 win is rank 4 -> 3, a loss is 3 -> 4, a tie is 1 -> 1.
+        for wins, losses, expected in [
+            (6, 0, "sign test p = 0.031   bar: met"),
+            (5, 0, "sign test p = 0.062   bar: not met"),
+            (10, 2, "sign test p = 0.039   bar: met"),
+            (9, 2, "sign test p = 0.065   bar: not met"),
+            (13, 4, "sign test p = 0.049   bar: met"),
+            (0, 6, "sign test p = 0.031   bar: met in reverse (real loss)"),
+        ]:
+            with self.subTest(wins=wins, losses=losses):
+                base = [4] * wins + [3] * losses + [1]
+                new = [3] * wins + [4] * losses + [1]
+                code, lines = self.run_main(v2_report(base),
+                                            v2_report(new, mode="hybrid"),
+                                            "--rule", "eval-v2")
+                self.assertEqual(code, 0)
+                self.assertIn(f"Top-3 (primary): wins {wins}, losses {losses}, ties 1, "
+                              f"net {wins - losses:+d}   {expected}", lines)
+
+    def test_default_rule_refuses_a_report_with_an_empty_track_b(self):
+        code, lines = self.run_main(v2_report([1, 2]), v2_report([2, 1], mode="hybrid"))
+        self.assertEqual((code, lines), (2, [
+            "error: rule hybrid-rrf-v1: its primary track B has no positives; "
+            "pass the rule these reports were made for with --rule"]))
 
     def test_identical_ranks_are_all_ties(self):
         ranks = [1, 2, 4, None]
